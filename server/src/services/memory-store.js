@@ -24,24 +24,22 @@ const unsplashImages = [
   'https://images.unsplash.com/photo-1588117305388-c26305436df8?auto=format&fit=crop&w=800&q=80',
 ]
 
-const sampleImages = unsplashImages
-
 const CATEGORIES_DATA = [
   { name: 'Running', color: 'blue', image: unsplashImages[0], description: 'Road and trail shoes built for distance, speed and daily training.' },
   { name: 'Sneakers', color: 'teal', image: unsplashImages[1], description: 'Everyday low-tops, high-tops and lifestyle silhouettes.' },
-  { name: 'Formal', color: 'slate', image: unsplashImages[6], description: 'Oxfords, derbies and loafers for the office and formal occasions.' },
-  { name: 'Boots', color: 'amber', image: unsplashImages[14], description: 'Hiking, chelsea and weatherproof boots for rough ground.' },
-  { name: 'Training', color: 'rose', image: unsplashImages[11], description: 'High-intensity gym, crossfit and weightlifting footwear.' },
-  { name: 'Basketball', color: 'violet', image: unsplashImages[9], description: 'High-top ankle support and court responsive traction.' },
+  { name: 'Formal', color: 'slate', image: unsplashImages[2], description: 'Oxfords, derbies and loafers for the office and formal occasions.' },
+  { name: 'Boots', color: 'amber', image: unsplashImages[3], description: 'Hiking, chelsea and weatherproof boots for rough ground.' },
+  { name: 'Training', color: 'rose', image: unsplashImages[4], description: 'High-intensity gym, crossfit and weightlifting footwear.' },
+  { name: 'Basketball', color: 'violet', image: unsplashImages[5], description: 'High-top ankle support and court responsive traction.' },
 ]
 
 const USERS_DATA = [
   {
     role: 'admin',
-    firstName: 'Store',
-    lastName: 'Admin',
-    email: 'admin@Kick.com',
-    password: 'ChangeMe123!',
+    firstName: 'Admin',
+    lastName: 'User',
+    email: 'admin@kick.com',
+    password: 'AdminPassword123!',
     phone: '+1 555-0199',
     preferredSize: '10',
     address: { line1: '100 Admin Plaza', city: 'San Francisco', state: 'CA', postalCode: '94105', country: 'USA' },
@@ -86,19 +84,9 @@ const USERS_DATA = [
     preferredSize: '7',
     address: { line1: '88 Baker Street', city: 'London', state: 'England', postalCode: 'NW1 6XE', country: 'UK' },
   },
-  {
-    role: 'customer',
-    firstName: 'Marcus',
-    lastName: 'Vance',
-    email: 'marcus.vance@example.com',
-    password: 'Password123',
-    phone: '+1 555-0190',
-    preferredSize: '11',
-    address: { line1: '120 Collins Street', city: 'Melbourne', state: 'VIC', postalCode: '3000', country: 'Australia' },
-  },
 ]
 
-function generate100Products() {
+function generateProducts() {
   const prefixes = [
     'Aero', 'Velocity', 'Metro', 'Street', 'Executive', 'Summit', 'Urban', 'Glide', 'Apex', 'Pulse',
     'Nitro', 'Endurance', 'Marathon', 'Hyper', 'Horizon', 'Cloud', 'Zenith', 'Pure', 'Flyknit', 'Volt',
@@ -123,13 +111,13 @@ function generate100Products() {
   ]
 
   const products = []
-
   let count = 1
+
   for (let i = 0; i < prefixes.length; i++) {
     for (let j = 0; j < suffixes.length; j++) {
-      if (products.length >= 105) break
+      if (products.length >= 100) break
 
-      const pName = `${prefixes[i]} ${suffixes[j]} ${count}`
+      const pName = `${prefixes[i]} ${suffixes[j]}`
       const category = categoryNames[count % categoryNames.length]
       const gender = genders[count % genders.length]
       const material = materials[count % materials.length]
@@ -138,6 +126,7 @@ function generate100Products() {
       const compareAtPrice = count % 3 === 0 ? Number((price * 1.25).toFixed(2)) : null
       const img1 = unsplashImages[(count - 1) % unsplashImages.length]
       const img2 = unsplashImages[count % unsplashImages.length]
+      const pId = `PROD-${String(count).padStart(3, '0')}`
 
       products.push({
         name: pName,
@@ -155,6 +144,7 @@ function generate100Products() {
         tags: [category.toLowerCase(), gender, material.toLowerCase()],
         rating: Number((4.2 + (count % 8) * 0.1).toFixed(1)),
         reviewCount: 15 + count * 3,
+        id: pId,
       })
 
       count++
@@ -165,15 +155,16 @@ function generate100Products() {
 }
 
 function buildInitialData() {
+  // Create users
   const users = USERS_DATA.map((u, idx) => ({
-    id: `USR-${u.role === 'admin' ? 'ADMIN' : 'CUST' + idx}`,
-    publicId: `USR-${u.role === 'admin' ? 'ADMIN' : 'CUST' + idx}`,
+    id: `USR-${u.role === 'admin' ? 'ADMIN' : `CUST${idx}`}`,
+    publicId: `USR-${u.role === 'admin' ? 'ADMIN' : `CUST${idx}`}`,
     internalId: idx + 1,
     role: u.role,
     firstName: u.firstName,
     lastName: u.lastName,
     fullName: `${u.firstName} ${u.lastName}`,
-    email: u.email,
+    email: u.email.toLowerCase(),
     passwordHash: bcrypt.hashSync(u.password, 10),
     phone: u.phone,
     status: 'active',
@@ -186,34 +177,35 @@ function buildInitialData() {
     updatedAt: new Date().toISOString(),
   }))
 
-  const rawProducts = generate100Products()
-
+  // Create categories
   const categories = CATEGORIES_DATA.map((c, idx) => ({
     id: `CAT-${c.name.toUpperCase()}`,
     publicId: `CAT-${c.name.toUpperCase()}`,
     internalId: idx + 1,
     name: c.name,
-    slug: slugify ? slugify(c.name) : c.name.toLowerCase(),
+    slug: slugify(c.name),
     description: c.description,
     color: c.color,
     image: c.image,
     sortOrder: idx + 1,
-    productCount: Math.floor(rawProducts.length / CATEGORIES_DATA.length),
+    productCount: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }))
 
+  // Generate products
+  const rawProducts = generateProducts()
   const sizes = ['38', '39', '40', '41', '42', '43', '44', '45']
+
   const products = rawProducts.map((p, idx) => {
-    const pId = `PROD-${String(idx + 1).padStart(3, '0')}`
     const cat = categories.find((c) => c.name === p.category) || categories[0]
 
     return {
-      id: pId,
-      publicId: pId,
+      id: p.id,
+      publicId: p.id,
       internalId: idx + 1,
       name: p.name,
-      slug: slugify ? slugify(p.name) : p.name.toLowerCase().replace(/\s+/g, '-'),
+      slug: slugify(p.name),
       sku: p.sku,
       price: p.price,
       compareAtPrice: p.compareAtPrice,
@@ -243,7 +235,7 @@ function buildInitialData() {
           color: col,
           stock: 10,
           reserved: 0,
-          is_active: true,
+          isActive: true,
         }))
       ),
       description: p.description,
@@ -252,9 +244,10 @@ function buildInitialData() {
     }
   })
 
+  // Create sample orders
   const orders = Array.from({ length: 15 }).map((_, idx) => {
-    const num = 1000 + idx + 1
-    const user = users[1 + (idx % 5)]
+    const num = 1001 + idx
+    const user = users[1 + (idx % 4)]
     const product = products[(idx * 3) % products.length]
     const lineTotal = product.price
 
@@ -295,436 +288,27 @@ function buildInitialData() {
     }
   })
 
+  // Update category product counts
+  categories.forEach((cat) => {
+    cat.productCount = products.filter((p) => p.categoryId === cat.publicId).length
+  })
+
   return { users, categories, products, orders }
 }
 
-export const initialCategories = [
-  {
-    id: 'CAT-RUNNING',
-    publicId: 'CAT-RUNNING',
-    internalId: 1,
-    name: 'Running',
-    slug: 'running',
-    description: 'Road and trail shoes built for distance, speed and daily training.',
-    color: 'blue',
-    image: sampleImages[0],
-    sortOrder: 1,
-    productCount: 3,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'CAT-SNEAKERS',
-    publicId: 'CAT-SNEAKERS',
-    internalId: 2,
-    name: 'Sneakers',
-    slug: 'sneakers',
-    description: 'Everyday low-tops, high-tops and lifestyle silhouettes.',
-    color: 'teal',
-    image: sampleImages[1],
-    sortOrder: 2,
-    productCount: 3,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'CAT-FORMAL',
-    publicId: 'CAT-FORMAL',
-    internalId: 3,
-    name: 'Formal',
-    slug: 'formal',
-    description: 'Oxfords, derbies and loafers for the office and occasions.',
-    color: 'slate',
-    image: sampleImages[2],
-    sortOrder: 3,
-    productCount: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'CAT-BOOTS',
-    publicId: 'CAT-BOOTS',
-    internalId: 4,
-    name: 'Boots',
-    slug: 'boots',
-    description: 'Hiking, chelsea and weatherproof boots for rough ground.',
-    color: 'amber',
-    image: sampleImages[3],
-    sortOrder: 4,
-    productCount: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+const initialData = buildInitialData()
 
-export const initialProducts = [
-  {
-    id: 'PROD-001',
-    publicId: 'PROD-001',
-    internalId: 1,
-    name: 'Aero Runner 2.0',
-    slug: 'aero-runner-2-0',
-    sku: 'SS-RUN-0001',
-    price: 129.99,
-    compareAtPrice: 159.99,
-    costPerItem: 65.0,
-    brand: 'Kick',
-    gender: 'unisex',
-    material: 'Mesh',
-    status: 'active',
-    featured: true,
-    inStock: true,
-    totalStock: 85,
-    unitsSold: 240,
-    rating: 4.8,
-    reviewCount: 124,
-    images: [sampleImages[0], sampleImages[1]],
-    image: sampleImages[0],
-    tags: ['running', 'lightweight', 'daily-trainer'],
-    categoryId: 'CAT-RUNNING',
-    category: { id: 'CAT-RUNNING', name: 'Running', slug: 'running' },
-    colors: ['Black', 'Blue'],
-    sizes: ['38', '39', '40', '41', '42', '43', '44', '45'],
-    variants: [
-      { id: 'VAR-101', publicId: 'VAR-101', size: '40', color: 'Black', stock: 15, reserved: 0, is_active: true },
-      { id: 'VAR-102', publicId: 'VAR-102', size: '41', color: 'Black', stock: 20, reserved: 0, is_active: true },
-      { id: 'VAR-103', publicId: 'VAR-103', size: '42', color: 'Blue', stock: 25, reserved: 0, is_active: true },
-      { id: 'VAR-104', publicId: 'VAR-104', size: '43', color: 'Blue', stock: 25, reserved: 0, is_active: true },
-    ],
-    description: 'A featherweight daily trainer built for long miles. Engineered mesh upper breathes on hot runs.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'PROD-002',
-    publicId: 'PROD-002',
-    internalId: 2,
-    name: 'Velocity Pro Racer',
-    slug: 'velocity-pro-racer',
-    sku: 'SS-RUN-0002',
-    price: 179.99,
-    compareAtPrice: 199.99,
-    costPerItem: 85.0,
-    brand: 'Kick',
-    gender: 'men',
-    material: 'Knit',
-    status: 'active',
-    featured: true,
-    inStock: true,
-    totalStock: 60,
-    unitsSold: 180,
-    rating: 4.9,
-    reviewCount: 89,
-    images: [sampleImages[1], sampleImages[2]],
-    image: sampleImages[1],
-    tags: ['running', 'race-day', 'performance'],
-    categoryId: 'CAT-RUNNING',
-    category: { id: 'CAT-RUNNING', name: 'Running', slug: 'running' },
-    colors: ['Red', 'Black'],
-    sizes: ['39', '40', '41', '42', '43', '44'],
-    variants: [
-      { id: 'VAR-201', publicId: 'VAR-201', size: '41', color: 'Red', stock: 30, reserved: 0, is_active: true },
-      { id: 'VAR-202', publicId: 'VAR-202', size: '42', color: 'Black', stock: 30, reserved: 0, is_active: true },
-    ],
-    description: 'Our fastest silhouette yet. Carbon-infused plate and race-day foam.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'PROD-003',
-    publicId: 'PROD-003',
-    internalId: 3,
-    name: 'Metro Classic Low',
-    slug: 'metro-classic-low',
-    sku: 'SS-SNE-0003',
-    price: 89.99,
-    compareAtPrice: null,
-    costPerItem: 40.0,
-    brand: 'Kick',
-    gender: 'unisex',
-    material: 'Canvas',
-    status: 'active',
-    featured: false,
-    inStock: true,
-    totalStock: 120,
-    unitsSold: 310,
-    rating: 4.6,
-    reviewCount: 205,
-    images: [sampleImages[2]],
-    image: sampleImages[2],
-    tags: ['sneakers', 'casual', 'everyday'],
-    categoryId: 'CAT-SNEAKERS',
-    category: { id: 'CAT-SNEAKERS', name: 'Sneakers', slug: 'sneakers' },
-    colors: ['White', 'Black'],
-    sizes: ['38', '39', '40', '41', '42', '43'],
-    variants: [
-      { id: 'VAR-301', publicId: 'VAR-301', size: '40', color: 'White', stock: 60, reserved: 0, is_active: true },
-      { id: 'VAR-302', publicId: 'VAR-302', size: '41', color: 'Black', stock: 60, reserved: 0, is_active: true },
-    ],
-    description: 'Everyday low-top that pairs with everything. Vulcanised rubber sole and padded insole.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'PROD-004',
-    publicId: 'PROD-004',
-    internalId: 4,
-    name: 'Street Court Hi',
-    slug: 'street-court-hi',
-    sku: 'SS-SNE-0004',
-    price: 109.99,
-    compareAtPrice: 129.99,
-    costPerItem: 52.0,
-    brand: 'Kick',
-    gender: 'unisex',
-    material: 'Leather',
-    status: 'active',
-    featured: true,
-    inStock: true,
-    totalStock: 45,
-    unitsSold: 140,
-    rating: 4.7,
-    reviewCount: 94,
-    images: [sampleImages[3]],
-    image: sampleImages[3],
-    tags: ['sneakers', 'high-top', 'leather'],
-    categoryId: 'CAT-SNEAKERS',
-    category: { id: 'CAT-SNEAKERS', name: 'Sneakers', slug: 'sneakers' },
-    colors: ['White', 'Green'],
-    sizes: ['40', '41', '42', '43', '44'],
-    variants: [
-      { id: 'VAR-401', publicId: 'VAR-401', size: '42', color: 'White', stock: 25, reserved: 0, is_active: true },
-      { id: 'VAR-402', publicId: 'VAR-402', size: '43', color: 'Green', stock: 20, reserved: 0, is_active: true },
-    ],
-    description: 'A high-top court classic rebuilt in premium leather. Padded collar, heritage outline.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'PROD-005',
-    publicId: 'PROD-005',
-    internalId: 5,
-    name: 'Executive Oxford',
-    slug: 'executive-oxford',
-    sku: 'SS-FOR-0005',
-    price: 189.99,
-    compareAtPrice: null,
-    costPerItem: 90.0,
-    brand: 'Kick',
-    gender: 'men',
-    material: 'Genuine Leather',
-    status: 'active',
-    featured: false,
-    inStock: true,
-    totalStock: 30,
-    unitsSold: 75,
-    rating: 4.9,
-    reviewCount: 42,
-    images: [sampleImages[4]],
-    image: sampleImages[4],
-    tags: ['formal', 'office', 'leather'],
-    categoryId: 'CAT-FORMAL',
-    category: { id: 'CAT-FORMAL', name: 'Formal', slug: 'formal' },
-    colors: ['Black', 'Brown'],
-    sizes: ['40', '41', '42', '43', '44'],
-    variants: [
-      { id: 'VAR-501', publicId: 'VAR-501', size: '41', color: 'Black', stock: 15, reserved: 0, is_active: true },
-      { id: 'VAR-502', publicId: 'VAR-502', size: '42', color: 'Brown', stock: 15, reserved: 0, is_active: true },
-    ],
-    description: 'Hand-finished Oxford in full-grain leather with Goodyear welted sole.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'PROD-006',
-    publicId: 'PROD-006',
-    internalId: 6,
-    name: 'Summit Trail Boot',
-    slug: 'summit-trail-boot',
-    sku: 'SS-BOO-0007',
-    price: 219.99,
-    compareAtPrice: null,
-    costPerItem: 110.0,
-    brand: 'Kick',
-    gender: 'unisex',
-    material: 'Nubuck',
-    status: 'active',
-    featured: true,
-    inStock: true,
-    totalStock: 25,
-    unitsSold: 65,
-    rating: 4.8,
-    reviewCount: 38,
-    images: [sampleImages[5]],
-    image: sampleImages[5],
-    tags: ['boots', 'hiking', 'waterproof'],
-    categoryId: 'CAT-BOOTS',
-    category: { id: 'CAT-BOOTS', name: 'Boots', slug: 'boots' },
-    colors: ['Brown', 'Green'],
-    sizes: ['40', '41', '42', '43', '44', '45'],
-    variants: [
-      { id: 'VAR-601', publicId: 'VAR-601', size: '42', color: 'Brown', stock: 15, reserved: 0, is_active: true },
-      { id: 'VAR-602', publicId: 'VAR-602', size: '43', color: 'Green', stock: 10, reserved: 0, is_active: true },
-    ],
-    description: 'Waterproof hiking boot with grippy lugged outsole and nubuck upper.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
-export const initialUsers = [
-  {
-    id: 'USR-ADMIN',
-    publicId: 'USR-ADMIN',
-    internalId: 1,
-    role: 'admin',
-    firstName: 'Store',
-    lastName: 'Admin',
-    fullName: 'Store Admin',
-    email: 'admin@Kick.com',
-    passwordHash: bcrypt.hashSync('ChangeMe123!', 10),
-    phone: '+1 555-0199',
-    status: 'active',
-    emailVerified: true,
-    address: {
-      line1: '100 Admin Plaza',
-      city: 'San Francisco',
-      state: 'CA',
-      postalCode: '94105',
-      country: 'USA',
-    },
-    preferredSize: '10',
-    marketingOptIn: true,
-    notes: 'System administrator',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'USR-CUST1',
-    publicId: 'USR-CUST1',
-    internalId: 2,
-    role: 'customer',
-    firstName: 'Priya',
-    lastName: 'Sharma',
-    fullName: 'Priya Sharma',
-    email: 'customer@example.com',
-    passwordHash: bcrypt.hashSync('Password123', 10),
-    phone: '+1 555-0122',
-    status: 'active',
-    emailVerified: true,
-    address: {
-      line1: '12 Marine Drive',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      postalCode: '400001',
-      country: 'India',
-    },
-    preferredSize: '8',
-    marketingOptIn: true,
-    notes: 'VIP Customer',
-    totalOrders: 5,
-    totalSpent: 890.5,
-    avgOrderValue: 178.1,
-    returnCount: 0,
-    lastOrderAt: new Date().toISOString(),
-    tier: 'silver',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
-export const initialOrders = [
-  {
-    id: 'ORD-1001',
-    publicId: 'ORD-1001',
-    internalId: 1,
-    orderNumber: 'KICK-1001',
-    status: 'processing',
-    paymentStatus: 'paid',
-    customer: {
-      id: 'USR-CUST1',
-      name: 'Priya Sharma',
-      email: 'customer@example.com',
-      phone: '+1 555-0122',
-    },
-    shippingAddress: {
-      line1: '12 Marine Drive',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      postalCode: '400001',
-      country: 'India',
-    },
-    items: [
-      {
-        id: 'ITEM-1',
-        productPublicId: 'PROD-001',
-        productName: 'Aero Runner 2.0',
-        productSlug: 'aero-runner-2-0',
-        productImage: sampleImages[0],
-        color: 'Black',
-        size: '41',
-        unitPrice: 129.99,
-        quantity: 1,
-        lineTotal: 129.99,
-      },
-    ],
-    subtotal: 129.99,
-    shippingCost: 0,
-    tax: 10.4,
-    grandTotal: 140.39,
-    placedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'ORD-1002',
-    publicId: 'ORD-1002',
-    internalId: 2,
-    orderNumber: 'KICK-1002',
-    status: 'shipped',
-    paymentStatus: 'paid',
-    customer: {
-      id: 'USR-CUST1',
-      name: 'Priya Sharma',
-      email: 'customer@example.com',
-      phone: '+1 555-0122',
-    },
-    shippingAddress: {
-      line1: '12 Marine Drive',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      postalCode: '400001',
-      country: 'India',
-    },
-    items: [
-      {
-        id: 'ITEM-2',
-        productPublicId: 'PROD-002',
-        productName: 'Velocity Pro Racer',
-        productSlug: 'velocity-pro-racer',
-        productImage: sampleImages[1],
-        color: 'Red',
-        size: '41',
-        unitPrice: 179.99,
-        quantity: 1,
-        lineTotal: 179.99,
-      },
-    ],
-    subtotal: 179.99,
-    shippingCost: 0,
-    tax: 14.4,
-    grandTotal: 194.39,
-    placedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+export const initialCategories = initialData.categories
+export const initialProducts = initialData.products.slice(0, 6)
+export const initialUsers = initialData.users
+export const initialOrders = initialData.orders.slice(0, 2)
 
 class MemoryStore {
   constructor() {
-    const generated = buildInitialData()
-    this.categories = generated.categories
-    this.products = generated.products
-    this.users = generated.users
-    this.orders = generated.orders
+    this.categories = [...initialData.categories]
+    this.products = [...initialData.products]
+    this.users = [...initialData.users]
+    this.orders = [...initialData.orders]
   }
 
   // Categories
@@ -747,10 +331,10 @@ class MemoryStore {
       publicId: id,
       internalId: this.categories.length + 1,
       name: input.name,
-      slug: input.slug || input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      slug: input.slug || slugify(input.name),
       description: input.description || '',
       color: input.color || 'blue',
-      image: input.image || sampleImages[0],
+      image: input.image || unsplashImages[0],
       sortOrder: this.categories.length + 1,
       productCount: 0,
       createdAt: new Date().toISOString(),
@@ -836,7 +420,7 @@ class MemoryStore {
       publicId: id,
       internalId: this.products.length + 1,
       name: input.name,
-      slug: input.slug || input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      slug: input.slug || slugify(input.name),
       sku: input.sku || `SKU-${Date.now()}`,
       price: Number(input.price) || 99.99,
       compareAtPrice: input.compareAtPrice ? Number(input.compareAtPrice) : null,
@@ -851,8 +435,8 @@ class MemoryStore {
       unitsSold: 0,
       rating: 5.0,
       reviewCount: 1,
-      images: input.images && input.images.length ? input.images : [sampleImages[0]],
-      image: input.images && input.images[0] ? input.images[0] : sampleImages[0],
+      images: input.images && input.images.length ? input.images : [unsplashImages[0]],
+      image: input.images && input.images[0] ? input.images[0] : unsplashImages[0],
       tags: input.tags || [],
       categoryId: category ? category.publicId : null,
       category: category ? { id: category.publicId, name: category.name, slug: category.slug } : null,

@@ -1,39 +1,80 @@
-import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import {
   selectCartItems,
   selectCartTotal,
   updateQuantity,
   removeFromCart,
   clearCart,
-} from '../../store/cartSlice';
-import { placeOrder } from '../../store/ordersSlice';
+} from '../../store/cartSlice'
+import { placeOrder } from '../../store/ordersSlice'
 
 export default function ShoppingCart() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
 
-  const cartItems = useSelector(selectCartItems);
-  const subtotal = useSelector(selectCartTotal);
-  const { user } = useSelector((state) => state.auth);
+  const cartItems = useSelector(selectCartItems)
+  const subtotal = useSelector(selectCartTotal)
+  const { user } = useSelector((state) => state.auth)
 
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState(null)
+  const [showAddressForm, setShowAddressForm] = useState(false)
+  const [shippingAddress, setShippingAddress] = useState({
+    name: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
+    phone: user?.phone || '',
+    line1: user?.address?.line1 || '',
+    line2: user?.address?.line2 || '',
+    city: user?.address?.city || '',
+    state: user?.address?.state || '',
+    postalCode: user?.address?.postalCode || '',
+    country: user?.address?.country || 'USA',
+  })
 
-  const delivery = cartItems.length > 0 ? 6.99 : 0.0;
-  const total = subtotal + delivery;
-  const totalItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  // Free shipping threshold
+  const FREE_SHIPPING_THRESHOLD = 150
+  const FLAT_SHIPPING = 9.99
+  const delivery = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING
+  const total = subtotal + (subtotal > 0 ? delivery : 0)
+  const totalItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0)
+
+  const handleAddressChange = (field, value) => {
+    setShippingAddress((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const isAddressValid = () => {
+    return (
+      shippingAddress.name.trim() &&
+      shippingAddress.line1.trim() &&
+      shippingAddress.city.trim() &&
+      shippingAddress.state.trim() &&
+      shippingAddress.postalCode.trim() &&
+      shippingAddress.country.trim()
+    )
+  }
 
   const handleCheckout = async () => {
-    if (cartItems.length === 0) return;
+    if (cartItems.length === 0) return
+
     if (!user) {
-      navigate('/login?redirect=/cart');
-      return;
+      navigate('/login?redirect=/cart')
+      return
     }
 
-    setCheckoutLoading(true);
-    setCheckoutError(null);
+    // Show address form if not already shown
+    if (!showAddressForm && !isAddressValid()) {
+      setShowAddressForm(true)
+      return
+    }
+
+    if (!isAddressValid()) {
+      setCheckoutError('Please fill in all required shipping address fields.')
+      return
+    }
+
+    setCheckoutLoading(true)
+    setCheckoutError(null)
 
     try {
       const orderData = {
@@ -49,23 +90,75 @@ export default function ShoppingCart() {
           quantity: item.quantity,
         })),
         shippingAddress: {
-          line1: '123 Fashion Blvd',
-          city: 'New York',
-          state: 'NY',
-          postalCode: '10001',
-          country: 'USA',
+          name: shippingAddress.name,
+          phone: shippingAddress.phone || undefined,
+          line1: shippingAddress.line1,
+          line2: shippingAddress.line2 || undefined,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          postalCode: shippingAddress.postalCode,
+          country: shippingAddress.country,
         },
-      };
+      }
 
-      const result = await dispatch(placeOrder(orderData)).unwrap();
-      dispatch(clearCart());
-      navigate('/orders');
+      const result = await dispatch(placeOrder(orderData)).unwrap()
+      dispatch(clearCart())
+      navigate('/orders')
     } catch (err) {
-      setCheckoutError(err.message || err || 'Failed to place order');
+      setCheckoutError(err.message || err || 'Failed to place order')
     } finally {
-      setCheckoutLoading(false);
+      setCheckoutLoading(false)
     }
-  };
+  }
+
+  const handleQuickCheckout = async () => {
+    if (!user) {
+      navigate('/login?redirect=/cart')
+      return
+    }
+
+    // Use saved address from user profile if available
+    if (user.address && user.address.line1) {
+      setCheckoutLoading(true)
+      setCheckoutError(null)
+
+      try {
+        const orderData = {
+          items: cartItems.map((item) => ({
+            productId: item.productId,
+            productPublicId: item.productId,
+            productName: item.name,
+            productSlug: item.slug || 'product',
+            productImage: item.image,
+            color: item.color || 'Default',
+            size: item.size || 'M',
+            unitPrice: item.price,
+            quantity: item.quantity,
+          })),
+          shippingAddress: {
+            name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+            phone: user.phone || undefined,
+            line1: user.address.line1,
+            line2: user.address.line2 || undefined,
+            city: user.address.city,
+            state: user.address.state,
+            postalCode: user.address.postalCode,
+            country: user.address.country,
+          },
+        }
+
+        const result = await dispatch(placeOrder(orderData)).unwrap()
+        dispatch(clearCart())
+        navigate('/orders')
+      } catch (err) {
+        setCheckoutError(err.message || err || 'Failed to place order')
+      } finally {
+        setCheckoutLoading(false)
+      }
+    } else {
+      setShowAddressForm(true)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#ECEAE5] text-[#111111] font-sans p-4 sm:p-8 md:p-12 lg:p-16 flex justify-center items-start">
@@ -92,10 +185,11 @@ export default function ShoppingCart() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Cart Items */}
           <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 shadow-sm">
             <h2 className="text-2xl font-bold mb-1">Your Bag</h2>
             <p className="text-xs text-gray-500 mb-6">
-              Items in your bag not reserved- check out now to make them yours.
+              Items in your bag not reserved - check out now to make them yours.
             </p>
 
             <div className="max-h-[460px] overflow-y-auto pr-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
@@ -186,6 +280,7 @@ export default function ShoppingCart() {
             </div>
           </div>
 
+          {/* Order Summary */}
           <div className="lg:col-span-5 pt-2">
             <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
 
@@ -200,9 +295,23 @@ export default function ShoppingCart() {
               <div className="flex justify-between text-gray-800">
                 <span>Delivery</span>
                 <span className="font-medium">
-                  {subtotal > 0 ? `$${delivery.toFixed(2)}` : '$0.00'}
+                  {subtotal > 0 ? (
+                    subtotal >= FREE_SHIPPING_THRESHOLD ? (
+                      <span className="text-green-600">FREE</span>
+                    ) : (
+                      `$${delivery.toFixed(2)}`
+                    )
+                  ) : (
+                    '$0.00'
+                  )}
                 </span>
               </div>
+
+              {subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD && (
+                <div className="text-xs text-amber-600">
+                  Add ${(FREE_SHIPPING_THRESHOLD - subtotal).toFixed(2)} more for free shipping!
+                </div>
+              )}
 
               <div className="flex justify-between text-base sm:text-lg font-bold pt-2 text-black border-t">
                 <span>Total</span>
@@ -210,16 +319,96 @@ export default function ShoppingCart() {
               </div>
             </div>
 
+            {/* Shipping Address Form */}
+            {showAddressForm && cartItems.length > 0 && (
+              <div className="mt-6 p-4 bg-gray-50 rounded-xl space-y-3">
+                <h3 className="font-bold text-sm">Shipping Address</h3>
+                <input
+                  type="text"
+                  placeholder="Full Name *"
+                  value={shippingAddress.name}
+                  onChange={(e) => handleAddressChange('name', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone (optional)"
+                  value={shippingAddress.phone}
+                  onChange={(e) => handleAddressChange('phone', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                />
+                <input
+                  type="text"
+                  placeholder="Address Line 1 *"
+                  value={shippingAddress.line1}
+                  onChange={(e) => handleAddressChange('line1', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                />
+                <input
+                  type="text"
+                  placeholder="Address Line 2"
+                  value={shippingAddress.line2}
+                  onChange={(e) => handleAddressChange('line2', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="City *"
+                    value={shippingAddress.city}
+                    onChange={(e) => handleAddressChange('city', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                  />
+                  <input
+                    type="text"
+                    placeholder="State *"
+                    value={shippingAddress.state}
+                    onChange={(e) => handleAddressChange('state', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Postal Code *"
+                    value={shippingAddress.postalCode}
+                    onChange={(e) => handleAddressChange('postalCode', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Country *"
+                    value={shippingAddress.country}
+                    onChange={(e) => handleAddressChange('country', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                  />
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleCheckout}
               disabled={checkoutLoading || cartItems.length === 0}
-              className="w-full bg-[#1E1E1E] hover:bg-black disabled:bg-gray-400 text-white font-bold py-3.5 px-4 rounded-xl mt-6 uppercase tracking-wider text-xs sm:text-sm transition-all duration-200 active:scale-[0.99]"
+              className="w-full bg-[#1E1E1E] hover:bg-black disabled:bg-gray-400 text-white font-bold py-3.5 px-4 rounded-xl mt-4 uppercase tracking-wider text-xs sm:text-sm transition-all duration-200 active:scale-[0.99]"
             >
-              {checkoutLoading ? 'Processing Order...' : 'Checkout'}
+              {checkoutLoading
+                ? 'Processing Order...'
+                : showAddressForm
+                ? 'Place Order'
+                : 'Proceed to Checkout'}
             </button>
+
+            {showAddressForm && (
+              <button
+                onClick={() => setShowAddressForm(false)}
+                className="w-full border border-gray-300 hover:border-gray-500 text-gray-700 font-medium py-2.5 px-4 rounded-xl mt-2 text-xs transition-colors"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

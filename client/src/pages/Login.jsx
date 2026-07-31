@@ -1,37 +1,39 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { loginUser, clearError } from '../store/authSlice';
+import React, { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { loginUser, clearError } from '../store/authSlice'
 
 export default function Login() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const redirect = searchParams.get('redirect') || '/'
 
-  const { loading, error } = useSelector((state) => state.auth);
+  const { loading, error, user } = useSelector((state) => state.auth)
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    dispatch(clearError());
+    e.preventDefault()
+    dispatch(clearError())
     try {
-      const res = await dispatch(loginUser({ email, password })).unwrap();
+      const res = await dispatch(loginUser({ email, password })).unwrap()
+      // Redirect based on role
       if (res?.user?.role === 'admin') {
-        window.location.href = 'http://localhost:5174';
+        // Admins go to admin panel - use relative path
+        window.location.href = '/admin'
       } else {
-        navigate(redirect);
+        navigate(redirect, { replace: true })
       }
     } catch {
       // Error handled in slice state
     }
-  };
+  }
 
   const errorMessage = typeof error === 'object' && error !== null
     ? (error.message || error.error || JSON.stringify(error))
-    : error;
+    : error
 
   return (
     <div className="min-h-screen bg-[#ECEAE5] text-[#111111] font-sans flex items-center justify-center p-4 sm:p-8 md:p-12 animate-fade-in">
@@ -59,7 +61,7 @@ export default function Login() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email (e.g. user1@example.com)"
+                    placeholder="Email"
                     className="w-full px-4 py-3 bg-[#E2E0D9] border border-[#A3A097] rounded-lg text-sm text-black placeholder-gray-500 focus:outline-none focus:border-black focus:bg-transparent transition-all"
                     required
                   />
@@ -70,7 +72,7 @@ export default function Login() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password (e.g. UserPassword123!)"
+                    placeholder="Password"
                     className="w-full px-4 py-3 bg-[#E2E0D9] border border-[#A3A097] rounded-lg text-sm text-black placeholder-gray-500 focus:outline-none focus:border-black focus:bg-transparent transition-all"
                     required
                   />
@@ -98,14 +100,6 @@ export default function Login() {
                   </svg>
                 </button>
               </form>
-
-              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
-                <span className="font-bold">Test User Credentials:</span>
-                <br />
-                User: <code className="font-mono bg-amber-100 px-1 rounded">customer@example.com</code> / <code className="font-mono bg-amber-100 px-1 rounded">Password123</code>
-                <br />
-                Admin: <code className="font-mono bg-amber-100 px-1 rounded">admin@kick.com</code> / <code className="font-mono bg-amber-100 px-1 rounded">AdminPassword123!</code>
-              </div>
             </div>
           </div>
 
@@ -137,5 +131,5 @@ export default function Login() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,7 +1,7 @@
-// import { stripe } from '../config/stripe.js'
+import Stripe from 'stripe'
 import { env } from '../config/env.js'
 import { logger } from '../config/logger.js'
-import { withTransaction } from '../config/database.js'
+import { withTransaction, pool } from '../config/database.js'
 import { ApiError } from '../utils/api-error.js'
 import { toCents, fromCents, centsToNumber } from '../utils/money.js'
 import * as orderModel from '../models/order.model.js'
@@ -9,8 +9,26 @@ import * as variantModel from '../models/variant.model.js'
 import * as productModel from '../models/product.model.js'
 import * as eventModel from '../models/stripe-event.model.js'
 
+// Initialize Stripe only if secret key is configured
+let stripe = null
+
+function getStripe() {
+  if (!env.stripe.enabled) {
+    return null
+  }
+  if (!stripe) {
+    stripe = new Stripe(env.stripe.secretKey, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  }
+  return stripe
+}
+
 function assertStripe() {
-  if (!stripe) throw ApiError.unavailable('Payments are not configured on this server.')
+  const s = getStripe()
+  if (!s) {
+    throw ApiError.unavailable('Payments are not configured on this server. Please set STRIPE_SECRET_KEY.')
+  }
 }
 
 /**
@@ -20,7 +38,10 @@ function assertStripe() {
  * of charging the customer twice.
  */
 export async function createPaymentIntent(orderPublicId, requester) {
-  assertStripe()
+  const s = getStripe()
+  if (!s) {
+    throw ApiError.unavailable('Payments are not configured on this server.')
+  }
 
   const order = await orderModel.findByPublicId(orderPublicId)
   if (!order) throw ApiError.notFound('Order not found.')
@@ -43,9 +64,9 @@ export async function createPaymentIntent(orderPublicId, requester) {
   const amountCents = toCents(order.total)
 
   try {
-    const intent = await stripe.paymentIntents.create(
+    const intent = await s.paymentIntents.create(
       {
-        amount: amountCents,               // ALWAYS the smallest currency unit
+        amount: amountCents,
         currency: order.currency.toLowerCase(),
         automatic_payment_methods: { enabled: true },
         metadata: {
@@ -98,9 +119,15 @@ export async function getPaymentStatus(orderPublicId, requester) {
  * Express must not have parsed this body — see the raw-body mount in app.js.
  */
 export function constructEvent(rawBody, signature) {
-  assertStripe()
+  const s = getStripe()
+  if (!s) {
+    throw ApiError.unavailable('Stripe is not configured.')
+  }
+  if (!env.stripe.webhookSecret) {
+    throw ApiError.badRequest('Stripe webhook secret is not configured.')
+  }
   try {
-    return stripe.webhooks.constructEvent(rawBody, signature, env.stripe.webhookSecret)
+    return s.webhooks.constructEvent(rawBody, signature, env.stripe.webhookSecret)
   } catch (err) {
     logger.warn({ err: err.message }, 'invalid Stripe webhook signature')
     throw ApiError.badRequest(`Webhook signature verification failed: ${err.message}`)
@@ -199,7 +226,6 @@ export async function handlePaymentFailed(intent) {
       'payment failed'
     )
   })
-  // The order stays `pending` so the customer can retry with another card.
 }
 
 export async function handlePaymentCanceled(intent) {
@@ -234,7 +260,10 @@ export async function handleRefund(charge) {
  * exactly one code path that records a refund.
  */
 export async function refundOrder(orderPublicId, { amount, reason, restock = false }) {
-  assertStripe()
+  const s = getStripe()
+  if (!s) {
+    throw ApiError.unavailable('Payments are not configured on this server.')
+  }
 
   const order = await orderModel.findByPublicId(orderPublicId)
   if (!order) throw ApiError.notFound('Order not found.')
@@ -257,7 +286,7 @@ export async function refundOrder(orderPublicId, { amount, reason, restock = fal
   }
 
   try {
-    const refund = await stripe.refunds.create(
+    const refund = await s.refunds.create(
       {
         payment_intent: intentId,
         amount: refundCents,
@@ -293,7 +322,6 @@ export async function refundOrder(orderPublicId, { amount, reason, restock = fal
 }
 
 async function getIntentId(orderInternalId) {
-  const { pool } = await import('../config/database.js')
   const [rows] = await pool.query(
     'SELECT stripe_payment_intent_id FROM orders WHERE id = ?',
     [orderInternalId]

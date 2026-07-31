@@ -50,20 +50,32 @@ export const logout = asyncHandler(async (req, res) => {
 })
 
 export const logoutAll = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    return ok(res, { message: 'Already signed out.' })
+  }
   await authService.logoutAll(req.user.id)
   res.clearCookie(COOKIE, { ...cookieOptions, maxAge: undefined })
   ok(res, { message: 'Signed out of all devices.' })
 })
 
 export const me = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    return ok(res, { user: null, authenticated: false })
+  }
   ok(res, await authService.getProfile(req.user.id))
 })
 
 export const updateMe = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    return ok(res, { error: 'Authentication required.' })
+  }
   ok(res, await authService.updateProfile(req.user.id, req.body))
 })
 
 export const changePassword = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    return ok(res, { error: 'Authentication required.' })
+  }
   await authService.changePassword(req.user.id, req.body)
   res.clearCookie(COOKIE, { ...cookieOptions, maxAge: undefined })
   ok(res, { message: 'Password changed. Please sign in again.' })

@@ -30,12 +30,15 @@ export const pool = mysql.createPool({
   dateStrings: false,
 })
 
+let dbConnected = false
+
 /** Fail fast at boot if the database is unreachable, but log warning in dev/sandboxed environments. */
 export async function assertDatabaseConnection() {
   try {
     const conn = await pool.getConnection()
     try {
       await conn.ping()
+      dbConnected = true
       logger.info(
         { database: env.db.database, poolSize: env.db.poolSize },
         'MySQL connected'
@@ -44,8 +47,20 @@ export async function assertDatabaseConnection() {
       conn.release()
     }
   } catch (err) {
-    logger.warn({ err: err.message }, 'MySQL database unavailable — API running in fallback mode')
+    dbConnected = false
+    if (env.isProd) {
+      logger.error({ err: err.message }, 'MySQL database unavailable in production — exiting')
+      // In production, we should fail fast since DB is required
+      process.exit(1)
+    } else {
+      logger.warn({ err: err.message }, 'MySQL database unavailable — API running in fallback mode')
+    }
   }
+}
+
+/** Check if database is currently connected */
+export function isDatabaseConnected() {
+  return dbConnected
 }
 
 /** Convenience wrapper for a plain query on the pool. */
@@ -55,10 +70,11 @@ export async function query(sql, params = []) {
     const [rows] = await pool.query(sql, params)
     return rows
   } catch (err) {
-    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'PROTOCOL_CONNECTION_LOST') {
+      dbConnected = false
       if (!dbWarned) {
         dbWarned = true
-        logger.warn({ err: err.message }, 'Database connection refused — running with fallback memory/mock data')
+        logger.warn({ err: err.message }, 'Database connection lost — running with fallback memory/mock data')
       }
     } else {
       logger.warn({ err: err.message }, 'Database query failed')
@@ -122,6 +138,7 @@ export async function withTransaction(fn, { retries = 2 } = {}) {
 export async function closePool() {
   try {
     await pool.end()
+    dbConnected = false
   } catch {
     // Ignore close errors
   }

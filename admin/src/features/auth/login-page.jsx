@@ -77,7 +77,7 @@ export function AdminLoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -87,12 +87,6 @@ export function AdminLoginPage() {
               {loading ? 'Signing in...' : 'Sign In to Admin'}
             </Button>
           </form>
-
-          <div className="mt-6 p-3 rounded-lg border bg-muted/50 text-xs space-y-1">
-            <p className="font-semibold text-muted-foreground">Default Admin Credentials:</p>
-            <p>Email: <code className="font-mono font-bold">admin@kick.com</code></p>
-            <p>Password: <code className="font-mono font-bold">AdminPassword123!</code></p>
-          </div>
         </CardContent>
       </Card>
     </div>

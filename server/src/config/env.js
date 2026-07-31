@@ -1,6 +1,9 @@
 import 'dotenv/config'
 import { z } from 'zod'
 
+const DEFAULT_ACCESS_SECRET = 'default_jwt_access_secret_32_characters_long_for_aistudio'
+const DEFAULT_REFRESH_SECRET = 'default_jwt_refresh_secret_32_characters_long_for_aistudio'
+
 /**
  * Environment variables, validated once at boot.
  *
@@ -24,8 +27,8 @@ const schema = z.object({
   DB_SOCKET: z.string().optional(),
   DB_POOL_SIZE: z.coerce.number().int().min(2).max(200).default(20),
 
-  JWT_ACCESS_SECRET: z.string().min(32).default('default_jwt_access_secret_32_characters_long_for_aistudio'),
-  JWT_REFRESH_SECRET: z.string().min(32).default('default_jwt_refresh_secret_32_characters_long_for_aistudio'),
+  JWT_ACCESS_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32),
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL_DAYS: z.coerce.number().int().default(30),
 
@@ -64,53 +67,74 @@ if (!parsed.success) {
 
 const e = parsed.data
 
+// Validate JWT secrets in production
+const isProduction = e.NODE_ENV === 'production'
+const usingDefaultAccess = e.JWT_ACCESS_SECRET === DEFAULT_ACCESS_SECRET
+const usingDefaultRefresh = e.JWT_REFRESH_SECRET === DEFAULT_REFRESH_SECRET
+
+if (isProduction && (usingDefaultAccess || usingDefaultRefresh)) {
+  // eslint-disable-next-line no-console
+  console.error('FATAL: Production environment must not use default JWT secrets.')
+  // eslint-disable-next-line no-console
+  console.error('Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET to unique, secure values.')
+  process.exit(1)
+}
+
+// Warn in non-production
+if ((usingDefaultAccess || usingDefaultRefresh) && !isProduction) {
+  // eslint-disable-next-line no-console
+  console.warn('WARNING: Using default JWT secrets in non-production. Set secure secrets for production.')
+}
+
+const eFinal = parsed.data
+
 export const env = {
-  nodeEnv: e.NODE_ENV,
-  isProd: e.NODE_ENV === 'production',
-  isTest: e.NODE_ENV === 'test',
-  port: e.PORT,
-  corsOrigins: e.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
-  trustProxy: e.TRUST_PROXY,
+  nodeEnv: eFinal.NODE_ENV,
+  isProd: eFinal.NODE_ENV === 'production',
+  isTest: eFinal.NODE_ENV === 'test',
+  port: eFinal.PORT,
+  corsOrigins: eFinal.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
+  trustProxy: eFinal.TRUST_PROXY,
 
   db: {
-    host: e.DB_HOST,
-    port: e.DB_PORT,
-    user: e.DB_USER,
-    password: e.DB_PASSWORD,
-    database: e.DB_NAME,
-    socketPath: e.DB_SOCKET || undefined,
-    poolSize: e.DB_POOL_SIZE,
+    host: eFinal.DB_HOST,
+    port: eFinal.DB_PORT,
+    user: eFinal.DB_USER,
+    password: eFinal.DB_PASSWORD,
+    database: eFinal.DB_NAME,
+    socketPath: eFinal.DB_SOCKET || undefined,
+    poolSize: eFinal.DB_POOL_SIZE,
   },
 
   jwt: {
-    accessSecret: e.JWT_ACCESS_SECRET,
-    refreshSecret: e.JWT_REFRESH_SECRET,
-    accessTtl: e.JWT_ACCESS_TTL,
-    refreshTtlDays: e.JWT_REFRESH_TTL_DAYS,
+    accessSecret: eFinal.JWT_ACCESS_SECRET,
+    refreshSecret: eFinal.JWT_REFRESH_SECRET,
+    accessTtl: eFinal.JWT_ACCESS_TTL,
+    refreshTtlDays: eFinal.JWT_REFRESH_TTL_DAYS,
   },
 
-  bcryptRounds: e.BCRYPT_ROUNDS,
+  bcryptRounds: eFinal.BCRYPT_ROUNDS,
 
   stripe: {
-    secretKey: e.STRIPE_SECRET_KEY,
-    publishableKey: e.STRIPE_PUBLISHABLE_KEY,
-    webhookSecret: e.STRIPE_WEBHOOK_SECRET,
-    enabled: Boolean(e.STRIPE_SECRET_KEY),
+    secretKey: eFinal.STRIPE_SECRET_KEY,
+    publishableKey: eFinal.STRIPE_PUBLISHABLE_KEY,
+    webhookSecret: eFinal.STRIPE_WEBHOOK_SECRET,
+    enabled: Boolean(eFinal.STRIPE_SECRET_KEY),
   },
 
-  currency: e.CURRENCY.toUpperCase(),
+  currency: eFinal.CURRENCY.toUpperCase(),
 
   business: {
-    taxRate: e.TAX_RATE,
-    freeShippingThreshold: e.FREE_SHIPPING_THRESHOLD,
-    flatShippingRate: e.FLAT_SHIPPING_RATE,
-    lowStockThreshold: e.LOW_STOCK_THRESHOLD,
-    maxQtyPerLine: e.MAX_QTY_PER_LINE,
-    reservationTtlMinutes: e.RESERVATION_TTL_MINUTES,
+    taxRate: eFinal.TAX_RATE,
+    freeShippingThreshold: eFinal.FREE_SHIPPING_THRESHOLD,
+    flatShippingRate: eFinal.FLAT_SHIPPING_RATE,
+    lowStockThreshold: eFinal.LOW_STOCK_THRESHOLD,
+    maxQtyPerLine: eFinal.MAX_QTY_PER_LINE,
+    reservationTtlMinutes: eFinal.RESERVATION_TTL_MINUTES,
   },
 
   upload: {
-    dir: e.UPLOAD_DIR,
-    maxBytes: e.MAX_UPLOAD_MB * 1024 * 1024,
+    dir: eFinal.UPLOAD_DIR,
+    maxBytes: eFinal.MAX_UPLOAD_MB * 1024 * 1024,
   },
 }

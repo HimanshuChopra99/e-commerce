@@ -1,6 +1,12 @@
 import { pool, query, queryOne } from '../config/database.js'
 import { decimalToNumber } from '../utils/money.js'
 import { parseJson } from '../utils/helpers.js'
+import { memoryStore } from '../services/memory-store.js'
+
+/**
+ * The database speaks snake_case; the rest of the app speaks camelCase.
+ * This file is the only place that boundary is crossed.
+ */
 
 export function mapProduct(row) {
   if (!row) return null
@@ -62,8 +68,6 @@ const BASE = `
   LEFT JOIN categories c ON c.id = p.category_id
 `
 
-import { memoryStore } from '../services/memory-store.js'
-
 export async function findByPublicId(publicId, { includeDeleted = false } = {}) {
   try {
     const row = await queryOne(
@@ -72,6 +76,8 @@ export async function findByPublicId(publicId, { includeDeleted = false } = {}) 
     )
     if (row) return mapProduct(row)
   } catch {}
+
+  // Fallback to memory store if DB fails
   return memoryStore.getProductByPublicId(publicId)
 }
 
@@ -80,6 +86,8 @@ export async function findBySlug(slug) {
     const row = await queryOne(`${BASE} WHERE p.slug = ? AND p.deleted_at IS NULL LIMIT 1`, [slug])
     if (row) return mapProduct(row)
   } catch {}
+
+  // Fallback to memory store if DB fails
   return memoryStore.getProductBySlug(slug)
 }
 
@@ -88,6 +96,8 @@ export async function findByInternalId(id, conn = pool) {
     const [rows] = await conn.query(`${BASE} WHERE p.id = ? LIMIT 1`, [id])
     if (rows && rows[0]) return mapProduct(rows[0])
   } catch {}
+
+  // Fallback to memory store
   return memoryStore.products.find((p) => p.internalId === id || p.id === id) || null
 }
 
@@ -98,6 +108,8 @@ export async function slugExists(slug, ignoreInternalId = null) {
       : await queryOne('SELECT 1 AS x FROM products WHERE slug = ? LIMIT 1', [slug])
     if (row) return Boolean(row)
   } catch {}
+
+  // Check memory store
   return memoryStore.products.some((p) => p.slug === slug)
 }
 
@@ -108,6 +120,7 @@ export async function skuExists(sku, ignoreInternalId = null) {
       : await queryOne('SELECT 1 AS x FROM products WHERE sku = ? LIMIT 1', [sku])
     if (row) return Boolean(row)
   } catch {}
+
   return memoryStore.products.some((p) => p.sku === sku)
 }
 
@@ -203,6 +216,7 @@ export async function findAll(filters = {}) {
     }
   } catch {}
 
+  // Fallback to memory store
   return memoryStore.getProducts(filters)
 }
 

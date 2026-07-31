@@ -13,6 +13,9 @@ const router = Router()
  *
  * This means a newly added admin endpoint is protected by default —
  * forgetting a guard is the most common way admin data leaks.
+ *
+ * IMPORTANT: All admin routes require valid authentication AND admin role.
+ * Without a valid JWT token, requests will be rejected with 401.
  */
 router.use(authenticate, requireAdmin)
 
