@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../store/cartSlice";
+import { addToCart, selectCartItems } from "../store/cartSlice";
 import { toggleWishlist, selectIsWishlisted } from "../store/wishlistSlice";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { ProductDetails } from "../components/product/ProductDetails";
@@ -20,6 +20,42 @@ function getImageSrc(img) {
   return `${IMAGE_BASE}${img}`;
 }
 
+const COLOR_PHOTOS = {
+  black: [
+    'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=800&q=80',
+  ],
+  white: [
+    'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=800&q=80',
+  ],
+  red: [
+    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?auto=format&fit=crop&w=800&q=80',
+  ],
+  blue: [
+    'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=800&q=80',
+  ],
+  green: [
+    'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&w=800&q=80',
+  ],
+  grey: [
+    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=800&q=80',
+  ],
+  gray: [
+    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=800&q=80',
+  ],
+  yellow: [
+    'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&w=800&q=80',
+  ],
+  pink: [
+    'https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?auto=format&fit=crop&w=800&q=80',
+  ],
+};
+
 const EU_TO_US = { '35': 5, '36': 6, '37': 6.5, '38': 7.5, '39': 8, '40': 9, '41': 10, '42': 10.5, '43': 11.5, '44': 12, '45': 13, '46': 14 }
 const EU_TO_UK = { '35': 3, '36': 4, '37': 4.5, '38': 5.5, '39': 6, '40': 7, '41': 8, '42': 8.5, '43': 9.5, '44': 10, '45': 11, '46': 12 }
 const EU_TO_CM = { '35': 22.5, '36': 23, '37': 23.5, '38': 24, '39': 25, '40': 25.5, '41': 26, '42': 26.5, '43': 27.5, '44': 28, '45': 28.5, '46': 29 }
@@ -28,6 +64,8 @@ export default function ProductView() {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const cartItems = useSelector(selectCartItems);
 
   const [product, setProduct] = useState(null);
   const [relatedList, setRelatedList] = useState([]);
@@ -93,12 +131,19 @@ export default function ProductView() {
         });
 
         const colorHex = { white: '#FFFFFF', black: '#1E1E1E', red: '#EF4444', blue: '#3B82F6', green: '#22C55E', yellow: '#EAB308', grey: '#6B7280', gray: '#6B7280', pink: '#EC4899', brown: '#92400E', tan: '#D2B48C' };
-        const colors = colorList.map((col, idx) => ({
-          id: `col-${idx}`,
-          name: col,
-          hex: colorHex[col.toLowerCase()] || col,
-          images: colorImageMap[col] || imgList,
-        }));
+        const colors = colorList.map((col, idx) => {
+          const key = col.toLowerCase();
+          const colorSpecificImgs = colorImageMap[col] || COLOR_PHOTOS[key] || [
+            imgList[idx % imgList.length],
+            ...imgList.filter((_, i) => i !== (idx % imgList.length))
+          ];
+          return {
+            id: `col-${idx}`,
+            name: col,
+            hex: colorHex[key] || col,
+            images: colorSpecificImgs,
+          };
+        });
         const initialColor = colors[0] || null;
         const sizes = sizeVals.map((size) => toSize(size, initialColor?.name));
 
@@ -203,12 +248,19 @@ export default function ProductView() {
       window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'This size is currently unavailable.' }));
       return false;
     }
+
+    const alreadyInCart = cartItems.some((i) => i.variantId === variant.id);
+    if (alreadyInCart) {
+      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'Already available in cart.' }));
+      return false;
+    }
+
     dispatch(
       addToCart({
         variantId: variant.id,
         productId: product.id,
         name: product.name,
-        image: product.image,
+        image: selectedColor?.images?.[0] || product.image,
         price: product.price,
         size: selectedSize.value,
         color: selectedColor.name,
@@ -221,7 +273,13 @@ export default function ProductView() {
   };
 
   const handleBuyNow = () => {
-    if (handleAddToCart()) navigate("/cart");
+    const variant = product.variants?.find(
+      (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
+    );
+    const alreadyInCart = variant && cartItems.some((i) => i.variantId === variant.id);
+    if (alreadyInCart || handleAddToCart()) {
+      navigate("/cart");
+    }
   };
 
   const handleToggleWishlist = () => {
@@ -239,9 +297,9 @@ export default function ProductView() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 sm:pt-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-6 text-xs text-neutral-500 font-semibold">
           <div className="flex items-center gap-2 flex-wrap">
-            <a href="/" className="hover:text-neutral-900 transition-colors">Home</a>
+            <Link to="/" className="hover:text-neutral-900 transition-colors">Home</Link>
             <span>/</span>
-            <a href="/products" className="hover:text-neutral-900 transition-colors">Products</a>
+            <Link to="/products" className="hover:text-neutral-900 transition-colors">Products</Link>
             <span>/</span>
             <span className="text-neutral-900 font-bold">{product.name}</span>
           </div>
@@ -276,8 +334,13 @@ export default function ProductView() {
         {relatedList.length > 0 && (
           <RelatedProducts
             products={relatedList}
-            onSelectProduct={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            onQuickAdd={() => { }}
+            onSelectProduct={(item) => {
+              navigate(`/product/${item.slug || item.id}`);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            onQuickAdd={(item) => {
+              navigate(`/product/${item.slug || item.id}`);
+            }}
           />
         )}
       </main>

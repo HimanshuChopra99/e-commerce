@@ -32,9 +32,7 @@ const cartSlice = createSlice({
       const { variantId, productId, name, image, price, size, color, slug } = action.payload
       const idToMatch = variantId || `${productId}-${size}-${color}`
       const existing = state.items.find((i) => (i.variantId || `${i.productId}-${i.size}-${i.color}`) === idToMatch)
-      if (existing) {
-        existing.quantity = Math.min(existing.quantity + (action.payload.quantity || 1), MAX_QTY)
-      } else {
+      if (!existing) {
         state.items.push({
           variantId: idToMatch,
           productId,
@@ -46,8 +44,8 @@ const cartSlice = createSlice({
           slug,
           quantity: Math.min(action.payload.quantity || 1, MAX_QTY),
         })
+        saveCart(state.items)
       }
-      saveCart(state.items)
     },
     removeFromCart: (state, action) => {
       state.items = state.items.filter((i) => i.variantId !== action.payload)

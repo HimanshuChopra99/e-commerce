@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { authApi, setAccessToken } from '../lib/api'
+import { clearCart } from './cartSlice'
 
-export const loginUser = createAsyncThunk('auth/login', async (credentials, { rejectWithValue }) => {
+export const loginUser = createAsyncThunk('auth/login', async (credentials, { dispatch, rejectWithValue }) => {
   try {
     const res = await authApi.login(credentials)
     if (res.data?.accessToken) {
@@ -13,7 +14,7 @@ export const loginUser = createAsyncThunk('auth/login', async (credentials, { re
   }
 })
 
-export const registerUser = createAsyncThunk('auth/register', async (body, { rejectWithValue }) => {
+export const registerUser = createAsyncThunk('auth/register', async (body, { dispatch, rejectWithValue }) => {
   try {
     const res = await authApi.register(body)
     if (res.data?.accessToken) {
@@ -25,12 +26,14 @@ export const registerUser = createAsyncThunk('auth/register', async (body, { rej
   }
 })
 
-export const logoutUser = createAsyncThunk('auth/logout', async (_, { rejectWithValue }) => {
+export const logoutUser = createAsyncThunk('auth/logout', async (_, { dispatch, rejectWithValue }) => {
   try {
     await authApi.logout()
     setAccessToken(null)
+    dispatch(clearCart())
   } catch (err) {
     setAccessToken(null)
+    dispatch(clearCart())
     return rejectWithValue(err.message)
   }
 })
