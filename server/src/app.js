@@ -69,10 +69,30 @@ export function createApp() {
     })
   )
 
+  // API root endpoint
+  app.get('/api', (_req, res) =>
+    res.json({ success: true, data: { name: 'Kick API', version: '1.0.0' } })
+  )
+
   app.use('/api', globalLimiter, routes)
 
   // API requests must receive JSON 404s, never the storefront SPA shell.
   app.use('/api', notFound)
+
+  // Root endpoint for API clients (JSON content-type/accept)
+  app.get('/', (req, res, next) => {
+    const isJson =
+      req.headers['content-type']?.includes('application/json') ||
+      req.headers.accept?.includes('application/json')
+    const isHtml =
+      req.headers.accept?.includes('text/html') ||
+      req.headers['sec-fetch-dest'] === 'document'
+
+    if (isJson && !isHtml) {
+      return res.json({ success: true, data: { name: 'Kick API', version: '1.0.0' } })
+    }
+    next()
+  })
 
   // Serve admin static build if present
   const adminDist = path.join(PROJECT_ROOT, 'admin/dist')

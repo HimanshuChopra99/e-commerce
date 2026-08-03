@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { slugify } from '../utils/helpers.js'
+import { slugify, publicId } from '../utils/helpers.js'
 
 const unsplashImages = [
   'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
@@ -35,7 +35,7 @@ const CATEGORIES_DATA = [
 
 // Seed passwords come from env vars, never from source code.
 // Defaults are for local dev ONLY. Rotate before any deployment.
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'AdminPassword123!'
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!'
 const CUSTOMER_PASSWORD = process.env.SEED_CUSTOMER_PASSWORD || 'Password123'
 
 const USERS_DATA = [
@@ -126,7 +126,7 @@ function generateProducts() {
       const compareAtPrice = count % 3 === 0 ? Number((price * 1.25).toFixed(2)) : null
       const img1 = unsplashImages[(count - 1) % unsplashImages.length]
       const img2 = unsplashImages[count % unsplashImages.length]
-      const pId = `PROD-${String(count).padStart(3, '0')}`
+      const pId = publicId()
 
       products.push({
         name: pName,
@@ -145,6 +145,7 @@ function generateProducts() {
         rating: Number((4.2 + (count % 8) * 0.1).toFixed(1)),
         reviewCount: 15 + count * 3,
         id: pId,
+        publicId: pId,
       })
 
       count++
@@ -165,7 +166,7 @@ function buildInitialData() {
     lastName: u.lastName,
     fullName: `${u.firstName} ${u.lastName}`,
     email: u.email.toLowerCase(),
-    passwordHash: bcrypt.hashSync(u.password, 10),
+    passwordHash: bcrypt.hashSync(u.role === 'admin' ? ADMIN_PASSWORD : CUSTOMER_PASSWORD, 10),
     phone: u.phone,
     status: 'active',
     emailVerified: true,
@@ -228,15 +229,21 @@ function buildInitialData() {
       colors: p.colors,
       sizes,
       variants: p.colors.flatMap((col) =>
-        sizes.map((sz, vIdx) => ({
-          id: `VAR-${idx + 1}-${vIdx}`,
-          publicId: `VAR-${idx + 1}-${vIdx}`,
-          size: sz,
-          color: col,
-          stock: 10,
-          reserved: 0,
-          isActive: true,
-        }))
+        sizes.map((sz, vIdx) => {
+          const vId = publicId()
+          return {
+            id: vId,
+            publicId: vId,
+            internalId: vIdx + 1,
+            size: sz,
+            color: col,
+            stock: 10,
+            reserved: 0,
+            available: 10,
+            inStock: true,
+            isActive: true,
+          }
+        })
       ),
       description: p.description,
       createdAt: new Date().toISOString(),
@@ -250,12 +257,13 @@ function buildInitialData() {
     const user = users[1 + (idx % 4)]
     const product = products[(idx * 3) % products.length]
     const lineTotal = product.price
+    const oId = publicId()
 
     return {
-      id: `ORD-${num}`,
-      publicId: `ORD-${num}`,
+      id: oId,
+      publicId: oId,
       internalId: idx + 1,
-      orderNumber: `KICK-${num}`,
+      orderNumber: `#${num}`,
       status: idx % 4 === 0 ? 'processing' : idx % 3 === 0 ? 'shipped' : 'delivered',
       paymentStatus: 'paid',
       customer: {
@@ -267,7 +275,7 @@ function buildInitialData() {
       shippingAddress: user.address,
       items: [
         {
-          id: `ITEM-${idx + 1}`,
+          id: publicId(),
           productPublicId: product.publicId,
           productName: product.name,
           productSlug: product.slug,
@@ -325,7 +333,7 @@ class MemoryStore {
   }
 
   addCategory(input) {
-    const id = `CAT-${Date.now().toString(36).toUpperCase()}`
+    const id = publicId()
     const category = {
       id,
       publicId: id,
@@ -413,7 +421,7 @@ class MemoryStore {
   }
 
   addProduct(input) {
-    const id = `PROD-${Date.now().toString(36).toUpperCase()}`
+    const id = publicId()
     const category = this.categories.find((c) => c.publicId === input.categoryId || c.id === input.categoryId)
     const product = {
       id,
@@ -488,7 +496,7 @@ class MemoryStore {
   }
 
   addUser(input) {
-    const id = `USR-${Date.now().toString(36).toUpperCase()}`
+    const id = publicId()
     const user = {
       id,
       publicId: id,
@@ -530,14 +538,14 @@ class MemoryStore {
 
   addOrder(input) {
     const num = 1000 + this.orders.length + 1
-    const id = `ORD-${num}`
+    const id = publicId()
     const order = {
       id,
       publicId: id,
       internalId: this.orders.length + 1,
-      orderNumber: `KICK-${num}`,
-      status: 'pending',
-      paymentStatus: 'paid',
+      orderNumber: input.orderNumber || `#${num}`,
+      status: input.status || 'pending',
+      paymentStatus: input.paymentStatus || 'pending',
       customer: input.customer || {
         id: 'USR-CUST1',
         name: 'Guest Shopper',

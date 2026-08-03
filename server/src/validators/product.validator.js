@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  GENDERS, SIZES, PRODUCT_STATUS,
+  GENDERS, SIZES, PRODUCT_STATUS, CATEGORY_COLORS,
 } from '../utils/constants.js'
 
 /** Turns ?status=a,b or ?status=a&status=b into ['a','b']. */
@@ -154,7 +154,7 @@ export const bulkDeleteSchema = z.object({
 export const createCategorySchema = z.object({
   name: z.string().trim().min(2, 'Category name is required.').max(120),
   description: z.string().trim().max(300).optional().nullable(),
-  color: z.string().trim().min(1).max(32).regex(/^[a-zA-Z0-9#(),.%\s-]+$/, 'Use a valid CSS colour value.').default('slate'),
+  color: z.enum(CATEGORY_COLORS).default('slate'),
   image: z.string().trim().max(500).optional().nullable(),
   sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
 })
@@ -162,7 +162,7 @@ export const createCategorySchema = z.object({
 export const updateCategorySchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   description: z.string().trim().max(300).nullable().optional(),
-  color: z.string().trim().min(1).max(32).regex(/^[a-zA-Z0-9#(),.%\s-]+$/, 'Use a valid CSS colour value.').optional(),
+  color: z.enum(CATEGORY_COLORS).optional(),
   image: z.string().trim().max(500).nullable().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.coerce.number().int().min(0).max(9999).optional(),

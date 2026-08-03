@@ -27,8 +27,8 @@ const schema = z.object({
   DB_SOCKET: z.string().optional(),
   DB_POOL_SIZE: z.coerce.number().int().min(2).max(200).default(20),
 
-  JWT_ACCESS_SECRET: z.string().min(32),
-  JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_ACCESS_SECRET: z.string().min(32).default(DEFAULT_ACCESS_SECRET),
+  JWT_REFRESH_SECRET: z.string().min(32).default(DEFAULT_REFRESH_SECRET),
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL_DAYS: z.coerce.number().int().default(30),
 
