@@ -15,7 +15,11 @@ import Home from './pages/Home';
 import Product from './pages/Product';
 import ProductView from './pages/ProductView';
 import Cart from './pages/Cart';
+<<<<<<< HEAD
 import Checkout from './pages/Checkout';
+=======
+import Payment from './pages/Payment';
+>>>>>>> 2012f163065f75531bb6ae0829e2c1d2e1d69199
 import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
@@ -114,7 +118,11 @@ function App() {
             <Route path="/products" element={<Product />} />
             <Route path="/product/:id" element={<ProductView />} />
             <Route path="/cart" element={<Cart />} />
+<<<<<<< HEAD
             <Route path="/checkout" element={<Checkout />} />
+=======
+            <Route path="/checkout/payment" element={<Payment />} />
+>>>>>>> 2012f163065f75531bb6ae0829e2c1d2e1d69199
             <Route path="/orders" element={<Orders />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/about" element={<Company page="about" />} />

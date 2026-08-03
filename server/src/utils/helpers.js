@@ -113,7 +113,13 @@ export function parseJson(value, fallback = []) {
 /** Escapes a value for a CSV cell. */
 export function csvCell(value) {
   if (value === null || value === undefined) return ''
-  const s = String(value)
+  let s = String(value)
+
+  // Spreadsheet applications interpret a cell beginning with one of these
+  // characters as a formula. Customer-controlled fields (names, addresses,
+  // notes, product labels) must remain text when staff open an export.
+  if (/^[=+\-@]/.test(s)) s = `'${s}`
+
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

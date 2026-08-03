@@ -505,6 +505,7 @@ export async function findStalePending(minutes) {
       const rows = await query(
         `SELECT id, public_id, order_number FROM orders
          WHERE status = 'pending' AND payment_status = 'pending'
+           AND payment_method <> 'cod'
            AND placed_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)
          LIMIT 200`,
         [minutes]

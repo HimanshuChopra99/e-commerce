@@ -243,6 +243,28 @@ export async function createOrder({ user, input }) {
           }
         }
 
+        // COD has no Stripe success webhook. Its allocation is a real sale at
+        // checkout, so commit the reservation immediately and never let the
+        // unpaid-card expiry job put this stock back on sale.
+        if (input.paymentMethod === 'cod') {
+          const touchedProducts = new Set()
+          for (const line of lines) {
+            const committed = await variantModel.commitReservation(line.row.id, line.quantity, conn)
+            if (!committed) {
+              throw ApiError.insufficientStock(
+                `"${line.row.product_name}" in size ${line.row.size} is no longer available.`
+              )
+            }
+            if (line.row.product_id) {
+              await productModel.incrementUnitsSold(line.row.product_id, line.quantity, conn)
+              touchedProducts.add(line.row.product_id)
+            }
+          }
+          for (const productId of touchedProducts) {
+            await productModel.recalcStock(productId, conn)
+          }
+        }
+
         // Read the finished order back through the SAME connection, so we see
         // our own uncommitted rows.
         const order = await orderModel.findByInternalId(orderInternalId, conn)
@@ -295,8 +317,14 @@ export async function createOrder({ user, input }) {
     const lineCents = unitCents * wanted
     subtotalCents += lineCents
 
-    // Reserve stock in memory store
+    // Reserve stock in memory store. COD has no payment webhook, so it must
+    // become a committed allocation immediately (mirrors the DB path above).
     foundVar.reserved = (foundVar.reserved ?? 0) + wanted
+    if (input.paymentMethod === 'cod') {
+      foundVar.stock = (foundVar.stock ?? 0) - wanted
+      foundVar.reserved -= wanted
+      foundProd.unitsSold = (foundProd.unitsSold ?? 0) + wanted
+    }
 
     lines.push({
       id: publicId(),
@@ -418,11 +446,13 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
  */
 async function releaseOrRestock(order, conn) {
   const items = await orderModel.findRawItems(order.internalId, conn)
-  const wasPaid = order.paymentStatus === 'paid'
+  // COD commits stock on checkout because it has no Stripe success webhook.
+  // Treat it like a paid allocation for inventory cancellation purposes.
+  const stockWasCommitted = order.paymentStatus === 'paid' || order.paymentMethod === 'cod'
 
   for (const item of items) {
     if (!item.variant_id) continue
-    if (wasPaid) {
+    if (stockWasCommitted) {
       await variantModel.restock(item.variant_id, item.quantity, conn)
     } else {
       await variantModel.releaseReservation(item.variant_id, item.quantity, conn)

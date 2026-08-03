@@ -115,6 +115,7 @@ export default function ShoppingCart() {
       }
 
       const result = await dispatch(placeOrder(orderData)).unwrap()
+<<<<<<< HEAD
       const { order, payment } = result
 
       // Card payment: go to Stripe checkout page.
@@ -125,11 +126,29 @@ export default function ShoppingCart() {
             orderId: order?.id,
             order,
           },
+=======
+      const order = result.order || result
+
+      // A card order is only pending at this point. Preserve the cart until
+      // Stripe confirms payment and the backend webhook records it as paid.
+      if (paymentMethod !== 'cod') {
+        if (!result.payment?.clientSecret || !result.payment?.publishableKey) {
+          throw new Error(
+            result.payment?.error ||
+            'Secure payment could not be started. Please check Stripe configuration and try again.'
+          )
+        }
+        navigate(`/checkout/payment?order=${encodeURIComponent(order.id)}`, {
+          state: { order, payment: result.payment },
+>>>>>>> 2012f163065f75531bb6ae0829e2c1d2e1d69199
         })
         return
       }
 
+<<<<<<< HEAD
       // COD or Stripe not configured: go straight to orders.
+=======
+>>>>>>> 2012f163065f75531bb6ae0829e2c1d2e1d69199
       dispatch(clearCart())
       navigate('/orders', { state: { justPlaced: order } })
     } catch (err) {
@@ -183,6 +202,7 @@ export default function ShoppingCart() {
       }
 
       const result = await dispatch(placeOrder(orderData)).unwrap()
+<<<<<<< HEAD
       const { order, payment } = result
 
       // Card payment: go to Stripe checkout page.
@@ -193,11 +213,29 @@ export default function ShoppingCart() {
             orderId: order?.id,
             order,
           },
+=======
+      const order = result.order || result
+
+      // A card order is only pending at this point. Preserve the cart until
+      // Stripe confirms payment and the backend webhook records it as paid.
+      if (paymentMethod !== 'cod') {
+        if (!result.payment?.clientSecret || !result.payment?.publishableKey) {
+          throw new Error(
+            result.payment?.error ||
+            'Secure payment could not be started. Please check Stripe configuration and try again.'
+          )
+        }
+        navigate(`/checkout/payment?order=${encodeURIComponent(order.id)}`, {
+          state: { order, payment: result.payment },
+>>>>>>> 2012f163065f75531bb6ae0829e2c1d2e1d69199
         })
         return
       }
 
+<<<<<<< HEAD
       // COD or Stripe not configured: go straight to orders.
+=======
+>>>>>>> 2012f163065f75531bb6ae0829e2c1d2e1d69199
       dispatch(clearCart())
       navigate('/orders', { state: { justPlaced: order } })
     } catch (err) {
