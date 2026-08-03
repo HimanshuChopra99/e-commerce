@@ -43,48 +43,48 @@ export default function ProductListPage() {
 
   const [sortOpen, setSortOpen] = useState(false);
 
-  // Read filters from URL params
-  const currentCategory = searchParams.get('category') || '';
-  const currentGender = searchParams.get('gender') || '';
-  const currentSize = searchParams.get('size') || '';
-  const currentColor = searchParams.get('color') || '';
+  // Read filters from URL params supporting comma-separated multi-selects
+  const currentCategories = searchParams.get('category')?.split(',').filter(Boolean) || [];
+  const currentGenders = searchParams.get('gender')?.split(',').filter(Boolean) || [];
+  const currentSizes = searchParams.get('size')?.split(',').filter(Boolean) || [];
+  const currentColors = searchParams.get('color')?.split(',').filter(Boolean) || [];
   const currentSort = searchParams.get('sort') || 'trending';
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
   const currentSearch = searchParams.get('q') || '';
   const currentPriceMax = parseInt(searchParams.get('priceMax') || '1000', 10);
 
   const sidebarFilters = useMemo(() => ({
-    refineBy: currentSearch ? [currentSearch] : ["Mens", "Casual"],
-    sizes: currentSize ? [parseInt(currentSize, 10)] : [],
-    colors: currentColor ? [currentColor] : [],
-    categories: currentCategory ? [currentCategory] : [],
-    gender: currentGender ? [currentGender] : [],
+    refineBy: currentSearch ? [currentSearch] : [],
+    sizes: currentSizes.map(Number),
+    colors: currentColors,
+    categories: currentCategories,
+    gender: currentGenders,
     priceRange: currentPriceMax,
-  }), [currentSearch, currentSize, currentColor, currentCategory, currentGender, currentPriceMax]);
+  }), [currentSearch, currentSizes, currentColors, currentCategories, currentGenders, currentPriceMax]);
 
   const handleFilterChange = (newFilters) => {
     const next = new URLSearchParams(searchParams);
 
-    if (newFilters.categories && newFilters.categories.length > 0) {
-      next.set('category', newFilters.categories[newFilters.categories.length - 1]);
+    if (newFilters.categories?.length > 0) {
+      next.set('category', newFilters.categories.join(','));
     } else {
       next.delete('category');
     }
 
-    if (newFilters.gender && newFilters.gender.length > 0) {
-      next.set('gender', newFilters.gender[newFilters.gender.length - 1]);
+    if (newFilters.gender?.length > 0) {
+      next.set('gender', newFilters.gender.join(','));
     } else {
       next.delete('gender');
     }
 
-    if (newFilters.sizes && newFilters.sizes.length > 0) {
-      next.set('size', String(newFilters.sizes[newFilters.sizes.length - 1]));
+    if (newFilters.sizes?.length > 0) {
+      next.set('size', newFilters.sizes.join(','));
     } else {
       next.delete('size');
     }
 
-    if (newFilters.colors && newFilters.colors.length > 0) {
-      next.set('color', newFilters.colors[newFilters.colors.length - 1]);
+    if (newFilters.colors?.length > 0) {
+      next.set('color', newFilters.colors.join(','));
     } else {
       next.delete('color');
     }
@@ -112,17 +112,17 @@ export default function ProductListPage() {
 
   const fetchData = useCallback(() => {
     dispatch(fetchProducts({
-      category: currentCategory || undefined,
-      gender: currentGender || undefined,
-      size: currentSize || undefined,
-      color: currentColor || undefined,
+      category: currentCategories.length > 0 ? currentCategories.join(',') : undefined,
+      gender: currentGenders.length > 0 ? currentGenders.join(',') : undefined,
+      size: currentSizes.length > 0 ? currentSizes.join(',') : undefined,
+      color: currentColors.length > 0 ? currentColors.join(',') : undefined,
       sort: currentSort !== 'trending' ? currentSort : undefined,
       page: currentPage,
       limit: 12,
       maxPrice: currentPriceMax < 1000 ? currentPriceMax : undefined,
       q: currentSearch || undefined,
     }));
-  }, [dispatch, currentCategory, currentGender, currentSize, currentColor, currentSort, currentPage, currentPriceMax, currentSearch]);
+  }, [dispatch, currentCategories, currentGenders, currentSizes, currentColors, currentSort, currentPage, currentPriceMax, currentSearch]);
 
   useEffect(() => {
     fetchData();
@@ -154,8 +154,8 @@ export default function ProductListPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-[22px] sm:text-[26px] font-black text-[#1E1E1E] uppercase tracking-wide">
-              {currentCategory
-                ? categories.find((c) => c.slug === currentCategory || c.name === currentCategory)?.name || currentCategory
+              {currentCategories.length > 0
+                ? categories.find((c) => c.slug === currentCategories[0] || c.name === currentCategories[0])?.name || currentCategories.join(', ')
                 : 'Life Style Shoes'}
             </h1>
             <p className="text-[13px] text-[#888] mt-0.5">
@@ -204,6 +204,8 @@ export default function ProductListPage() {
           <FilterSidebar
             filters={sidebarFilters}
             onChange={handleFilterChange}
+            availableFilters={serverFilters}
+            categories={categories}
           />
 
           {/* Product Grid */}
@@ -233,19 +235,28 @@ export default function ProductListPage() {
                 </div>
 
                 {/* Pagination */}
-                {meta.totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-2 mt-10">
-                    <button
-                      onClick={() => updateParam('page', String(currentPage - 1))}
-                      disabled={currentPage === 1}
-                      className="px-4 py-2 rounded-[10px] text-[13px] font-bold border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      ← Prev
-                    </button>
-                    {Array.from({ length: Math.min(meta.totalPages, 5) }, (_, i) => {
-                      const pg = Math.max(1, currentPage - 2) + i;
-                      if (pg > meta.totalPages) return null;
-                      return (
+                {meta.totalPages > 1 && (() => {
+                  const WINDOW = 2;
+                  const start = Math.max(1, currentPage - WINDOW);
+                  const end = Math.min(meta.totalPages, currentPage + WINDOW);
+
+                  const adjustedStart = Math.max(1, Math.min(start, meta.totalPages - 4));
+                  const adjustedEnd = Math.min(meta.totalPages, adjustedStart + 4);
+                  const pages = Array.from({ length: adjustedEnd - adjustedStart + 1 }, (_, i) => adjustedStart + i);
+
+                  return (
+                    <div className="flex justify-center items-center gap-2 mt-10">
+                      <button
+                        onClick={() => updateParam('page', String(currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 rounded-[10px] text-[13px] font-bold border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        ← Prev
+                      </button>
+
+                      {adjustedStart > 1 && <span className="text-gray-400 text-sm">…</span>}
+
+                      {pages.map((pg) => (
                         <button
                           key={pg}
                           onClick={() => updateParam('page', String(pg))}
@@ -257,17 +268,20 @@ export default function ProductListPage() {
                         >
                           {pg}
                         </button>
-                      );
-                    })}
-                    <button
-                      onClick={() => updateParam('page', String(currentPage + 1))}
-                      disabled={currentPage === meta.totalPages}
-                      className="px-4 py-2 rounded-[10px] text-[13px] font-bold border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Next →
-                    </button>
-                  </div>
-                )}
+                      ))}
+
+                      {adjustedEnd < meta.totalPages && <span className="text-gray-400 text-sm">…</span>}
+
+                      <button
+                        onClick={() => updateParam('page', String(currentPage + 1))}
+                        disabled={currentPage === meta.totalPages}
+                        className="px-4 py-2 rounded-[10px] text-[13px] font-bold border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  );
+                })()}
               </>
             )}
           </div>

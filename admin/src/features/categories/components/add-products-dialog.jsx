@@ -44,18 +44,20 @@ export function AddProductsDialog({ open, onOpenChange, category }) {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     )
-  const handleSave = () => {
+  const handleSave = async () => {
     if (selected.length === 0) {
       toast.error('Select at least one product.')
       return
     }
-    assign(category.id, selected)
-    toast.success(
-      `Added ${selected.length} product${selected.length > 1 ? 's' : ''} to ${category.name}.`
-    )
-    setSelected([])
-    setQuery('')
-    onOpenChange(false)
+    try {
+      await assign(category.id, selected)
+      toast.success(`Added ${selected.length} product${selected.length > 1 ? 's' : ''} to ${category.name}.`)
+      setSelected([])
+      setQuery('')
+      onOpenChange(false)
+    } catch (error) {
+      toast.error(error.message || 'Unable to assign products.')
+    }
   }
   const handleOpenChange = (next) => {
     if (!next) {

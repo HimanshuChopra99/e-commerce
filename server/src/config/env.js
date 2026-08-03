@@ -12,7 +12,7 @@ const DEFAULT_REFRESH_SECRET = 'default_jwt_refresh_secret_32_characters_long_fo
  */
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().positive().default(4000),
 
   // Comma-separated list of origins allowed to call the API with cookies.
   CORS_ORIGINS: z
@@ -51,6 +51,7 @@ const schema = z.object({
   MAX_UPLOAD_MB: z.coerce.number().int().default(5),
 
   TRUST_PROXY: z.coerce.number().int().default(1),
+  AUTO_SEED: z.string().optional(),
 })
 
 const parsed = schema.safeParse(process.env)
@@ -95,6 +96,8 @@ export const env = {
   port: eFinal.PORT,
   corsOrigins: eFinal.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
   trustProxy: eFinal.TRUST_PROXY,
+  // Seed demo data automatically only for local development unless explicitly enabled.
+  autoSeed: eFinal.AUTO_SEED === 'true' || (eFinal.AUTO_SEED !== 'false' && eFinal.NODE_ENV === 'development'),
 
   db: {
     host: eFinal.DB_HOST,

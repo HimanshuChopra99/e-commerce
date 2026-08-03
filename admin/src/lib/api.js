@@ -40,7 +40,7 @@ async function request(path, options = {}) {
   const data = await res.json().catch(() => ({}))
 
   if (!res.ok) {
-    throw new Error(data.message || data.error || 'Request failed')
+    throw new Error(data?.error?.message || data?.message || (typeof data?.error === 'string' ? data.error : '') || 'Request failed')
   }
 
   return data
@@ -89,7 +89,7 @@ export const adminAuthApi = {
 
 export const adminDashboardApi = {
   getOverview: () => get('/admin/dashboard/overview'),
-  getSalesChart: (period = 'month') => get(`/admin/dashboard/sales-chart?period=${period}`),
+  getSalesChart: (period = 'month') => get('/admin/dashboard/revenue', { months: period === 'year' ? 12 : 6 }),
   getRecentOrders: (limit = 5) => get(`/admin/dashboard/recent-orders?limit=${limit}`),
   getTopProducts: (limit = 5) => get(`/admin/dashboard/top-products?limit=${limit}`),
 }
@@ -100,6 +100,8 @@ export const adminProductsApi = {
   create: (body) => post('/admin/products', body),
   update: (id, body) => patch(`/admin/products/${id}`, body),
   delete: (id) => del(`/admin/products/${id}`),
+  bulkStatus: (productIds, status) => post('/admin/products/bulk-status', { productIds, status }),
+  bulkDelete: (productIds) => post('/admin/products/bulk-delete', { productIds }),
 }
 
 export const adminCategoriesApi = {
@@ -108,6 +110,8 @@ export const adminCategoriesApi = {
   create: (body) => post('/admin/categories', body),
   update: (id, body) => patch(`/admin/categories/${id}`, body),
   delete: (id) => del(`/admin/categories/${id}`),
+  assignProducts: (id, productIds) => post(`/admin/categories/${id}/products`, { productIds }),
+  removeProduct: (id, productId) => del(`/admin/categories/${id}/products/${productId}`),
 }
 
 export const adminOrdersApi = {

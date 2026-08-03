@@ -1,0 +1,18 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: Kick
+      MYSQL_ROOT_PASSWORD: kick_local_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - kick_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pkick_local_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+volumes:
+  kick_mysql_data:

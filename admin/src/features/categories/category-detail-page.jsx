@@ -76,13 +76,15 @@ export function CategoryDetailPage() {
     (sum, p) => sum + p.price * p.totalStock,
     0
   )
-  const handleDelete = () => {
-    deleteCategory(category.id)
-    setDeleteOpen(false)
-    toast.success(
-      `"${category.name}" deleted. Its products are now uncategorised.`
-    )
-    navigate('/categories')
+  const handleDelete = async () => {
+    try {
+      await deleteCategory(category.id)
+      setDeleteOpen(false)
+      toast.success(`"${category.name}" deleted. Its products are now uncategorised.`)
+      navigate('/categories')
+    } catch (error) {
+      toast.error(error.message || 'Unable to delete this category.')
+    }
   }
   return (
     <>
@@ -266,11 +268,13 @@ export function CategoryDetailPage() {
                             className='size-8'
                             aria-label={`Remove ${product.name} from ${category.name}`}
                             title='Remove from category'
-                            onClick={() => {
-                              removeProductFromCategory(product.id)
-                              toast.success(
-                                `"${product.name}" removed from ${category.name}.`
-                              )
+                            onClick={async () => {
+                              try {
+                                await removeProductFromCategory(category.id, product.id)
+                                toast.success(`"${product.name}" removed from ${category.name}.`)
+                              } catch (error) {
+                                toast.error(error.message || 'Unable to remove this product.')
+                              }
                             }}
                           >
                             <X className='size-4' />

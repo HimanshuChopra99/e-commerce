@@ -22,6 +22,8 @@ const saveCart = (items) => {
   }
 }
 
+const MAX_QTY = 10
+
 const cartSlice = createSlice({
   name: 'cart',
   initialState: { items: loadCart() },
@@ -31,7 +33,7 @@ const cartSlice = createSlice({
       const idToMatch = variantId || `${productId}-${size}-${color}`
       const existing = state.items.find((i) => (i.variantId || `${i.productId}-${i.size}-${i.color}`) === idToMatch)
       if (existing) {
-        existing.quantity += action.payload.quantity || 1
+        existing.quantity = Math.min(existing.quantity + (action.payload.quantity || 1), MAX_QTY)
       } else {
         state.items.push({
           variantId: idToMatch,
@@ -42,7 +44,7 @@ const cartSlice = createSlice({
           size,
           color,
           slug,
-          quantity: action.payload.quantity || 1,
+          quantity: Math.min(action.payload.quantity || 1, MAX_QTY),
         })
       }
       saveCart(state.items)
@@ -55,10 +57,11 @@ const cartSlice = createSlice({
       const { variantId, quantity } = action.payload
       const item = state.items.find((i) => i.variantId === variantId)
       if (item) {
-        if (quantity <= 0) {
+        const capped = Math.min(Math.max(quantity, 0), MAX_QTY)
+        if (capped <= 0) {
           state.items = state.items.filter((i) => i.variantId !== variantId)
         } else {
-          item.quantity = quantity
+          item.quantity = capped
         }
       }
       saveCart(state.items)

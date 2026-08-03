@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   ArrowLeft,
   CalendarDays,
@@ -12,7 +14,9 @@ import {
   Wallet,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getCustomerById, getOrdersByCustomer } from '@/data/seed'
+import { fetchAdminCustomers } from '@/store/adminCustomersSlice'
+import { fetchAdminOrders } from '@/store/adminOrdersSlice' // Assumes adminOrdersSlice exists
+import { customers as seedCustomers, orders as seedOrders } from '@/data/seed'
 import { formatCurrency, formatDate } from '@/config/brand'
 import { cn, getDisplayNameInitials } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -47,10 +51,51 @@ import {
   customerTierStyles,
   customerTiers,
 } from './customers-data'
+
 export function CustomerDetailPage() {
   const { customerId } = useParams()
-  const customer = getCustomerById(customerId)
-  if (!customer) {
+  const dispatch = useDispatch()
+
+  const reduxCustomers = useSelector(
+    (state) => state.adminCustomers?.items || []
+  )
+  const reduxOrders = useSelector(
+    (state) => state.adminOrders?.items || state.orders?.items || []
+  )
+
+  // Fetch customers and orders if missing from state (e.g. direct page refresh)
+  useEffect(() => {
+    if (reduxCustomers.length === 0) {
+      dispatch(fetchAdminCustomers({ limit: 100 }))
+    }
+    if (reduxOrders.length === 0 && dispatch) {
+      // Safely dispatch if action exists
+      try {
+        dispatch(fetchAdminOrders({ limit: 100 }))
+      } catch {
+        // Fallback silently if slice is named differently
+      }
+    }
+  }, [dispatch, reduxCustomers.length, reduxOrders.length])
+
+  // 1. Search Redux store first, matching string IDs, numeric IDs, or public_id
+  let rawCustomer = reduxCustomers.find(
+    (c) =>
+      String(c.id) === String(customerId) ||
+      String(c.publicId) === String(customerId) ||
+      String(c.public_id) === String(customerId)
+  )
+
+  // 2. Fallback to seed customers
+  if (!rawCustomer) {
+    rawCustomer = seedCustomers.find(
+      (c) =>
+        String(c.id) === String(customerId) ||
+        String(c.publicId) === String(customerId)
+    )
+  }
+
+  if (!rawCustomer) {
     return (
       <>
         <PageHeader />
@@ -65,42 +110,112 @@ export function CustomerDetailPage() {
       </>
     )
   }
-  const history = getOrdersByCustomer(customer.id)
-  const name = `${customer.firstName} ${customer.lastName}`
+
+  // Normalize customer properties defensively
+  const customer = {
+    ...rawCustomer,
+    id: rawCustomer.id,
+    publicId: rawCustomer.publicId || rawCustomer.public_id,
+    firstName:
+      rawCustomer.firstName ||
+      rawCustomer.first_name ||
+      rawCustomer.fullName?.split(' ')[0] ||
+      'Customer',
+    lastName:
+      rawCustomer.lastName ||
+      rawCustomer.last_name ||
+      rawCustomer.fullName?.split(' ').slice(1).join(' ') ||
+      '',
+    email: (rawCustomer.email || '').trim().toLowerCase(),
+    phone: rawCustomer.phone || 'N/A',
+    status: rawCustomer.status || 'active',
+    tier: rawCustomer.tier || 'bronze',
+    totalOrders: rawCustomer.totalOrders ?? rawCustomer.orders_count ?? 0,
+    totalSpent: Number(rawCustomer.totalSpent ?? rawCustomer.total_spent ?? 0),
+    preferredSize:
+      rawCustomer.preferredSize || rawCustomer.preferred_size || '42',
+    shippingAddress: rawCustomer.shippingAddress || {
+      line1: rawCustomer.address_line1 || '100 Main St',
+      city: rawCustomer.address_city || 'New York',
+      state: rawCustomer.address_state || 'NY',
+      zip: rawCustomer.address_postal || '10001',
+      country: rawCustomer.address_country || 'USA',
+    },
+  }
+
+  const name = `${customer.firstName} ${customer.lastName}`.trim()
   const tierMeta = customerTiers.find((t) => t.value === customer.tier)
 
-  // Favourite products by units bought.
+  // Combine Redux and seed orders so history is found in both development and live modes
+  const allOrdersPool = reduxOrders.length > 0 ? reduxOrders : seedOrders
+
+  // Order history lookup: matches user ID, customer ID, or customer email
+  const history = allOrdersPool.filter((o) => {
+    const oUserId = String(o.userId || o.user_id || '')
+    const oCustId = String(o.customerId || o.customer_id || '')
+    const oEmail  = (o.customerEmail || o.customer_email || o.email || '').trim().toLowerCase()
+
+    const targetId       = String(customer.id)
+    const targetPublicId = String(customer.publicId || '')
+
+    const matchesId =
+      (targetId && (oUserId === targetId || oCustId === targetId)) ||
+      (targetPublicId && (oUserId === targetPublicId || oCustId === targetPublicId))
+
+    const matchesEmail =
+      customer.email && customer.email !== 'n/a' && oEmail === customer.email
+
+    return matchesId || matchesEmail
+  })
+
+  const avgOrderValue =
+    customer.avgOrderValue ??
+    (history.length > 0
+      ? history.reduce((sum, o) => sum + Number(o.grandTotal ?? o.total ?? o.grand_total ?? 0), 0) / history.length
+      : customer.totalOrders > 0
+      ? customer.totalSpent / customer.totalOrders
+      : 0)
+
+  // Favourite products by units bought
   const productTally = new Map()
   history
     .filter((o) => o.status !== 'cancelled')
     .forEach((order) =>
-      order.items.forEach((item) => {
-        const existing = productTally.get(item.productId)
-        productTally.set(item.productId, {
-          productId: item.productId,
-          name: item.name,
-          image: item.image,
-          units: (existing?.units ?? 0) + item.quantity,
+      (order.items || []).forEach((item) => {
+        const pId = item.productId || item.product_id
+        if (!pId) return
+        const existing = productTally.get(pId)
+        productTally.set(pId, {
+          productId: pId,
+          name: item.name || item.productName || item.product_name,
+          image: item.image || item.productImage || item.product_image,
+          units: (existing?.units ?? 0) + (Number(item.quantity) || 1),
         })
       })
     )
+
   const favourites = [...productTally.values()]
     .sort((a, b) => b.units - a.units)
     .slice(0, 4)
+
   const stats = [
     {
       label: 'Total Orders',
-      value: String(customer.totalOrders),
+      value: String(history.length || customer.totalOrders),
       icon: ShoppingBag,
     },
     {
       label: 'Total Spent',
-      value: formatCurrency(customer.totalSpent),
+      value: formatCurrency(
+        history.length > 0
+          ? history.reduce((sum, o) => sum + Number(o.grandTotal ?? o.total ?? o.grand_total ?? 0), 0)
+          : customer.totalSpent
+      ),
       icon: Wallet,
     },
     {
       label: 'Avg. Order',
-      value: formatCurrency(customer.avgOrderValue),
+      value: formatCurrency(avgOrderValue),
       icon: TrendingUp,
     },
     {
@@ -109,6 +224,7 @@ export function CustomerDetailPage() {
       icon: Repeat,
     },
   ]
+
   return (
     <>
       <PageHeader />
@@ -151,7 +267,7 @@ export function CustomerDetailPage() {
                 </div>
                 <p className='text-muted-foreground'>
                   Customer since {formatDate(customer.createdAt)} ·{' '}
-                  {customer.id}
+                  {customer.publicId || customer.id}
                 </p>
               </div>
             </div>
@@ -215,25 +331,27 @@ export function CustomerDetailPage() {
                                 to={`/orders/${order.id}`}
                                 className='font-medium hover:underline'
                               >
-                                {order.orderNumber}
+                                {order.orderNumber || order.order_number}
                               </Link>
                             </TableCell>
                             <TableCell className='text-nowrap'>
-                              {formatDate(order.placedAt)}
+                              {formatDate(order.placedAt || order.placed_at)}
                             </TableCell>
                             <TableCell className='text-center'>
-                              {order.itemCount}
+                              {order.itemCount ?? order.items?.length ?? 1}
                             </TableCell>
                             <TableCell>
                               <PaymentStatusBadge
-                                status={order.paymentStatus}
+                                status={order.paymentStatus || order.payment_status}
                               />
                             </TableCell>
                             <TableCell>
                               <OrderStatusBadge status={order.status} />
                             </TableCell>
                             <TableCell className='text-end font-medium text-nowrap'>
-                              {formatCurrency(order.total)}
+                              {formatCurrency(
+                                order.grandTotal ?? order.grand_total ?? order.total
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -331,7 +449,7 @@ export function CustomerDetailPage() {
                     {customer.shippingAddress.city},{' '}
                     {customer.shippingAddress.state}
                     <br />
-                    {customer.shippingAddress.zip},{' '}
+                    {customer.shippingAddress.zip || customer.shippingAddress.postal},{' '}
                     {customer.shippingAddress.country}
                   </address>
                 </div>

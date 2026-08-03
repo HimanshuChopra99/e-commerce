@@ -11,6 +11,18 @@ import { env } from '../config/env.js'
  *   import RedisStore from 'rate-limit-redis'
  *   store: new RedisStore({ sendCommand: (...a) => redis.call(...a) })
  */
+let store
+if (process.env.REDIS_URL) {
+  try {
+    const { default: RedisStore } = await import('rate-limit-redis')
+    const { default: Redis } = await import('ioredis')
+    const redis = new Redis(process.env.REDIS_URL)
+    store = new RedisStore({ sendCommand: (...args) => redis.call(...args) })
+  } catch (err) {
+    console.warn('Failed to initialize RedisStore for rate limiting:', err.message)
+  }
+}
+
 const body = {
   success: false,
   error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' },
@@ -20,8 +32,8 @@ const base = {
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: body,
-  // Never rate-limit tests, and never limit health checks.
   skip: (req) => env.isTest || req.path === '/api/health',
+  ...(store ? { store } : {}),
 }
 
 /** Broad safety net for the whole API. */

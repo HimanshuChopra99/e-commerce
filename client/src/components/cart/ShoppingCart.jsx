@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -9,6 +9,7 @@ import {
   clearCart,
 } from '../../store/cartSlice'
 import { placeOrder } from '../../store/ordersSlice'
+import { ordersApi } from '../../lib/api'
 
 export default function ShoppingCart() {
   const dispatch = useDispatch()
@@ -18,6 +19,9 @@ export default function ShoppingCart() {
   const subtotal = useSelector(selectCartTotal)
   const { user } = useSelector((state) => state.auth)
 
+  const [quote, setQuote] = useState(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('card')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState(null)
   const [showAddressForm, setShowAddressForm] = useState(false)
@@ -32,11 +36,30 @@ export default function ShoppingCart() {
     country: user?.address?.country || 'USA',
   })
 
-  // Free shipping threshold
-  const FREE_SHIPPING_THRESHOLD = 150
-  const FLAT_SHIPPING = 9.99
-  const delivery = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING
-  const total = subtotal + (subtotal > 0 ? delivery : 0)
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setQuote(null)
+      return
+    }
+    setQuoteLoading(true)
+    ordersApi
+      .quote({ items: cartItems.map((i) => ({ variantId: i.variantId, quantity: i.quantity })) })
+      .then((res) => {
+        setQuote(res.data)
+        const unavailable = (res.data?.lines || []).filter((l) => !l.available)
+        if (unavailable.length > 0) {
+          unavailable.forEach((l) => dispatch(removeFromCart(l.variantId)))
+          window.dispatchEvent(
+            new CustomEvent('kick:toast', {
+              detail: `${unavailable.length} item(s) removed — no longer available.`,
+            })
+          )
+        }
+      })
+      .catch(() => setQuote(null))
+      .finally(() => setQuoteLoading(false))
+  }, [cartItems, dispatch])
+
   const totalItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0)
 
   const handleAddressChange = (field, value) => {
@@ -45,12 +68,12 @@ export default function ShoppingCart() {
 
   const isAddressValid = () => {
     return (
-      shippingAddress.name.trim() &&
-      shippingAddress.line1.trim() &&
-      shippingAddress.city.trim() &&
-      shippingAddress.state.trim() &&
-      shippingAddress.postalCode.trim() &&
-      shippingAddress.country.trim()
+      Boolean(shippingAddress.name.trim()) &&
+      Boolean(shippingAddress.line1.trim()) &&
+      Boolean(shippingAddress.city.trim()) &&
+      Boolean(shippingAddress.state.trim()) &&
+      Boolean(shippingAddress.postalCode.trim()) &&
+      Boolean(shippingAddress.country.trim())
     )
   }
 
@@ -62,7 +85,6 @@ export default function ShoppingCart() {
       return
     }
 
-    // Show address form if not already shown
     if (!showAddressForm && !isAddressValid()) {
       setShowAddressForm(true)
       return
@@ -78,17 +100,7 @@ export default function ShoppingCart() {
 
     try {
       const orderData = {
-        items: cartItems.map((item) => ({
-          productId: item.productId,
-          productPublicId: item.productId,
-          productName: item.name,
-          productSlug: item.slug || 'product',
-          productImage: item.image,
-          color: item.color || 'Default',
-          size: item.size || 'M',
-          unitPrice: item.price,
-          quantity: item.quantity,
-        })),
+        items: cartItems.map((item) => ({ variantId: item.variantId, quantity: item.quantity })),
         shippingAddress: {
           name: shippingAddress.name,
           phone: shippingAddress.phone || undefined,
@@ -99,11 +111,12 @@ export default function ShoppingCart() {
           postalCode: shippingAddress.postalCode,
           country: shippingAddress.country,
         },
+        paymentMethod,
       }
 
       const result = await dispatch(placeOrder(orderData)).unwrap()
       dispatch(clearCart())
-      navigate('/orders')
+      navigate('/orders', { state: { justPlaced: result.order || result } })
     } catch (err) {
       setCheckoutError(err.message || err || 'Failed to place order')
     } finally {
@@ -117,46 +130,50 @@ export default function ShoppingCart() {
       return
     }
 
-    // Use saved address from user profile if available
-    if (user.address && user.address.line1) {
-      setCheckoutLoading(true)
-      setCheckoutError(null)
-
-      try {
-        const orderData = {
-          items: cartItems.map((item) => ({
-            productId: item.productId,
-            productPublicId: item.productId,
-            productName: item.name,
-            productSlug: item.slug || 'product',
-            productImage: item.image,
-            color: item.color || 'Default',
-            size: item.size || 'M',
-            unitPrice: item.price,
-            quantity: item.quantity,
-          })),
-          shippingAddress: {
-            name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-            phone: user.phone || undefined,
-            line1: user.address.line1,
-            line2: user.address.line2 || undefined,
-            city: user.address.city,
-            state: user.address.state,
-            postalCode: user.address.postalCode,
-            country: user.address.country,
-          },
+    const savedAddress = user.address
+      ? {
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          phone: user.phone || undefined,
+          line1: user.address.line1 || '',
+          line2: user.address.line2 || undefined,
+          city: user.address.city || '',
+          state: user.address.state || '',
+          postalCode: user.address.postalCode || '',
+          country: user.address.country || '',
         }
+      : null
 
-        const result = await dispatch(placeOrder(orderData)).unwrap()
-        dispatch(clearCart())
-        navigate('/orders')
-      } catch (err) {
-        setCheckoutError(err.message || err || 'Failed to place order')
-      } finally {
-        setCheckoutLoading(false)
-      }
-    } else {
+    const isValid =
+      savedAddress &&
+      savedAddress.name.trim() &&
+      savedAddress.line1.trim() &&
+      savedAddress.city.trim() &&
+      savedAddress.state.trim() &&
+      savedAddress.postalCode.trim() &&
+      savedAddress.country.trim()
+
+    if (!isValid) {
       setShowAddressForm(true)
+      return
+    }
+
+    setCheckoutLoading(true)
+    setCheckoutError(null)
+
+    try {
+      const orderData = {
+        items: cartItems.map((item) => ({ variantId: item.variantId, quantity: item.quantity })),
+        shippingAddress: savedAddress,
+        paymentMethod,
+      }
+
+      const result = await dispatch(placeOrder(orderData)).unwrap()
+      dispatch(clearCart())
+      navigate('/orders', { state: { justPlaced: result.order || result } })
+    } catch (err) {
+      setCheckoutError(err.message || err || 'Failed to place order')
+    } finally {
+      setCheckoutLoading(false)
     }
   }
 
@@ -212,7 +229,7 @@ export default function ShoppingCart() {
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-full h-full object-contain mix-blend-multiply"
+                          className="w-full h-full object-cover"
                         />
                       </div>
 
@@ -241,14 +258,20 @@ export default function ShoppingCart() {
                               <span className="text-gray-700 font-semibold">Quantity</span>
                               <select
                                 value={item.quantity}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const requested = Number(e.target.value)
+                                  if (requested > 10) {
+                                    window.dispatchEvent(
+                                      new CustomEvent('kick:toast', { detail: 'Maximum 10 per item.' })
+                                    )
+                                  }
                                   dispatch(
                                     updateQuantity({
                                       variantId: item.variantId,
-                                      quantity: Number(e.target.value),
+                                      quantity: Math.min(requested, 10),
                                     })
                                   )
-                                }
+                                }}
                                 className="bg-transparent font-medium cursor-pointer border-none focus:ring-0 p-0 pr-4 text-gray-800"
                               >
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((q) => (
@@ -284,39 +307,73 @@ export default function ShoppingCart() {
           <div className="lg:col-span-5 pt-2">
             <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
 
-            <div className="space-y-3 text-sm sm:text-base">
-              <div className="flex justify-between text-gray-800">
-                <span className="uppercase font-medium text-xs tracking-wider">
-                  {totalItemCount} {totalItemCount === 1 ? 'ITEM' : 'ITEMS'}
-                </span>
-                <span className="font-medium">${subtotal.toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between text-gray-800">
-                <span>Delivery</span>
-                <span className="font-medium">
-                  {subtotal > 0 ? (
-                    subtotal >= FREE_SHIPPING_THRESHOLD ? (
-                      <span className="text-green-600">FREE</span>
-                    ) : (
-                      `$${delivery.toFixed(2)}`
-                    )
-                  ) : (
-                    '$0.00'
-                  )}
-                </span>
-              </div>
-
-              {subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD && (
-                <div className="text-xs text-amber-600">
-                  Add ${(FREE_SHIPPING_THRESHOLD - subtotal).toFixed(2)} more for free shipping!
+            {quoteLoading ? (
+              <div className="p-6 text-center text-sm text-gray-500 font-medium">Calculating totals...</div>
+            ) : (
+              <div className="space-y-3 text-sm sm:text-base">
+                <div className="flex justify-between text-gray-800">
+                  <span className="uppercase font-medium text-xs tracking-wider">
+                    {totalItemCount} {totalItemCount === 1 ? 'ITEM' : 'ITEMS'} (SUBTOTAL)
+                  </span>
+                  <span className="font-medium">
+                    ${Number(quote?.subtotal ?? subtotal).toFixed(2)}
+                  </span>
                 </div>
-              )}
 
-              <div className="flex justify-between text-base sm:text-lg font-bold pt-2 text-black border-t">
-                <span>Total</span>
-                <span>${subtotal > 0 ? total.toFixed(2) : '0.00'}</span>
+                <div className="flex justify-between text-gray-800">
+                  <span>Delivery</span>
+                  <span className="font-medium">
+                    {quote ? (
+                      quote.shipping === 0 ? (
+                        <span className="text-green-600 font-bold">FREE</span>
+                      ) : (
+                        `$${Number(quote.shipping).toFixed(2)}`
+                      )
+                    ) : (
+                      '$0.00'
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-gray-800">
+                  <span>Tax (8%)</span>
+                  <span className="font-medium">
+                    ${Number(quote?.tax ?? 0).toFixed(2)}
+                  </span>
+                </div>
+
+                {quote && quote.shipping > 0 && (
+                  <div className="text-xs text-amber-600 font-medium">
+                    Free shipping on orders over $150
+                  </div>
+                )}
+
+                <div className="flex justify-between text-base sm:text-lg font-bold pt-2 text-black border-t">
+                  <span>Total</span>
+                  <span>${Number(quote?.total ?? subtotal).toFixed(2)}</span>
+                </div>
               </div>
+            )}
+
+            {/* Payment Method Selector */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-xl space-y-2">
+              <h3 className="font-bold text-sm">Payment Method</h3>
+              {[
+                { value: 'card', label: '💳 Credit / Debit Card (Stripe)' },
+                { value: 'cod', label: '💵 Cash on Delivery' },
+              ].map((method) => (
+                <label key={method.value} className="flex items-center gap-3 cursor-pointer text-sm">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={method.value}
+                    checked={paymentMethod === method.value}
+                    onChange={() => setPaymentMethod(method.value)}
+                    className="accent-black"
+                  />
+                  {method.label}
+                </label>
+              ))}
             </div>
 
             {/* Shipping Address Form */}
@@ -388,7 +445,7 @@ export default function ShoppingCart() {
 
             <button
               onClick={handleCheckout}
-              disabled={checkoutLoading || cartItems.length === 0}
+              disabled={checkoutLoading || quoteLoading || cartItems.length === 0}
               className="w-full bg-[#1E1E1E] hover:bg-black disabled:bg-gray-400 text-white font-bold py-3.5 px-4 rounded-xl mt-4 uppercase tracking-wider text-xs sm:text-sm transition-all duration-200 active:scale-[0.99]"
             >
               {checkoutLoading

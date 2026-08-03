@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  GENDERS, SIZES, COLORS, PRODUCT_STATUS, CATEGORY_COLORS,
+  GENDERS, SIZES, PRODUCT_STATUS,
 } from '../utils/constants.js'
 
 /** Turns ?status=a,b or ?status=a&status=b into ['a','b']. */
@@ -15,6 +15,15 @@ const csvArray = (values) =>
     })
     .transform((v) => (v && v.length ? v : undefined))
 
+const colorValue = z
+  .string()
+  .trim()
+  .min(1, 'A colour is required.')
+  .max(40, 'Colour must be 40 characters or fewer.')
+  // Accept common CSS colour names, hex, rgb(), hsl(), etc. The client uses
+  // the exact stored value for the product swatch.
+  .regex(/^[a-zA-Z0-9#(),.%\s-]+$/, 'Use a valid CSS colour value.')
+
 export const productQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -23,7 +32,7 @@ export const productQuerySchema = z.object({
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
   size: z.enum(SIZES).optional(),
-  color: z.enum(COLORS).optional(),
+  color: colorValue.optional(),
   q: z.string().trim().max(120).optional(),
   featured: z
     .enum(['true', 'false'])
@@ -74,7 +83,7 @@ export const createProductSchema = z
     costPerItem: z.coerce.number().min(0).max(1000000).optional().nullable(),
     status: z.enum(PRODUCT_STATUS).default('draft'),
     featured: z.boolean().default(false),
-    colors: z.array(z.enum(COLORS)).min(1, 'Select at least one colour.').max(12),
+    colors: z.array(colorValue).min(1, 'Select at least one colour.').max(12),
     variants: z
       .array(variantSchema)
       .min(1, 'Add at least one size.')
@@ -104,7 +113,7 @@ export const updateProductSchema = z
     costPerItem: z.coerce.number().min(0).max(1000000).nullable().optional(),
     status: z.enum(PRODUCT_STATUS).optional(),
     featured: z.boolean().optional(),
-    colors: z.array(z.enum(COLORS)).min(1).max(12).optional(),
+    colors: z.array(colorValue).min(1).max(12).optional(),
     variants: z.array(variantSchema).optional(),
     images: z.array(z.string().trim().max(500)).max(10).optional(),
     tags: z.array(z.string().trim().max(40)).max(20).optional(),
@@ -124,7 +133,7 @@ export const updateVariantsSchema = z.object({
     .array(
       z.object({
         size: z.enum(SIZES),
-        color: z.enum(COLORS).optional(),
+        color: colorValue.optional(),
         stock: z.coerce.number().int().min(0).max(100000),
       })
     )
@@ -145,7 +154,7 @@ export const bulkDeleteSchema = z.object({
 export const createCategorySchema = z.object({
   name: z.string().trim().min(2, 'Category name is required.').max(120),
   description: z.string().trim().max(300).optional().nullable(),
-  color: z.enum(CATEGORY_COLORS).default('slate'),
+  color: z.string().trim().min(1).max(32).regex(/^[a-zA-Z0-9#(),.%\s-]+$/, 'Use a valid CSS colour value.').default('slate'),
   image: z.string().trim().max(500).optional().nullable(),
   sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
 })
@@ -153,7 +162,7 @@ export const createCategorySchema = z.object({
 export const updateCategorySchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   description: z.string().trim().max(300).nullable().optional(),
-  color: z.enum(CATEGORY_COLORS).optional(),
+  color: z.string().trim().min(1).max(32).regex(/^[a-zA-Z0-9#(),.%\s-]+$/, 'Use a valid CSS colour value.').optional(),
   image: z.string().trim().max(500).nullable().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.coerce.number().int().min(0).max(9999).optional(),

@@ -6,7 +6,7 @@ import { fetchAdminMe } from '@/store/adminAuthSlice'
 export function ProtectedRoute() {
   const dispatch = useDispatch()
   const location = useLocation()
-  const { user, initialized, loading } = useSelector((state) => state.adminAuth || {})
+  const { user, initialized } = useSelector((state) => state.adminAuth || {})
 
   useEffect(() => {
     if (!initialized && !user) {
@@ -14,7 +14,7 @@ export function ProtectedRoute() {
     }
   }, [dispatch, initialized, user])
 
-  if (!initialized && loading) {
+  if (!initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm font-medium text-muted-foreground">
         Verifying admin session...

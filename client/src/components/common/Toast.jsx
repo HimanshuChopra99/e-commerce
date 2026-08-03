@@ -7,7 +7,7 @@ export default function Toast({ isOpen, message = "Added to cart" }) {
   return (
     <div
       id="toast"
-      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-3 bg-ink text-white pl-4 pr-6 py-3.5 rounded-full shadow-mega transition-transform duration-300 ${
+      className={`fixed bottom-6 right-6 z-[120] flex items-center gap-3 bg-ink text-white pl-4 pr-6 py-3.5 rounded-full shadow-mega transition-transform duration-300 ${
         isOpen ? "show" : ""
       }`}
     >

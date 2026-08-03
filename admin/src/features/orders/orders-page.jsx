@@ -69,7 +69,7 @@ export function OrdersPage() {
     customerName: o.customerName || o.user?.fullName || `${o.shippingAddress?.firstName || 'Guest'} ${o.shippingAddress?.lastName || ''}`.trim(),
     customerEmail: o.customerEmail || o.email || o.user?.email || 'N/A',
     total: o.grandTotal || o.total || 0,
-    placedAt: o.placedAt ? new Date(o.placedAt) : new Date(o.createdAt || Date.now()),
+    placedAt: o.placedAt ? new Date(o.placedAt) : new Date(o.createdAt || 0),
     paymentStatus: o.paymentStatus || (o.paymentMethod === 'cod' ? 'pending' : 'paid'),
   }))
 

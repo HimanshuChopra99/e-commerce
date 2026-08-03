@@ -1,8 +1,9 @@
 import { logger } from '../config/logger.js'
 import { env } from '../config/env.js'
+import { pool } from '../config/database.js'
 import * as orderService from './order.service.js'
+import * as paymentService from './payment.service.js'
 import * as tokenModel from '../models/auth-token.model.js'
-import * as eventModel from '../models/stripe-event.model.js'
 
 /**
  * Background maintenance, run with setInterval inside the process.
@@ -38,18 +39,52 @@ async function purgeExpiredTokens() {
  * Surfaces webhooks that errored. These may be orders where money was taken
  * but fulfilment failed — the single most important thing to be alerted on.
  */
-async function alertFailedWebhooks() {
+export async function alertFailedWebhooks() {
   try {
-    const count = await eventModel.countFailed()
-    if (count > 0) {
-      const failed = await eventModel.findFailed(10)
+    const [rows] = await pool.query(
+      `SELECT id, event_id, event_type, error_message, created_at
+       FROM stripe_events
+       WHERE status = 'failed'
+       AND created_at > NOW() - INTERVAL 1 HOUR
+       LIMIT 50`
+    ).catch(() => [[]])
+    if (rows && rows.length > 0) {
       logger.error(
-        { count, examples: failed.map((f) => ({ id: f.event_id, type: f.type })) },
-        'FAILED STRIPE WEBHOOKS need attention'
+        { count: rows.length, events: rows.map((r) => ({ id: r.event_id, type: r.event_type, error: r.error_message })) },
+        'ALERT: Stripe webhook processing failures detected — manual review required'
       )
     }
   } catch (err) {
-    logger.error({ err }, 'alertFailedWebhooks failed')
+    logger.error({ err }, 'failed to check webhook events')
+  }
+}
+
+/**
+ * Reconciles missed webhook payment intents.
+ */
+export async function reconcilePayments() {
+  if (!env.stripe.enabled) return
+  try {
+    const [pendingOrders] = await pool.query(
+      `SELECT id, public_id, stripe_payment_intent_id, grand_total, order_number
+       FROM orders
+       WHERE payment_status = 'pending'
+         AND stripe_payment_intent_id IS NOT NULL
+         AND placed_at > NOW() - INTERVAL 24 HOUR`
+    ).catch(() => [[]])
+    if (!pendingOrders || pendingOrders.length === 0) return
+
+    for (const order of pendingOrders) {
+      const stripe = paymentService.getStripe ? paymentService.getStripe() : null
+      if (!stripe) continue
+      const intent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id).catch(() => null)
+      if (intent && intent.status === 'succeeded') {
+        logger.info({ orderNumber: order.order_number }, 'Reconciling missed payment webhook')
+        await paymentService.handlePaymentSucceeded(intent)
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, 'reconcilePayments failed')
   }
 }
 
@@ -59,6 +94,7 @@ export function startJobs() {
   timers.push(setInterval(releaseStaleReservations, 15 * MINUTE))
   timers.push(setInterval(purgeExpiredTokens, 24 * 60 * MINUTE))
   timers.push(setInterval(alertFailedWebhooks, 10 * MINUTE))
+  timers.push(setInterval(reconcilePayments, 10 * MINUTE))
 
   // Don't hold the event loop open at shutdown.
   timers.forEach((t) => t.unref?.())

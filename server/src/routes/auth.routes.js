@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import * as controller from '../controllers/auth.controller.js'
-import { authenticate } from '../middlewares/authenticate.js'
+import { authenticate, requireAuth } from '../middlewares/authenticate.js'
 import { validate } from '../middlewares/validate.js'
 import {
   loginLimiter, registerLimiter, passwordResetLimiter,
@@ -23,8 +23,8 @@ router.post('/verify-email', validate(verifyEmailSchema), controller.verifyEmail
 // ── Signed in ─────────────────────────────────────────────────────────
 router.post('/logout', controller.logout)   // works even with an expired access token
 router.post('/logout-all', authenticate, controller.logoutAll)
-router.get('/me', authenticate, controller.me)
-router.patch('/me', authenticate, validate(updateProfileSchema), controller.updateMe)
-router.post('/change-password', authenticate, validate(changePasswordSchema), controller.changePassword)
+router.get('/me', authenticate, requireAuth, controller.me)
+router.patch('/me', authenticate, requireAuth, validate(updateProfileSchema), controller.updateMe)
+router.post('/change-password', authenticate, requireAuth, validate(changePasswordSchema), controller.changePassword)
 
 export default router

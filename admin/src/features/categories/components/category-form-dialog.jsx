@@ -67,21 +67,25 @@ export function CategoryFormDialog({ open, onOpenChange, currentRow }) {
           }
     )
   }, [open, currentRow, form])
-  const onSubmit = (values) => {
+  const onSubmit = async (values) => {
     const payload = {
       name: values.name,
       description: values.description,
       color: values.color,
       image: values.image.trim() || null,
     }
-    if (isEdit && currentRow) {
-      updateCategory(currentRow.id, payload)
-      toast.success(`"${values.name}" has been updated.`)
-    } else {
-      addCategory(payload)
-      toast.success(`Category "${values.name}" created.`)
+    try {
+      if (isEdit && currentRow) {
+        await updateCategory(currentRow.id, payload)
+        toast.success(`"${values.name}" has been updated.`)
+      } else {
+        await addCategory(payload)
+        toast.success(`Category "${values.name}" created.`)
+      }
+      onOpenChange(false)
+    } catch (error) {
+      toast.error(error.message || 'Unable to save this category.')
     }
-    onOpenChange(false)
   }
 
   // eslint-disable-next-line react-hooks/incompatible-library

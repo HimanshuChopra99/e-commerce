@@ -1,14 +1,32 @@
 import { createApp } from './src/app.js'
 import { env } from './src/config/env.js'
 import { logger } from './src/config/logger.js'
-import { assertDatabaseConnection, closePool } from './src/config/database.js'
+import { assertDatabaseConnection, closePool, isDatabaseConnected } from './src/config/database.js'
 import { startJobs, stopJobs } from './src/services/jobs.service.js'
+import { migrateDatabase } from './src/database/migrate.js'
+import { seedDatabase } from './src/database/seed.js'
 
 async function main() {
-  // Fail fast if MySQL is unreachable, rather than 500ing every request.
+  // On a local development clone create the database/schema before opening a
+  // pooled connection to it. This ordering matters after `db:reset`: a pool
+  // created while the database is being dropped can keep stale connections.
+  if (env.autoSeed && !env.isProd) {
+    await migrateDatabase()
+  }
+
+  // Fail fast in production if MySQL is unreachable; development may use the
+  // explicit fallback mode when a developer has not started MySQL yet.
   await assertDatabaseConnection()
 
+  // Seed only after the schema exists and the pool has successfully connected.
+  if (env.autoSeed && !env.isProd && isDatabaseConnected()) {
+    await seedDatabase()
+  }
+
   const app = createApp()
+  if (!process.env.REDIS_URL && env.isProd) {
+    logger.warn('WARNING: REDIS_URL not set — rate limits are per-process. Do not run multiple instances without Redis.')
+  }
   const server = app.listen(env.port, '0.0.0.0', () => {
     logger.info(
       { port: env.port, env: env.nodeEnv, pid: process.pid },

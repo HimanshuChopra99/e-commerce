@@ -1,6 +1,6 @@
 -- =====================================================================
---  Kick — MySQL 8 / MariaDB 10.6+ schema
---  9 tables. Run:  mysql -u root -p Kick < schema.sql
+-- Kick — MySQL 8 / MariaDB 10.6+ schema
+-- 9 tables. Run: mysql -u root -p Kick < schema.sql
 -- =====================================================================
 
 SET NAMES utf8mb4;
@@ -20,8 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
   status            ENUM('active','blocked') NOT NULL DEFAULT 'active',
   email_verified_at TIMESTAMP    NULL DEFAULT NULL,
 
-  -- Default shipping address (one per customer, matching the admin UI).
-  -- Orders keep their own copy so editing this never rewrites an invoice.
+  -- Default shipping address
   address_line1     VARCHAR(200) DEFAULT NULL,
   address_line2     VARCHAR(200) DEFAULT NULL,
   address_city      VARCHAR(80)  DEFAULT NULL,
@@ -44,16 +43,16 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 2. auth_tokens   refresh sessions + password reset + email verify
+-- 2. auth_tokens
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS auth_tokens (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id    BIGINT UNSIGNED NOT NULL,
   type       ENUM('refresh','password_reset','email_verify') NOT NULL,
-  token_hash CHAR(64)  NOT NULL,      -- SHA-256 hex. NEVER the raw token.
+  token_hash CHAR(64)  NOT NULL,      -- SHA-256 hex
   user_agent VARCHAR(255) DEFAULT NULL,
   ip_address VARCHAR(45)  DEFAULT NULL,
-  expires_at TIMESTAMP NOT NULL,
+  expires_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   used_at    TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -73,8 +72,7 @@ CREATE TABLE IF NOT EXISTS categories (
   name        VARCHAR(120) NOT NULL,
   slug        VARCHAR(140) NOT NULL,
   description VARCHAR(300) DEFAULT NULL,
-  color       ENUM('slate','blue','teal','amber','rose','violet')
-              NOT NULL DEFAULT 'slate',
+  color       VARCHAR(32) NOT NULL DEFAULT 'slate',
   image_url   VARCHAR(500) DEFAULT NULL,
   is_active   BOOLEAN NOT NULL DEFAULT TRUE,
   sort_order  INT     NOT NULL DEFAULT 0,
@@ -104,21 +102,21 @@ CREATE TABLE IF NOT EXISTS products (
 
   price            DECIMAL(10,2) NOT NULL,
   compare_at_price DECIMAL(10,2) DEFAULT NULL,
-  cost_per_item    DECIMAL(10,2) DEFAULT NULL,   -- NEVER send to storefront
+  cost_per_item    DECIMAL(10,2) DEFAULT NULL,
 
   status           ENUM('active','draft','archived','out_of_stock')
                    NOT NULL DEFAULT 'draft',
   is_featured      BOOLEAN NOT NULL DEFAULT FALSE,
 
-  total_stock      INT NOT NULL DEFAULT 0,       -- cached sum of variants
-  units_sold       INT NOT NULL DEFAULT 0,       -- cached
+  total_stock      INT NOT NULL DEFAULT 0,
+  units_sold       INT NOT NULL DEFAULT 0,
   rating_avg       DECIMAL(3,2) NOT NULL DEFAULT 0.00,
   rating_count     INT NOT NULL DEFAULT 0,
 
-  images           JSON DEFAULT NULL,   -- ["/products/a.png"], [0] = main
+  images           JSON DEFAULT NULL,
   tags             JSON DEFAULT NULL,
 
-  deleted_at       TIMESTAMP NULL DEFAULT NULL,  -- soft delete
+  deleted_at       TIMESTAMP NULL DEFAULT NULL,
   created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                              ON UPDATE CURRENT_TIMESTAMP,
@@ -137,7 +135,7 @@ CREATE TABLE IF NOT EXISTS products (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 5. product_variants     size + colour. THE STOCK LIVES HERE.
+-- 5. product_variants
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS product_variants (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -146,8 +144,8 @@ CREATE TABLE IF NOT EXISTS product_variants (
   size       VARCHAR(8)  NOT NULL,
   color      VARCHAR(40) NOT NULL,
   sku        VARCHAR(70) NOT NULL,
-  stock      INT UNSIGNED NOT NULL DEFAULT 0,   -- pairs on the shelf
-  reserved   INT UNSIGNED NOT NULL DEFAULT 0,   -- held by open checkouts
+  stock      INT UNSIGNED NOT NULL DEFAULT 0,
+  reserved   INT UNSIGNED NOT NULL DEFAULT 0,
   is_active  BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -159,7 +157,6 @@ CREATE TABLE IF NOT EXISTS product_variants (
   KEY idx_variants_product (product_id),
   CONSTRAINT fk_variants_product FOREIGN KEY (product_id)
     REFERENCES products (id) ON DELETE CASCADE,
-  -- Makes overselling physically impossible to persist.
   CONSTRAINT chk_variants_reserved CHECK (reserved <= stock)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -169,10 +166,10 @@ CREATE TABLE IF NOT EXISTS product_variants (
 CREATE TABLE IF NOT EXISTS orders (
   id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   public_id      CHAR(26)    NOT NULL,
-  order_number   VARCHAR(20) NOT NULL,          -- '#1001', shown to humans
-  user_id        BIGINT UNSIGNED DEFAULT NULL,  -- SET NULL keeps the order
+  order_number   VARCHAR(20) NOT NULL,
+  user_id        BIGINT UNSIGNED DEFAULT NULL,
 
-  customer_email VARCHAR(160) NOT NULL,         -- snapshot
+  customer_email VARCHAR(160) NOT NULL,
   customer_name  VARCHAR(140) NOT NULL,
   customer_phone VARCHAR(24)  DEFAULT NULL,
 
@@ -208,7 +205,7 @@ CREATE TABLE IF NOT EXISTS orders (
   admin_note      TEXT DEFAULT NULL,
 
   placed_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  paid_at      TIMESTAMP NULL DEFAULT NULL,   -- set by the webhook ONLY
+  paid_at      TIMESTAMP NULL DEFAULT NULL,
   shipped_at   TIMESTAMP NULL DEFAULT NULL,
   delivered_at TIMESTAMP NULL DEFAULT NULL,
   cancelled_at TIMESTAMP NULL DEFAULT NULL,
@@ -228,20 +225,20 @@ CREATE TABLE IF NOT EXISTS orders (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 7. order_items     immutable snapshot of what was bought
+-- 7. order_items
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS order_items (
   id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   order_id      BIGINT UNSIGNED NOT NULL,
-  product_id    BIGINT UNSIGNED DEFAULT NULL,   -- reporting only
+  product_id    BIGINT UNSIGNED DEFAULT NULL,
   variant_id    BIGINT UNSIGNED DEFAULT NULL,
-  product_name  VARCHAR(200) NOT NULL,          -- name WHEN BOUGHT
+  product_name  VARCHAR(200) NOT NULL,
   product_slug  VARCHAR(220) DEFAULT NULL,
   product_sku   VARCHAR(70)  NOT NULL,
   product_image VARCHAR(500) DEFAULT NULL,
   size          VARCHAR(8)   NOT NULL,
   color         VARCHAR(40)  NOT NULL,
-  unit_price    DECIMAL(10,2) NOT NULL,         -- price WHEN BOUGHT
+  unit_price    DECIMAL(10,2) NOT NULL,
   quantity      INT UNSIGNED  NOT NULL,
   line_total    DECIMAL(10,2) NOT NULL,
   PRIMARY KEY (id),
@@ -257,11 +254,11 @@ CREATE TABLE IF NOT EXISTS order_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 8. stripe_events    webhook idempotency guard
+-- 8. stripe_events
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS stripe_events (
   id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  event_id     VARCHAR(120) NOT NULL,   -- Stripe's evt_… UNIQUE = the guard
+  event_id     VARCHAR(120) NOT NULL,
   type         VARCHAR(80)  NOT NULL,
   processed_at TIMESTAMP    NULL DEFAULT NULL,
   error        TEXT         DEFAULT NULL,

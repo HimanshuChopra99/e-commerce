@@ -33,13 +33,17 @@ const CATEGORIES_DATA = [
   { name: 'Basketball', color: 'violet', image: unsplashImages[5], description: 'High-top ankle support and court responsive traction.' },
 ]
 
+// Seed passwords come from env vars, never from source code.
+// Defaults are for local dev ONLY. Rotate before any deployment.
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'AdminPassword123!'
+const CUSTOMER_PASSWORD = process.env.SEED_CUSTOMER_PASSWORD || 'Password123'
+
 const USERS_DATA = [
   {
     role: 'admin',
     firstName: 'Admin',
     lastName: 'User',
     email: 'admin@kick.com',
-    password: 'AdminPassword123!',
     phone: '+1 555-0199',
     preferredSize: '10',
     address: { line1: '100 Admin Plaza', city: 'San Francisco', state: 'CA', postalCode: '94105', country: 'USA' },
@@ -49,7 +53,6 @@ const USERS_DATA = [
     firstName: 'Priya',
     lastName: 'Sharma',
     email: 'customer@example.com',
-    password: 'Password123',
     phone: '+1 555-0122',
     preferredSize: '8',
     address: { line1: '12 Marine Drive', city: 'Mumbai', state: 'Maharashtra', postalCode: '400001', country: 'India' },
@@ -59,7 +62,6 @@ const USERS_DATA = [
     firstName: 'Alex',
     lastName: 'Rivera',
     email: 'alex.rivera@example.com',
-    password: 'Password123',
     phone: '+1 555-0144',
     preferredSize: '9',
     address: { line1: '742 Evergreen Terrace', city: 'Austin', state: 'TX', postalCode: '78701', country: 'USA' },
@@ -69,7 +71,6 @@ const USERS_DATA = [
     firstName: 'Jordan',
     lastName: 'Lee',
     email: 'jordan.lee@example.com',
-    password: 'Password123',
     phone: '+1 555-0166',
     preferredSize: '10',
     address: { line1: '450 Kingsway', city: 'Vancouver', state: 'BC', postalCode: 'V5T 3J8', country: 'Canada' },
@@ -79,7 +80,6 @@ const USERS_DATA = [
     firstName: 'Samira',
     lastName: 'Patel',
     email: 'samira.patel@example.com',
-    password: 'Password123',
     phone: '+1 555-0188',
     preferredSize: '7',
     address: { line1: '88 Baker Street', city: 'London', state: 'England', postalCode: 'NW1 6XE', country: 'UK' },

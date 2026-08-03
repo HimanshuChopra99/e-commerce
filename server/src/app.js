@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -12,6 +13,8 @@ import { errorHandler, notFound } from './middlewares/error-handler.js'
 import { requestContext } from './middlewares/request-context.js'
 import { globalLimiter } from './middlewares/rate-limit.js'
 import { UPLOAD_DIR } from './middlewares/upload.js'
+
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
 export function createApp() {
   const app = express()
@@ -68,18 +71,24 @@ export function createApp() {
 
   app.use('/api', globalLimiter, routes)
 
+  // API requests must receive JSON 404s, never the storefront SPA shell.
+  app.use('/api', notFound)
+
   // Serve admin static build if present
-  const adminDist = path.join(process.cwd(), 'admin/dist')
+  const adminDist = path.join(PROJECT_ROOT, 'admin/dist')
   if (fs.existsSync(adminDist)) {
     app.use('/admin', express.static(adminDist))
-    app.get(['/admin', '/admin/*'], (_req, res) => res.sendFile(path.join(adminDist, 'index.html')))
+    // Explicit catch-all for admin SPA routes BEFORE the client wildcard
+    app.get(['/admin', '/admin/*path'], (_req, res) =>
+      res.sendFile(path.join(adminDist, 'index.html'))
+    )
   }
 
-  // Serve client static build if present
-  const clientDist = path.join(process.cwd(), 'client/dist')
+  // Serve client static build if present — AFTER admin routes
+  const clientDist = path.join(PROJECT_ROOT, 'client/dist')
   if (fs.existsSync(clientDist)) {
     app.use(express.static(clientDist))
-    app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')))
+    app.get('*path', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')))
   } else {
     app.get('/', (_req, res) =>
       res.json({ success: true, data: { name: 'Kick API', version: '1.0.0' } })

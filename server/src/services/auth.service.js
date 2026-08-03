@@ -196,17 +196,24 @@ export async function refresh(rawToken, context = {}) {
     const tokens = await issueTokens(user, context)
     return { user: userModel.toPublicUser(user), ...tokens }
   } catch (err) {
-    // If DB fails, allow refresh from memory store
-    if (err.statusCode === 401 || err.statusCode === 403) {
-      // Verify token and get user from memory
-      const memoryUser = memoryStore.getUserByPublicId(payload.sub)
-      if (!memoryUser) {
-        throw ApiError.unauthorized('Session is no longer valid. Please sign in again.')
-      }
-      const tokens = issueTokensMemory(memoryUser, context)
-      return { user: memoryUser, ...tokens }
+    // Only fall back to memory store when the DATABASE itself is unavailable,
+    // not when the error is a legitimate auth rejection (401/403).
+    // Checking statusCode means: if we threw ApiError.unauthorized() or
+    // ApiError.forbidden() above, we must NOT fall through — that was an
+    // intentional security rejection.
+    if (err.statusCode) {
+      // This is a deliberate auth error (reuse detected, account blocked, etc.)
+      // Re-throw it. Never bypass security checks.
+      throw err
     }
-    throw err
+    // Below here: DB connection failure (ECONNREFUSED, ENOTFOUND, etc.)
+    // Fall back to memory store only for genuine DB outages.
+    const memoryUser = memoryStore.getUserByPublicId(payload.sub)
+    if (!memoryUser) {
+      throw ApiError.unauthorized('Session is no longer valid. Please sign in again.')
+    }
+    const tokens = issueTokensMemory(memoryUser, context)
+    return { user: memoryUser, ...tokens }
   }
 }
 
@@ -324,8 +331,8 @@ export async function requestPasswordReset(email) {
     // Ignore if token creation fails
   }
 
-  logger.info({ userId: user.publicId || user.internalId }, 'password reset requested')
-  return { sent: true, ...(env.isProd ? {} : { resetToken: token }) }
+  logger.info({ userId: user.publicId || user.internalId, ...(env.isProd ? {} : { resetToken: token }) }, 'password reset requested')
+  return { sent: true }
 }
 
 export async function resetPassword({ token, newPassword }) {

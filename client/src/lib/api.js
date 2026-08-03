@@ -1,20 +1,42 @@
 const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-let accessToken = typeof window !== 'undefined' ? localStorage.getItem('kick_access_token') : null
+// Access tokens live in memory only — never in localStorage or cookies.
+// They are re-issued from the HttpOnly refresh cookie on every page load.
+let accessToken = null
 
 export function setAccessToken(token) {
   accessToken = token
-  if (typeof window !== 'undefined') {
-    if (token) {
-      localStorage.setItem('kick_access_token', token)
-    } else {
-      localStorage.removeItem('kick_access_token')
-    }
-  }
 }
 
 export function getAccessToken() {
   return accessToken
+}
+
+let refreshPromise = null
+
+async function silentRefresh() {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = _doRefresh().finally(() => { refreshPromise = null })
+  return refreshPromise
+}
+
+async function _doRefresh() {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+    const data = await res.json()
+    if (data?.data?.accessToken) {
+      setAccessToken(data.data.accessToken)
+      return true
+    }
+    setAccessToken(null)
+    return false
+  } catch {
+    setAccessToken(null)
+    return false
+  }
 }
 
 async function request(path, options = {}) {
@@ -35,32 +57,17 @@ async function request(path, options = {}) {
     if (refreshed) {
       return request(path, options)
     }
+    window.dispatchEvent(new CustomEvent('kick:auth:expired'))
+    throw new Error('Your session has expired. Please sign in again.')
   }
 
   const data = await res.json().catch(() => ({}))
 
   if (!res.ok) {
-    throw new Error(data.message || data.error || 'Request failed')
+    throw new Error(data?.error?.message || data?.message || (typeof data?.error === 'string' ? data.error : '') || 'Request failed')
   }
 
   return data
-}
-
-async function silentRefresh() {
-  try {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-    const data = await res.json()
-    if (data?.data?.accessToken) {
-      setAccessToken(data.data.accessToken)
-      return true
-    }
-    return false
-  } catch {
-    return false
-  }
 }
 
 const get = (path, params) => {

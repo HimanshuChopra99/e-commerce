@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../store/cartSlice";
+import { toggleWishlist, selectIsWishlisted } from "../store/wishlistSlice";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { ProductDetails } from "../components/product/ProductDetails";
 import { SizeChartModal } from "../components/product/SizeChartModal";
 import { RelatedProducts } from "../components/product/RelatedProducts";
+
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const IMAGE_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace('/api', '')
@@ -16,6 +19,10 @@ function getImageSrc(img) {
   if (img.startsWith("http")) return img;
   return `${IMAGE_BASE}${img}`;
 }
+
+const EU_TO_US = { '35': 5, '36': 6, '37': 6.5, '38': 7.5, '39': 8, '40': 9, '41': 10, '42': 10.5, '43': 11.5, '44': 12, '45': 13, '46': 14 }
+const EU_TO_UK = { '35': 3, '36': 4, '37': 4.5, '38': 5.5, '39': 6, '40': 7, '41': 8, '42': 8.5, '43': 9.5, '44': 10, '45': 11, '46': 12 }
+const EU_TO_CM = { '35': 22.5, '36': 23, '37': 23.5, '38': 24, '39': 25, '40': 25.5, '41': 26, '42': 26.5, '43': 27.5, '44': 28, '45': 28.5, '46': 29 }
 
 export default function ProductView() {
   const { id } = useParams();
@@ -29,41 +36,48 @@ export default function ProductView() {
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
+
+  const isWishlisted = useSelector(selectIsWishlisted(product?.id));
 
   useEffect(() => {
     setLoading(true);
     setError(null);
 
-    fetch(`/api/products/${id}`)
+    fetch(`${API_BASE}/products/${id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Product not found");
         return res.json();
       })
       .then((data) => {
         const item = data.data || data;
-        const sizeVals = (item.variants && item.variants.length > 0)
-          ? [...new Set(item.variants.map((v) => v.size).filter(Boolean))]
-          : (item.sizes && item.sizes.length > 0)
-          ? item.sizes
-          : ["38", "39", "40", "41", "42", "43"];
 
-        const sizes = sizeVals.map((sz) => ({
-          value: sz.toString(),
-          eu: Number(sz) || 40,
-          us: (Number(sz) || 40) - 33,
-          uk: (Number(sz) || 40) - 34,
-          cm: (Number(sz) || 40) * 0.6,
-          inStock: true,
-          available: true,
-        }));
+        if (item.slug && item.slug !== id) {
+          window.history.replaceState(null, '', `/product/${item.slug}`);
+        }
 
-        const colorList = (item.variants && item.variants.length > 0)
-          ? [...new Set(item.variants.map((v) => v.color).filter(Boolean))]
-          : (item.colors && item.colors.length > 0)
-          ? item.colors
-          : ["Black", "White"];
+        const variants = item.variants || [];
+        const sizeVals = [...new Set(variants.map((v) => v.size).filter(Boolean))]
+          .sort((a, b) => Number(a) - Number(b));
+        const colorList = [...new Set(variants
+          .filter((v) => Boolean(v.inStock ?? Number(v.available ?? 0) > 0))
+          .map((v) => v.color)
+          .filter(Boolean))];
+
+        const toSize = (size, color) => {
+          const eu = String(size);
+          const variant = variants.find((v) => String(v.size) === eu && v.color === color);
+          const available = Boolean(variant?.inStock ?? Number(variant?.available ?? 0) > 0);
+          return {
+            value: eu,
+            eu: Number(eu),
+            us: EU_TO_US[eu] ?? Number(eu) - 33,
+            uk: EU_TO_UK[eu] ?? Number(eu) - 34,
+            cm: EU_TO_CM[eu] ?? Number(eu) * 0.65,
+            available,
+            inStock: available,
+          };
+        };
 
         const rawImages = (item.images && item.images.length > 0)
           ? item.images
@@ -71,12 +85,22 @@ export default function ProductView() {
         
         const imgList = rawImages.map(getImageSrc);
 
+        const colorImageMap = {};
+        variants.forEach((v) => {
+          if (v.color && !colorImageMap[v.color]) {
+            colorImageMap[v.color] = v.image ? [getImageSrc(v.image), ...imgList] : imgList;
+          }
+        });
+
+        const colorHex = { white: '#FFFFFF', black: '#1E1E1E', red: '#EF4444', blue: '#3B82F6', green: '#22C55E', yellow: '#EAB308', grey: '#6B7280', gray: '#6B7280', pink: '#EC4899', brown: '#92400E', tan: '#D2B48C' };
         const colors = colorList.map((col, idx) => ({
           id: `col-${idx}`,
           name: col,
-          hex: col.toLowerCase() === "white" ? "#FFFFFF" : col.toLowerCase() === "red" ? "#EF4444" : col.toLowerCase() === "blue" ? "#3B82F6" : "#1E1E1E",
-          images: imgList,
+          hex: colorHex[col.toLowerCase()] || col,
+          images: colorImageMap[col] || imgList,
         }));
+        const initialColor = colors[0] || null;
+        const sizes = sizeVals.map((size) => toSize(size, initialColor?.name));
 
         const mapped = {
           id: item.id || item.publicId || id,
@@ -90,6 +114,7 @@ export default function ProductView() {
           image: imgList[0],
           description: item.description || "High-performance sneakers engineered for comfort and mobility.",
           rating: item.rating || 4.8,
+          variants: item.variants || [],
           specs: [
             { label: "Category", value: item.category?.name || item.category || "Footwear" },
             { label: "Gender", value: item.gender || "Unisex" },
@@ -99,11 +124,11 @@ export default function ProductView() {
         };
 
         setProduct(mapped);
-        setSelectedColor(colors[0]);
-        setSelectedSize(sizes[0]);
+        setSelectedColor(initialColor);
+        setSelectedSize(sizes.find((size) => size.available) || sizes[0] || null);
 
         // Fetch related products dynamically
-        fetch(`/api/products/${item.slug || id}/related`)
+        fetch(`${API_BASE}/products/${item.slug || id}/related`)
           .then((r) => r.json())
           .then((relData) => {
             if (relData.data && relData.data.length > 0) {
@@ -158,10 +183,29 @@ export default function ProductView() {
     );
   }
 
+  const handleColorSelect = (color) => {
+    setSelectedColor(color);
+    const matchingSize = product.sizes.find((size) => product.variants.some(
+      (variant) => variant.color === color.name && String(variant.size) === String(size.value) && Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)
+    ));
+    if (matchingSize) setSelectedSize({ ...matchingSize, available: true, inStock: true });
+  };
+
+  const isSizeAvailable = (size) => product.variants.some((variant) =>
+    variant.color === selectedColor?.name && String(variant.size) === String(size.value) && Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)
+  );
+
   const handleAddToCart = () => {
+    const variant = product.variants?.find(
+      (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
+    );
+    if (!variant?.id || !Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)) {
+      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'This size is currently unavailable.' }));
+      return false;
+    }
     dispatch(
       addToCart({
-        variantId: `${product.id}-${selectedSize.value}-${selectedColor.name}`,
+        variantId: variant.id,
         productId: product.id,
         name: product.name,
         image: product.image,
@@ -172,14 +216,23 @@ export default function ProductView() {
         quantity: 1,
       })
     );
+    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} added to your cart.` }));
+    return true;
   };
 
   const handleBuyNow = () => {
-    handleAddToCart();
-    navigate("/cart");
+    if (handleAddToCart()) navigate("/cart");
   };
 
-  const handleToggleWishlist = () => setIsWishlisted(!isWishlisted);
+  const handleToggleWishlist = () => {
+    if (!product?.id) return;
+    dispatch(toggleWishlist(product.id));
+    window.dispatchEvent(
+      new CustomEvent('kick:toast', {
+        detail: isWishlisted ? 'Removed from wishlist' : 'Saved to wishlist ❤️',
+      })
+    );
+  };
 
   return (
     <div className="bg-[#EAE9E5] text-[#232321] selection:bg-[#4A69E2] selection:text-white pb-12 w-full">
@@ -209,8 +262,9 @@ export default function ProductView() {
               selectedSize={selectedSize}
               quantity={quantity}
               isWishlisted={isWishlisted}
-              onSelectColor={setSelectedColor}
-              onSelectSize={setSelectedSize}
+              onSelectColor={handleColorSelect}
+              onSelectSize={(size) => isSizeAvailable(size) && setSelectedSize({ ...size, available: true, inStock: true })}
+              isSizeAvailable={isSizeAvailable}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
               onToggleWishlist={handleToggleWishlist}

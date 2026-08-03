@@ -68,5 +68,6 @@ export async function stripeWebhook(req, res) {
     // for the alerting query in jobs.service.js.
     logger.error({ err, eventId: event.id, type: event.type }, 'webhook processing failed')
     await paymentService.markEventFailed(event.id, err.message).catch(() => {})
+    logger.error({ ALERT: true, eventId: event.id }, 'WEBHOOK_PROCESSING_FAILED — check stripe_events table')
   }
 }

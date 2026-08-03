@@ -9,7 +9,8 @@ export const ProductDetails = ({
   onAddToCart,
   onBuyNow,
   onToggleWishlist,
-  onOpenSizeChart
+  onOpenSizeChart,
+  isSizeAvailable = (size) => size.available
 }) => {
   return <div className="w-full flex flex-col space-y-6">
 
@@ -79,11 +80,14 @@ export const ProductDetails = ({
       }
       <div className="grid grid-cols-5 sm:grid-cols-5 gap-2">
         {product.sizes.map((size) => {
-          const isSelected = selectedSize.value === size.value;
+          const available = isSizeAvailable(size);
+          const isSelected = selectedSize?.value === size.value;
           return <button
             key={size.value}
-            onClick={() => onSelectSize(size)}
-            className={`h-11 sm:h-12 rounded-lg font-bold text-sm transition-all duration-150 cursor-pointer flex items-center justify-center ${isSelected ? "bg-[#232321] text-white shadow-sm ring-1 ring-[#232321]" : "bg-white text-neutral-900 border border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"}`}
+            disabled={!available}
+            onClick={() => available && onSelectSize(size)}
+            className={`h-11 sm:h-12 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center ${!available ? "bg-neutral-100 text-neutral-400 border border-neutral-200 opacity-50 cursor-not-allowed line-through" : isSelected ? "bg-[#232321] text-white shadow-sm ring-1 ring-[#232321] cursor-pointer" : "bg-white text-neutral-900 border border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50 cursor-pointer"}`}
+            aria-disabled={!available}
           >
             {size.value}
           </button>;

@@ -301,6 +301,24 @@ export async function refundOrder(orderPublicId, { amount, reason, restock = fal
         const items = await orderModel.findRawItems(order.internalId, conn)
         for (const item of items) {
           if (!item.variant_id) continue
+
+          // Only restock variants that are still active and not deleted
+          const [variantRows] = await conn.query(
+            `SELECT v.id, v.is_active, p.deleted_at, p.status
+             FROM product_variants v
+             JOIN products p ON p.id = v.product_id
+             WHERE v.id = ?`,
+            [item.variant_id]
+          )
+          const variant = variantRows[0]
+          if (!variant || !variant.is_active || variant.deleted_at || variant.status !== 'active') {
+            logger.warn(
+              { variantId: item.variant_id, orderNumber: order.orderNumber },
+              'skipping restock for inactive/deleted variant'
+            )
+            continue
+          }
+
           await variantModel.restock(item.variant_id, item.quantity, conn)
           if (item.product_id) await productModel.recalcStock(item.product_id, conn)
         }

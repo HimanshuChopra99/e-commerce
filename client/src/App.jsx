@@ -10,11 +10,12 @@ import SearchOverlay from './components/common/SearchOverlay';
 import MobileDrawer from './components/common/MobileDrawer';
 import Toast from './components/common/Toast';
 import Footer from './components/common/Footer';
+import AuthExpiredHandler from './components/AuthExpiredHandler';
 import Home from './pages/Home';
 import Product from './pages/Product';
 import ProductView from './pages/ProductView';
 import Cart from './pages/Cart';
-import Signup from './pages/SIgnup';
+import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
 
@@ -25,7 +26,7 @@ function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState(null);
+  const [toastQueue, setToastQueue] = useState([]);
 
   useEffect(() => {
     dispatch(fetchMe());
@@ -41,34 +42,40 @@ function App() {
     }
   }, [isSearchOpen, isCartOpen, isMobileOpen]);
 
-  // Auto-hide toast after 2.4s
+  // Listen for toast events
   useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => {
-        setToastMessage(null);
-      }, 2400);
-      return () => clearTimeout(timer);
-    }
-  }, [toastMessage]);
+    const showToast = (event) =>
+      setToastQueue((q) => [...q, { id: Date.now() + Math.random(), message: event.detail || 'Updated successfully.' }]);
+    window.addEventListener('kick:toast', showToast);
+    return () => window.removeEventListener('kick:toast', showToast);
+  }, []);
 
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-  };
+  // Consume the queue one at a time
+  const currentToast = toastQueue[0] || null;
 
-  const handleLinkSelect = (label) => {
-    triggerToast(`Navigated to: ${label}`);
+  useEffect(() => {
+    if (!currentToast) return;
+    const timer = setTimeout(() => {
+      setToastQueue((q) => q.filter((t) => t.id !== currentToast.id));
+    }, 2400);
+    return () => clearTimeout(timer);
+  }, [currentToast]);
+
+  const handleLinkSelect = (_label) => {
+    // Navigation toast removed — was debug artifact
   };
 
   const handleSearchSelectProduct = (item) => {
-    triggerToast(`Selected ${item.brand || ''} ${item.name || ''}`);
+    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `Selected ${item.brand || ''} ${item.name || ''}` }));
   };
 
   const handleSearchSelectTag = (tag) => {
-    triggerToast(`Filtered by tag: #${tag}`);
+    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `Filtered by tag: #${tag}` }));
   };
 
   return (
     <Router>
+      <AuthExpiredHandler />
       <div className="bg-[#EAE9E5] text-ink min-h-screen flex flex-col relative">
         {/* ===== 1. Site Header & Navbar ===== */}
         <Navbar
@@ -95,7 +102,7 @@ function App() {
         />
 
         {/* ===== 5. Toast Notification ===== */}
-        <Toast isOpen={!!toastMessage} message={toastMessage || ""} />
+        <Toast isOpen={!!currentToast} message={currentToast?.message || ""} />
 
         {/* ===== Main Page Sections ===== */}
         <main className="flex-1 pt-20 md:pt-24 w-full">

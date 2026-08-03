@@ -114,6 +114,11 @@ export async function optionalAuth(req, res, next) {
  * Blocks anyone who isn't an admin. Always use AFTER `authenticate`.
  * Requires a valid, verified token with admin role.
  */
+export function requireAuth(req, _res, next) {
+  if (!req.user) return next(ApiError.unauthorized('Authentication required. Please sign in.'))
+  next()
+}
+
 export function requireAdmin(req, _res, next) {
   if (!req.user) {
     return next(ApiError.unauthorized('Authentication required. Please sign in.'))

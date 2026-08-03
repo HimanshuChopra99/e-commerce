@@ -14,6 +14,7 @@ import {
   productStatusStyles,
 } from '../products-data'
 import { ProductsRowActions } from './products-row-actions'
+
 export const productsColumns = [
   {
     id: 'select',
@@ -77,15 +78,22 @@ export const productsColumns = [
     enableHiding: false,
   },
   {
-    accessorKey: 'category',
+    id: 'category',
+    accessorFn: (row) =>
+      typeof row.category === 'object' && row.category !== null
+        ? row.category.name ?? row.category.slug
+        : row.category,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Category' />
     ),
-    cell: ({ row }) => (
-      <div className='text-nowrap'>
-        {categoryLabels.get(row.original.category) ?? row.original.category}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const categoryValue = row.getValue('category')
+      return (
+        <div className='text-nowrap'>
+          {categoryLabels.get(categoryValue) ?? categoryValue}
+        </div>
+      )
+    },
     filterFn: (row, id, value) => value.includes(row.getValue(id)),
     enableSorting: false,
   },
@@ -156,7 +164,7 @@ export const productsColumns = [
     ),
     cell: ({ row }) => (
       <div className='flex items-center gap-1'>
-        {row.original.colors.map((color) => (
+        {(row.original.colors ?? []).map((color) => (
           <span
             key={color}
             title={color}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { ImagePlus, Loader2, Save, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { currency, formatCurrency } from '@/config/brand'
-import { cn, sleep } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalog-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,7 @@ import {
   sizeRun,
 } from '../products-data'
 import { CategorySelect } from './category-select'
+
 /* ------------------------------ Form schema ------------------------------ */
 
 const formSchema = z
@@ -93,11 +94,71 @@ const formSchema = z
       path: ['compareAtPrice'],
     }
   )
+
 const slugify = (s) =>
   s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
+
+function buildFormValues(row) {
+  if (!row) {
+    return {
+      name: '',
+      sku: '',
+      description: '',
+      categoryId: '',
+      gender: '',
+      brand: 'Kick',
+      material: '',
+      price: 0,
+      compareAtPrice: 0,
+      costPerItem: 0,
+      status: 'draft',
+      featured: false,
+      colors: [],
+      variants: sizeRun.map((size) => ({
+        size,
+        stock: 0,
+      })),
+      images: [],
+      tags: [],
+    }
+  }
+
+  const images = Array.isArray(row.images) && row.images.length > 0
+    ? row.images
+    : row.image
+    ? [row.image]
+    : []
+
+  const colors = Array.isArray(row.colors) ? row.colors : []
+  const tags = Array.isArray(row.tags) ? row.tags : []
+  const variants = Array.isArray(row.variants) ? row.variants : []
+
+  return {
+    name: row.name ?? '',
+    sku: row.sku ?? '',
+    description: row.description ?? '',
+    categoryId: row.categoryId ?? '',
+    gender: row.gender ?? '',
+    brand: row.brand ?? 'Kick',
+    material: row.material ?? '',
+    price: row.price ?? 0,
+    compareAtPrice: row.compareAtPrice ?? 0,
+    costPerItem: row.costPerItem ?? 0,
+    status: row.status ?? 'draft',
+    featured: row.featured ?? false,
+    colors,
+    variants: sizeRun.map((size) => ({
+      size,
+      stock: variants.find((v) => String(v.size) === String(size))?.stock ?? 0,
+    })),
+    images,
+    tags,
+  }
+}
+
 export function ProductForm({ currentRow }) {
   const isEdit = !!currentRow
   const navigate = useNavigate()
@@ -105,76 +166,39 @@ export function ProductForm({ currentRow }) {
   const updateProduct = useCatalogStore((s) => s.updateProduct)
   const [saving, setSaving] = useState(false)
   const [tagInput, setTagInput] = useState('')
+  const [customColor, setCustomColor] = useState('')
+
   const form = useForm({
     resolver: zodResolver(formSchema),
-    defaultValues: isEdit
-      ? {
-          name: currentRow.name,
-          sku: currentRow.sku,
-          description: currentRow.description,
-          categoryId: currentRow.categoryId ?? '',
-          gender: currentRow.gender,
-          brand: currentRow.brand,
-          material: currentRow.material ?? '',
-          price: currentRow.price,
-          compareAtPrice: currentRow.compareAtPrice ?? 0,
-          costPerItem: currentRow.costPerItem ?? 0,
-          status: currentRow.status,
-          featured: currentRow.featured,
-          colors: currentRow.colors,
-          variants: sizeRun.map((size) => ({
-            size,
-            stock: currentRow.variants.find((v) => v.size === size)?.stock ?? 0,
-          })),
-          images: currentRow.images.length
-            ? currentRow.images
-            : [currentRow.image],
-          tags: currentRow.tags,
-        }
-      : {
-          name: '',
-          sku: '',
-          description: '',
-          categoryId: '',
-          gender: '',
-          brand: 'Kick',
-          material: '',
-          price: 0,
-          compareAtPrice: 0,
-          costPerItem: 0,
-          status: 'draft',
-          featured: false,
-          colors: [],
-          variants: sizeRun.map((size) => ({
-            size,
-            stock: 0,
-          })),
-          images: [],
-          tags: [],
-        },
+    defaultValues: buildFormValues(currentRow),
   })
 
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const watchedVariants = form.watch('variants')
-  const watchedImages = form.watch('images')
-  const watchedTags = form.watch('tags')
-  const watchedColors = form.watch('colors')
-  const watchedPrice = form.watch('price')
-  const watchedCost = form.watch('costPerItem')
+  // Reset form whenever currentRow updates asynchronously after fetching details
+  useEffect(() => {
+    if (currentRow) {
+      form.reset(buildFormValues(currentRow))
+    }
+  }, [currentRow, form])
+
+  const watchedVariants = form.watch('variants') ?? []
+  const watchedImages   = form.watch('images') ?? []
+  const watchedTags     = form.watch('tags') ?? []
+  const watchedColors   = form.watch('colors') ?? []
+  const watchedPrice    = form.watch('price')
+  const watchedCost     = form.watch('costPerItem')
+
   const totalStock = watchedVariants.reduce(
-    (sum, v) => sum + (Number(v.stock) || 0),
+    (sum, v) => sum + (Number(v?.stock) || 0),
     0
   )
+
   const margin =
     watchedPrice && watchedCost
       ? ((watchedPrice - watchedCost) / watchedPrice) * 100
       : null
+
   const onSubmit = async (values) => {
     setSaving(true)
-    await sleep(600)
-
-    // 👉 Replace the store calls with your API, e.g.
-    //    await api.post('/products', payload)
     const payload = {
       name: values.name.trim(),
       slug: slugify(values.name),
@@ -199,34 +223,49 @@ export function ProductForm({ currentRow }) {
       material: values.material,
       tags: values.tags,
     }
-    if (isEdit && currentRow) {
-      updateProduct(currentRow.id, payload)
-    } else {
-      addProduct({
-        ...payload,
-        id: `PRD-${Date.now().toString(36).toUpperCase()}`,
-        // Legacy fixed tag, kept so the existing category facet still works.
-        category: 'sneakers',
-        sold: 0,
-        rating: 0,
-        reviews: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
+
+    try {
+      if (isEdit && currentRow) {
+        await updateProduct(currentRow.id, payload)
+      } else {
+        await addProduct(payload)
+      }
+      toast.success(
+        isEdit
+          ? `"${values.name}" has been updated.`
+          : `"${values.name}" has been added to your store.`
+      )
+      navigate('/products')
+    } catch (error) {
+      toast.error(error.message || 'Unable to save this product.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
-    toast.success(
-      isEdit
-        ? `"${values.name}" has been updated.`
-        : `"${values.name}" has been added to your store.`
-    )
-    navigate('/products')
   }
+
   const onInvalid = () => {
     toast.error('Please fix the highlighted fields before saving.')
   }
 
-  /** Adds an image by URL — swap for a real uploader when you wire a backend. */
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  const MAX_SIZE_MB = 5
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    const invalid = files.filter(
+      (f) => !ALLOWED_TYPES.includes(f.type) || f.size > MAX_SIZE_MB * 1024 * 1024
+    )
+    if (invalid.length > 0) {
+      toast.error(`Invalid file(s): only JPEG/PNG/WebP/GIF under ${MAX_SIZE_MB}MB are allowed.`)
+      e.target.value = ''
+      return
+    }
+    // Convert to object URLs or paths for demo preview
+    const newUrls = files.map((f) => URL.createObjectURL(f))
+    form.setValue('images', [...watchedImages, ...newUrls], { shouldValidate: true })
+  }
+
   const handleAddImage = () => {
     const url = window.prompt(
       'Paste an image URL or a path from /public (e.g. /products/sneaker-01.png)'
@@ -236,6 +275,7 @@ export function ProductForm({ currentRow }) {
       shouldValidate: true,
     })
   }
+
   const handleAddTag = () => {
     const tag = tagInput.trim().toLowerCase()
     if (!tag) return
@@ -246,6 +286,7 @@ export function ProductForm({ currentRow }) {
     form.setValue('tags', [...watchedTags, tag])
     setTagInput('')
   }
+
   return (
     <Form {...form}>
       <form
@@ -688,7 +729,8 @@ export function ProductForm({ currentRow }) {
                           control={form.control}
                           name='colors'
                           render={({ field }) => {
-                            const checked = field.value?.includes(color.value)
+                            const list = Array.isArray(field.value) ? field.value : []
+                            const checked = list.includes(color.value)
                             return (
                               <FormItem className='flex items-center gap-2 space-y-0 rounded-md border p-2'>
                                 <FormControl>
@@ -696,10 +738,8 @@ export function ProductForm({ currentRow }) {
                                     checked={checked}
                                     onCheckedChange={(value) => {
                                       const next = value
-                                        ? [...field.value, color.value]
-                                        : field.value.filter(
-                                            (v) => v !== color.value
-                                          )
+                                        ? [...list, color.value]
+                                        : list.filter((v) => v !== color.value)
                                       field.onChange(next)
                                     }}
                                   />
@@ -723,6 +763,30 @@ export function ProductForm({ currentRow }) {
                   </FormItem>
                 )}
               />
+              <div className='mt-3 flex gap-2'>
+                <Input
+                  value={customColor}
+                  onChange={(event) => setCustomColor(event.target.value)}
+                  placeholder='Custom colour: e.g. indigo or #4A69E2'
+                  aria-label='Custom product colour'
+                />
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={() => {
+                    const value = customColor.trim()
+                    if (!value) return
+                    if (watchedColors.includes(value)) {
+                      setCustomColor('')
+                      return
+                    }
+                    form.setValue('colors', [...watchedColors, value], { shouldValidate: true })
+                    setCustomColor('')
+                  }}
+                >
+                  Add
+                </Button>
+              </div>
               {watchedColors.length > 0 && (
                 <p className='mt-3 text-xs text-muted-foreground'>
                   {watchedColors.length} colour

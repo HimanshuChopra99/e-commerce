@@ -60,7 +60,13 @@ export function colorCode(color) {
     Red: 'RED', Blue: 'BLU', Green: 'GRN', Brown: 'BRN',
     Tan: 'TAN', Beige: 'BEI', Pink: 'PNK', Yellow: 'YEL',
   }
-  return map[color] ?? String(color).replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase()
+  if (map[color]) return map[color]
+  const cleaned = String(color).replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase()
+  if (cleaned) return cleaned
+  // Hex/CSS colours may have no letters. A deterministic base36 hash keeps
+  // automatically generated variant SKUs distinct and valid.
+  const hash = [...String(color)].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 0)
+  return hash.toString(36).slice(-3).toUpperCase().padStart(3, '0')
 }
 
 /** Normalises an email for storage and lookup. */

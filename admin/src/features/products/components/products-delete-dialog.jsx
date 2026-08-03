@@ -7,12 +7,19 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { useCatalogStore } from '@/stores/catalog-store'
 export function ProductsDeleteDialog({ open, onOpenChange, currentRow }) {
   const [value, setValue] = useState('')
-  const handleDelete = () => {
+  const deleteProduct = useCatalogStore((s) => s.deleteProduct)
+  const handleDelete = async () => {
     if (value.trim() !== currentRow.sku) return
-    onOpenChange(false)
-    toast.success(`"${currentRow.name}" has been deleted from your store.`)
+    try {
+      await deleteProduct(currentRow.id)
+      onOpenChange(false)
+        toast.success(`"${currentRow.name}" has been deleted from your store.`)
+    } catch (error) {
+      toast.error(error.message || 'Unable to delete this product.')
+    }
   }
   return (
     <ConfirmDialog

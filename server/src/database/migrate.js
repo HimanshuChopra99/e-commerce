@@ -65,9 +65,7 @@ function splitStatements(sql) {
   return statements
 }
 
-async function run() {
-  const fresh = process.argv.includes('--fresh')
-
+export async function migrateDatabase({ fresh = false } = {}) {
   // Connect without a database first, so we can create it.
   const root = await mysql.createConnection({
     host: env.db.host,
@@ -143,7 +141,9 @@ async function run() {
   logger.info('migrations complete')
 }
 
-run().catch((err) => {
-  logger.fatal({ err }, 'migration runner failed')
-  process.exit(1)
-})
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  migrateDatabase({ fresh: process.argv.includes('--fresh') }).catch((err) => {
+    logger.fatal({ err }, 'migration runner failed')
+    process.exit(1)
+  })
+}

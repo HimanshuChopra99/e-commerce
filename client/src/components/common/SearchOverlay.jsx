@@ -44,11 +44,11 @@ export default function SearchOverlay({
 
     const timer = setTimeout(() => {
       setLoading(true);
-      fetch(`/api/products?q=${encodeURIComponent(query.trim())}&limit=8`)
+      fetch(`${import.meta.env.VITE_API_URL || '/api'}/products?q=${encodeURIComponent(query.trim())}&limit=8`)
         .then((res) => res.json())
         .then((data) => {
-          if (data.data?.items) {
-            setHits(data.data.items);
+          if (Array.isArray(data.data)) {
+            setHits(data.data);
           } else {
             setHits([]);
           }

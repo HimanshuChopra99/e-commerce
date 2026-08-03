@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { ChevronUp, ChevronDown, SlidersHorizontal, X } from "lucide-react";
-import { COLORS, SIZES, SHOE_CATEGORIES } from "../../data/products";
-
-const REFINE_OPTIONS = ["Mens", "Casual"];
-const GENDER_OPTIONS = ["Men", "Women"];
+const REFINE_OPTIONS = [];
 
 function Section({
   title,
@@ -29,7 +26,10 @@ function Section({
   );
 }
 
-export default function FilterSidebar({ filters, onChange }) {
+export default function FilterSidebar({ filters, onChange, availableFilters = {}, categories = [] }) {
+  const sizes = availableFilters.sizes || [];
+  const colors = availableFilters.colors || [];
+  const genders = availableFilters.genders || [];
   const [mobileOpen, setMobileOpen] = useState(false);
 
   function toggle(arr = [], val) {
@@ -63,7 +63,7 @@ export default function FilterSidebar({ filters, onChange }) {
       {/* Size */}
       <Section title="Size">
         <div className="grid grid-cols-5 gap-1.5">
-          {SIZES.map((size) => (
+          {sizes.map((size) => (
             <button
               key={size}
               onClick={() =>
@@ -85,19 +85,19 @@ export default function FilterSidebar({ filters, onChange }) {
       {/* Color */}
       <Section title="Color">
         <div className="flex flex-wrap gap-2">
-          {COLORS.map((color) => (
+          {colors.map((color) => (
             <button
-              key={color.hex}
-              title={color.label}
+              key={color}
+              title={color}
               onClick={() =>
-                onChange({ ...filters, colors: toggle(filters.colors, color.hex) })
+                onChange({ ...filters, colors: toggle(filters.colors, color) })
               }
               className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
-                (filters.colors || []).includes(color.hex)
+                (filters.colors || []).includes(color)
                   ? "border-[#4C64F4] scale-110 shadow-md"
                   : "border-white shadow-sm hover:border-gray-300"
               }`}
-              style={{ backgroundColor: color.hex }}
+              style={{ backgroundColor: ({ White: '#fff', Black: '#1E1E1E', Red: '#EF4444', Blue: '#3B82F6', Green: '#22C55E', Yellow: '#EAB308', Grey: '#6B7280', Gray: '#6B7280', Pink: '#EC4899', Brown: '#92400E', Tan: '#D2B48C' }[color] || '#1E1E1E') }}
             />
           ))}
         </div>
@@ -106,15 +106,15 @@ export default function FilterSidebar({ filters, onChange }) {
       {/* Category */}
       <Section title="Category">
         <div className="space-y-2">
-          {SHOE_CATEGORIES.map((cat) => (
-            <label key={cat} className="flex items-center gap-2.5 cursor-pointer group">
+          {categories.map((cat) => (
+            <label key={cat.slug} className="flex items-center gap-2.5 cursor-pointer group">
               <input
                 type="checkbox"
-                checked={(filters.categories || []).includes(cat)}
+                checked={(filters.categories || []).includes(cat.slug)}
                 onChange={() =>
                   onChange({
                     ...filters,
-                    categories: toggle(filters.categories, cat),
+                    categories: toggle(filters.categories, cat.slug),
                   })
                 }
                 className="w-4 h-4 accent-[#4C64F4] rounded"
@@ -123,7 +123,7 @@ export default function FilterSidebar({ filters, onChange }) {
                 className="text-[13px] text-[#555] group-hover:text-[#1E1E1E] transition-colors"
                 style={{ fontFamily: "'Rubik', sans-serif" }}
               >
-                {cat}
+                {cat.name}
               </span>
             </label>
           ))}
@@ -133,7 +133,7 @@ export default function FilterSidebar({ filters, onChange }) {
       {/* Gender */}
       <Section title="Gender">
         <div className="space-y-2">
-          {GENDER_OPTIONS.map((g) => (
+          {genders.map((g) => (
             <label key={g} className="flex items-center gap-2.5 cursor-pointer group">
               <input
                 type="checkbox"
