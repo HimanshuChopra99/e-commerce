@@ -8,6 +8,11 @@ export const fetchCategories = createAsyncThunk('categories/list', async (_, { r
   } catch (err) {
     return rejectWithValue(err.message || 'Failed to fetch categories')
   }
+}, {
+  condition: (_, { getState }) => {
+    const state = getState().categories
+    return !state.loading && state.items.length === 0
+  },
 })
 
 const categoriesSlice = createSlice({

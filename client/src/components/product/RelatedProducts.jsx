@@ -2,7 +2,8 @@ import { Star, ArrowRight, ShoppingBag } from "lucide-react";
 export const RelatedProducts = ({
   products,
   onSelectProduct,
-  onQuickAdd
+  onQuickAdd,
+  onViewAll
 }) => {
   return <section className="my-12 space-y-6">
       <div className="flex items-center justify-between">
@@ -13,7 +14,7 @@ export const RelatedProducts = ({
           <p className="text-xs text-neutral-500 font-medium">Recommended performance running & street footwear</p>
         </div>
 
-        <button className="text-xs font-extrabold uppercase tracking-wider text-[#4A69E2] hover:underline flex items-center gap-1 cursor-pointer">
+        <button type="button" onClick={onViewAll} className="text-xs font-extrabold uppercase tracking-wider text-[#4A69E2] hover:underline flex items-center gap-1 cursor-pointer">
           <span>View All Drops</span>
           <ArrowRight className="w-4 h-4" />
         </button>

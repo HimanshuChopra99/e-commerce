@@ -161,9 +161,12 @@ export async function findAll(filters = {}) {
     if (featured !== undefined) { where.push('p.is_featured = ?'); params.push(featured ? 1 : 0) }
 
     if (search) {
+      // Search across customer-facing product information and category, not just SKU.
       where.push(`(MATCH(p.name, p.description, p.brand) AGAINST (? IN NATURAL LANGUAGE MODE)
-                   OR p.name LIKE ? OR p.sku LIKE ?)`)
-      params.push(search, `%${search}%`, `%${search}%`)
+                   OR p.name LIKE ? OR p.sku LIKE ? OR p.brand LIKE ?
+                   OR p.description LIKE ? OR c.name LIKE ? OR c.slug LIKE ?)`)
+      const like = `%${search}%`
+      params.push(search, like, like, like, like, like, like)
     }
 
     if (size) {

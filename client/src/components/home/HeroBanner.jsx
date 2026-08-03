@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export default function HeroBanner() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7">
@@ -39,12 +41,13 @@ export default function HeroBanner() {
             >
               Sneakers made with your comfort in mind so you can put all of your focus into your next session.
             </p>
-            <button
-              className="mt-5 sm:mt-7 bg-[#4C64F4] hover:bg-[#3a52e0] text-white text-[12px] sm:text-[13px] font-bold uppercase tracking-widest px-6 sm:px-8 py-3 sm:py-3.5 rounded-[10px] transition-colors duration-300"
+            <Link
+              to="/products?sort=price_asc"
+              className="inline-block mt-5 sm:mt-7 bg-[#4C64F4] hover:bg-[#3a52e0] text-white text-[12px] sm:text-[13px] font-bold uppercase tracking-widest px-6 sm:px-8 py-3 sm:py-3.5 rounded-[10px] transition-colors duration-300"
               style={{ fontFamily: "'Rubik', sans-serif" }}
             >
               Shop Now
-            </button>
+            </Link>
           </div>
 
           {/* Right shoe image */}

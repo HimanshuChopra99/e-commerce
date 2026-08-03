@@ -7,6 +7,8 @@ export const ProductDetails = ({
   onSelectColor,
   onSelectSize,
   onAddToCart,
+  isInCart,
+  onRemoveFromCart,
   onBuyNow,
   onToggleWishlist,
   onOpenSizeChart,
@@ -104,10 +106,10 @@ export const ProductDetails = ({
       }
       <div className="flex items-center space-x-2">
         <button
-          onClick={onAddToCart}
-          className="flex-1 bg-[#232321] hover:bg-black text-white font-extrabold text-xs sm:text-sm tracking-wider uppercase py-4 rounded-xl transition-all duration-200 shadow-md active:scale-[0.99] flex items-center justify-center cursor-pointer"
+          onClick={isInCart ? onRemoveFromCart : onAddToCart}
+          className={`flex-1 text-white font-extrabold text-xs sm:text-sm tracking-wider uppercase py-4 rounded-xl transition-all duration-200 shadow-md active:scale-[0.99] flex items-center justify-center cursor-pointer ${isInCart ? 'bg-[#4A69E2] hover:bg-[#3d59c8]' : 'bg-[#232321] hover:bg-black'}`}
         >
-          ADD TO CART
+          {isInCart ? 'REMOVE FROM CART' : 'ADD TO CART'}
         </button>
 
         <button

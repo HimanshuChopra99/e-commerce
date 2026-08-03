@@ -74,7 +74,9 @@ const cartSlice = createSlice({
 export const { addToCart, removeFromCart, updateQuantity, clearCart } = cartSlice.actions
 
 export const selectCartItems = (state) => state.cart.items
-export const selectCartCount = (state) => state.cart.items.reduce((s, i) => s + i.quantity, 0)
+// The nav badge represents distinct products/variants, not the total quantity.
+export const selectCartCount = (state) => state.cart.items.length
+export const selectCartQuantity = (state) => state.cart.items.reduce((s, i) => s + i.quantity, 0)
 export const selectCartTotal = (state) =>
   state.cart.items.reduce((s, i) => s + i.price * i.quantity, 0)
 

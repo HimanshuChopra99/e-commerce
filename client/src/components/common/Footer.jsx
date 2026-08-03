@@ -209,13 +209,13 @@ function NewsletterSection() {
 
 /* Links section */
 function LinksSection() {
-  const categories = ["Runners", "Sneakers", "Basketball", "Outdoor", "Golf", "Hiking"];
+  const categories = ["Runner", "Sneakers", "Basketball", "Outdoor", "Formal", "Casual shoes"];
   const company = ["About", "Contact", "Blogs"];
   const socials = [
-    { label: "Facebook", Icon: FacebookIcon },
-    { label: "Instagram", Icon: InstagramIcon },
-    { label: "Twitter", Icon: TwitterIcon },
-    { label: "TikTok", Icon: TikTokIcon },
+    { label: "Facebook", Icon: FacebookIcon, href: 'https://www.facebook.com/' },
+    { label: "Instagram", Icon: InstagramIcon, href: 'https://www.instagram.com/' },
+    { label: "Twitter", Icon: TwitterIcon, href: 'https://x.com/' },
+    { label: "TikTok", Icon: TikTokIcon, href: 'https://www.tiktok.com/' },
   ];
 
   return (
@@ -246,7 +246,7 @@ function LinksSection() {
             <h3 className="text-[#FFA52F] font-semibold text-lg lg:text-[22px] mb-3 lg:mb-4">Company</h3>
             <ul className="space-y-2 lg:space-y-2.5 text-[15px] lg:text-[17px]">
               {company.map(c => (
-                <li key={c}><Link to="/products" className="footer-link text-white/85">{c}</Link></li>
+                <li key={c}><Link to={`/${c.toLowerCase()}`} className="footer-link text-white/85">{c}</Link></li>
               ))}
             </ul>
           </Reveal>
@@ -255,8 +255,8 @@ function LinksSection() {
           <Reveal className="sm:col-span-2 lg:col-span-2" delay={210}>
             <h3 className="text-[#FFA52F] font-semibold text-lg lg:text-[22px] mb-3 lg:mb-4">Follow us</h3>
             <div className="flex items-center gap-5 sm:gap-6">
-              {socials.map(({ label, Icon }) => (
-                <a key={label} href="#" aria-label={label} title={label} className="social-icon text-white">
+              {socials.map(({ label, Icon, href }) => (
+                <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="social-icon text-white">
                   <Icon />
                 </a>
               ))}
