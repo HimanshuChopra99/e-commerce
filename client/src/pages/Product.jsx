@@ -108,6 +108,7 @@ export default function ProductListPage() {
     setSearchParams(next);
   };
 
+  // Used for filter/sort changes — always resets to page 1.
   const updateParam = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (value) {
@@ -115,8 +116,21 @@ export default function ProductListPage() {
     } else {
       next.delete(key);
     }
-    next.delete('page');
+    next.delete('page'); // reset pagination whenever a filter/sort changes
     setSearchParams(next);
+  };
+
+  // Used ONLY for pagination clicks — keeps all current filters intact.
+  const goToPage = (pg) => {
+    const next = new URLSearchParams(searchParams);
+    if (pg <= 1) {
+      next.delete('page');
+    } else {
+      next.set('page', String(pg));
+    }
+    setSearchParams(next);
+    // Scroll to top of the product grid smoothly.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const fetchData = useCallback(() => {
@@ -258,7 +272,7 @@ export default function ProductListPage() {
                   return (
                     <div className="flex justify-center items-center gap-2 mt-10">
                       <button
-                        onClick={() => updateParam('page', String(currentPage - 1))}
+                        onClick={() => goToPage(currentPage - 1)}
                         disabled={currentPage === 1}
                         className="px-4 py-2 rounded-[10px] text-[13px] font-bold border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
@@ -270,7 +284,7 @@ export default function ProductListPage() {
                       {pages.map((pg) => (
                         <button
                           key={pg}
-                          onClick={() => updateParam('page', String(pg))}
+                          onClick={() => goToPage(pg)}
                           className={`w-9 h-9 rounded-[10px] text-[13px] font-bold transition-colors ${
                             currentPage === pg
                               ? 'bg-[#1E1E1E] text-white'
@@ -284,7 +298,7 @@ export default function ProductListPage() {
                       {adjustedEnd < meta.totalPages && <span className="text-gray-400 text-sm">…</span>}
 
                       <button
-                        onClick={() => updateParam('page', String(currentPage + 1))}
+                        onClick={() => goToPage(currentPage + 1)}
                         disabled={currentPage === meta.totalPages}
                         className="px-4 py-2 rounded-[10px] text-[13px] font-bold border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >

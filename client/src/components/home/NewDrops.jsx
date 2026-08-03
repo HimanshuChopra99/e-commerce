@@ -69,7 +69,7 @@ export default function NewDrops() {
           {loading
             ? Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={i} />)
             : displayProducts.length > 0
-            ? displayProducts.map((product) => {
+              ? displayProducts.map((product) => {
                 const imgSrc = getImageSrc(
                   product.image || (product.images && product.images[0])
                 );
@@ -81,16 +81,16 @@ export default function NewDrops() {
                     className="flex flex-col group cursor-pointer"
                   >
                     <div className="bg-white p-1.5 rounded-[16px] sm:rounded-[32px] shadow-sm transition-all duration-300 group-hover:shadow-md relative overflow-hidden">
-                      <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] flex items-center justify-center p-6 relative overflow-hidden">
+                      <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] relative overflow-hidden">
                         <img
                           src={imgSrc}
                           alt={product.name}
-                          className="w-[100%] h-auto object-contain transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3"
+                          className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3"
                           onError={(e) => {
                             e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
                           }}
                         />
-                        <div className="absolute top-0 left-0 bg-[#4C64F4] text-white font-bold text-[11px] tracking-wider uppercase px-4 py-2 rounded-tl-[14px] rounded-br-[8px]">
+                        <div className="absolute top-0 left-0 bg-[#4C64F4] text-white font-bold text-[11px] tracking-wider uppercase px-4 py-2 rounded-tl-[14px] rounded-br-[8px] z-10">
                           New
                         </div>
                       </div>
@@ -113,7 +113,7 @@ export default function NewDrops() {
                   </Link>
                 );
               })
-            : Array.from({ length: 4 }).map((_, i) => (
+              : Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex flex-col group">
                   <div className="bg-white p-1.5 rounded-[16px] sm:rounded-[32px] shadow-sm">
                     <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] flex items-center justify-center">

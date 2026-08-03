@@ -16,14 +16,14 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <div 
+    <div
       className="flex flex-col group cursor-pointer"
       onClick={handleNavigate}
     >
       {/* Outer Card with White Frame */}
       <div className="bg-white p-1.5 rounded-[16px] sm:rounded-[32px] shadow-sm transition-all duration-300 group-hover:shadow-md relative overflow-hidden">
         {/* Inner Container */}
-        <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] flex items-center justify-center p-6 relative overflow-hidden">
+        <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] relative overflow-hidden">
           {/* Badge */}
           {product.badge && (
             <div
@@ -38,7 +38,7 @@ export default function ProductCard({ product }) {
           <img
             src={product.image}
             alt={product.name}
-            className="w-[100%] h-auto object-contain transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3"
+            className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3"
             loading="lazy"
             onError={(e) => {
               e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
