@@ -39,7 +39,10 @@ async function _doRefresh() {
   }
 }
 
-async function request(path, options = {}) {
+// `retriedAfterRefresh` prevents an endless refresh/retry loop if the server
+// still rejects a newly-issued access token (for example, after an account was
+// deleted). It is kept out of `options`, so it can never become a fetch option.
+async function request(path, options = {}, retriedAfterRefresh = false) {
   const headers = {
     'Content-Type': 'application/json',
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -52,11 +55,27 @@ async function request(path, options = {}) {
     headers,
   })
 
-  if (res.status === 401 && path !== '/auth/refresh' && path !== '/auth/login' && path !== '/auth/me') {
+  // Access tokens are intentionally memory-only. After a browser refresh the
+  // first protected request is /auth/me, so it must be allowed to use the
+  // HttpOnly refresh cookie to obtain a new access token. Excluding /auth/me
+  // here caused every page reload to look like a logout.
+  if (
+    res.status === 401 &&
+    !retriedAfterRefresh &&
+    path !== '/auth/refresh' &&
+    path !== '/auth/login'
+  ) {
     const refreshed = await silentRefresh()
     if (refreshed) {
-      return request(path, options)
+      return request(path, options, true)
     }
+  }
+
+  // Only notify the application after a refresh attempt has failed (or after
+  // the newly refreshed token was rejected). A normal initial /auth/me request
+  // can therefore restore the session from the HttpOnly refresh cookie after a
+  // page reload instead of treating the user as logged out.
+  if (res.status === 401 && path !== '/auth/refresh' && path !== '/auth/login') {
     window.dispatchEvent(new CustomEvent('kick:auth:expired'))
     throw new Error('Your session has expired. Please sign in again.')
   }
