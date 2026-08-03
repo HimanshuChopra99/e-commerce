@@ -29,11 +29,16 @@ router.get('/health', async (_req, res) => {
     database = 'fallback'
   }
 
-  const healthy = true
-  res.status(200).json({
-    success: true,
+  // This endpoint is a readiness check, not just a process liveness check.
+  // Returning 200 while the database is unavailable keeps a broken instance
+  // in a load balancer and can lead to false checkout success/fallback data.
+  // Local/demo mode intentionally supports the in-memory catalogue; production
+  // must never advertise a database-fallback process as ready.
+  const healthy = database === 'up' || !env.isProd
+  res.status(healthy ? 200 : 503).json({
+    success: healthy,
     data: {
-      status: 'ok',
+      status: healthy ? 'ok' : 'unavailable',
       database,
       stripe: env.stripe.enabled ? 'configured' : 'disabled',
       uptime: Math.floor(process.uptime()),
