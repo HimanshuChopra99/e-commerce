@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart, selectCartItems } from "../store/cartSlice";
+import { addToCart, removeFromCart, selectCartItems } from "../store/cartSlice";
 import { toggleWishlist, selectIsWishlisted } from "../store/wishlistSlice";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { ProductDetails } from "../components/product/ProductDetails";
@@ -240,6 +240,14 @@ export default function ProductView() {
     variant.color === selectedColor?.name && String(variant.size) === String(size.value) && Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)
   );
 
+  const selectedVariant = product.variants?.find((v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name);
+  const selectedVariantInCart = Boolean(selectedVariant?.id && cartItems.some((item) => item.variantId === selectedVariant.id));
+  const handleRemoveFromCart = () => {
+    if (!selectedVariant?.id) return;
+    dispatch(removeFromCart(selectedVariant.id));
+    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} removed from your cart.` }));
+  };
+
   const handleAddToCart = () => {
     const variant = product.variants?.find(
       (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
@@ -324,6 +332,8 @@ export default function ProductView() {
               onSelectSize={(size) => isSizeAvailable(size) && setSelectedSize({ ...size, available: true, inStock: true })}
               isSizeAvailable={isSizeAvailable}
               onAddToCart={handleAddToCart}
+              isInCart={selectedVariantInCart}
+              onRemoveFromCart={handleRemoveFromCart}
               onBuyNow={handleBuyNow}
               onToggleWishlist={handleToggleWishlist}
               onOpenSizeChart={() => setSizeChartOpen(true)}
