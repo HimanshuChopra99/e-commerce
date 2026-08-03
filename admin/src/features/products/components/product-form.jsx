@@ -129,8 +129,8 @@ function buildFormValues(row) {
   const images = Array.isArray(row.images) && row.images.length > 0
     ? row.images
     : row.image
-    ? [row.image]
-    : []
+      ? [row.image]
+      : []
 
   const colors = Array.isArray(row.colors) ? row.colors : []
   const tags = Array.isArray(row.tags) ? row.tags : []
@@ -181,11 +181,11 @@ export function ProductForm({ currentRow }) {
   }, [currentRow, form])
 
   const watchedVariants = form.watch('variants') ?? []
-  const watchedImages   = form.watch('images') ?? []
-  const watchedTags     = form.watch('tags') ?? []
-  const watchedColors   = form.watch('colors') ?? []
-  const watchedPrice    = form.watch('price')
-  const watchedCost     = form.watch('costPerItem')
+  const watchedImages = form.watch('images') ?? []
+  const watchedTags = form.watch('tags') ?? []
+  const watchedColors = form.watch('colors') ?? []
+  const watchedPrice = form.watch('price')
+  const watchedCost = form.watch('costPerItem')
 
   const totalStock = watchedVariants.reduce(
     (sum, v) => sum + (Number(v?.stock) || 0),

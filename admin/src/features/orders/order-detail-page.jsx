@@ -213,11 +213,20 @@ export function OrderDetailPage() {
 
     async function loadOrderDetail() {
       try {
-        let res = await fetch(`/api/admin/orders/${orderId}`, {
-          headers: { 'Content-Type': 'application/json' },
+        const token = localStorage.getItem('kick_admin_access_token')
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        }
+        const apiBase = import.meta.env.VITE_API_URL || '/api'
+
+        let res = await fetch(`${apiBase}/admin/orders/${orderId}`, {
+          headers,
         })
         if (!res.ok) {
-          res = await fetch(`/api/orders/${orderId}`)
+          res = await fetch(`${apiBase}/orders/${orderId}`, {
+            headers,
+          })
         }
         if (res.ok) {
           const data = await res.json()

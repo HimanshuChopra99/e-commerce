@@ -75,7 +75,7 @@ export async function findByPublicId(publicId, { includeDeleted = false } = {}) 
       [publicId]
     )
     if (row) return mapProduct(row)
-  } catch {}
+  } catch { }
 
   // Fallback to memory store if DB fails
   return memoryStore.getProductByPublicId(publicId)
@@ -85,7 +85,7 @@ export async function findBySlug(slug) {
   try {
     const row = await queryOne(`${BASE} WHERE p.slug = ? AND p.deleted_at IS NULL LIMIT 1`, [slug])
     if (row) return mapProduct(row)
-  } catch {}
+  } catch { }
 
   // Fallback to memory store if DB fails
   return memoryStore.getProductBySlug(slug)
@@ -95,7 +95,7 @@ export async function findByInternalId(id, conn = pool) {
   try {
     const [rows] = await conn.query(`${BASE} WHERE p.id = ? LIMIT 1`, [id])
     if (rows && rows[0]) return mapProduct(rows[0])
-  } catch {}
+  } catch { }
 
   // Fallback to memory store
   return memoryStore.products.find((p) => p.internalId === id || p.id === id) || null
@@ -107,7 +107,7 @@ export async function slugExists(slug, ignoreInternalId = null) {
       ? await queryOne('SELECT 1 AS x FROM products WHERE slug = ? AND id <> ? LIMIT 1', [slug, ignoreInternalId])
       : await queryOne('SELECT 1 AS x FROM products WHERE slug = ? LIMIT 1', [slug])
     if (row) return Boolean(row)
-  } catch {}
+  } catch { }
 
   // Check memory store
   return memoryStore.products.some((p) => p.slug === slug)
@@ -119,7 +119,7 @@ export async function skuExists(sku, ignoreInternalId = null) {
       ? await queryOne('SELECT 1 AS x FROM products WHERE sku = ? AND id <> ? LIMIT 1', [sku, ignoreInternalId])
       : await queryOne('SELECT 1 AS x FROM products WHERE sku = ? LIMIT 1', [sku])
     if (row) return Boolean(row)
-  } catch {}
+  } catch { }
 
   return memoryStore.products.some((p) => p.sku === sku)
 }
@@ -217,7 +217,7 @@ export async function findAll(filters = {}) {
       )
       return { items: rows.map(mapProduct), total: Number(countRow?.total ?? 0) }
     }
-  } catch {}
+  } catch { }
 
   // Fallback to memory store
   return memoryStore.getProducts(filters)

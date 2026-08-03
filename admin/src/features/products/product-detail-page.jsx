@@ -128,7 +128,15 @@ export function ProductDetailPage() {
     let active = true
     async function loadProductOrders() {
       try {
-        const res = await fetch(`/api/admin/products/${productId}/orders`)
+        const token = localStorage.getItem('kick_admin_access_token')
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        }
+        const apiBase = import.meta.env.VITE_API_URL || '/api'
+        const res = await fetch(`${apiBase}/admin/products/${productId}/orders`, {
+          headers,
+        })
         if (res.ok) {
           const data = await res.json()
           const list = data.orders || data.data || data

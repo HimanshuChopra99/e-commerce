@@ -120,7 +120,7 @@ export default function ProductView() {
         const rawImages = (item.images && item.images.length > 0)
           ? item.images
           : [item.image || "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800"];
-        
+
         const imgList = rawImages.map(getImageSrc);
 
         const colorImageMap = {};
@@ -189,7 +189,7 @@ export default function ProductView() {
               setRelatedList(formattedRel);
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       })
       .catch((err) => {
         setError(err.message || "Failed to load product");

@@ -343,7 +343,7 @@ export async function bulkStatus(productPublicIds, status) {
   if (isDatabaseConnected()) {
     try {
       return await productModel.bulkSetStatus(ids, status)
-    } catch {}
+    } catch { }
   }
   let count = 0
   for (const id of productPublicIds) {
@@ -357,7 +357,7 @@ export async function bulkRemove(productPublicIds) {
   if (isDatabaseConnected()) {
     try {
       return await productModel.bulkSoftDelete(ids)
-    } catch {}
+    } catch { }
   }
   let count = 0
   for (const id of productPublicIds) {
@@ -401,7 +401,7 @@ async function resolveInternalIds(publicIds) {
         publicIds
       )
       return rows.map((r) => r.id)
-    } catch {}
+    } catch { }
   }
   return publicIds
 }

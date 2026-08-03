@@ -383,12 +383,24 @@ export async function getOrder(orderPublicId, requester) {
 
 export async function listForUser(userId, { limit, offset }) {
   const { items, total } = await orderModel.findAll({ userId, limit, offset })
-  return { items: items.map(orderModel.toPublicOrder), total }
+  const ordersWithItems = await Promise.all(
+    items.map(async (order) => {
+      const orderItems = await orderModel.findItems(order.internalId)
+      return { ...order, items: orderItems }
+    })
+  )
+  return { items: ordersWithItems.map(orderModel.toPublicOrder), total }
 }
 
 export async function listForAdmin(filters) {
   const { items, total } = await orderModel.findAll(filters)
-  return { items: items.map(({ internalId: _i, ...o }) => o), total }
+  const ordersWithItems = await Promise.all(
+    items.map(async (order) => {
+      const orderItems = await orderModel.findItems(order.internalId)
+      return { ...order, items: orderItems }
+    })
+  )
+  return { items: ordersWithItems.map(({ internalId: _i, ...o }) => o), total }
 }
 
 /**
