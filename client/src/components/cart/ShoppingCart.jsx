@@ -115,8 +115,25 @@ export default function ShoppingCart() {
       }
 
       const result = await dispatch(placeOrder(orderData)).unwrap()
+      const order = result.order || result
+
+      // A card order is only pending at this point. Preserve the cart until
+      // Stripe confirms payment and the backend webhook records it as paid.
+      if (paymentMethod !== 'cod') {
+        if (!result.payment?.clientSecret || !result.payment?.publishableKey) {
+          throw new Error(
+            result.payment?.error ||
+            'Secure payment could not be started. Please check Stripe configuration and try again.'
+          )
+        }
+        navigate(`/checkout/payment?order=${encodeURIComponent(order.id)}`, {
+          state: { order, payment: result.payment },
+        })
+        return
+      }
+
       dispatch(clearCart())
-      navigate('/orders', { state: { justPlaced: result.order || result } })
+      navigate('/orders', { state: { justPlaced: order } })
     } catch (err) {
       setCheckoutError(err.message || err || 'Failed to place order')
     } finally {
@@ -168,8 +185,25 @@ export default function ShoppingCart() {
       }
 
       const result = await dispatch(placeOrder(orderData)).unwrap()
+      const order = result.order || result
+
+      // A card order is only pending at this point. Preserve the cart until
+      // Stripe confirms payment and the backend webhook records it as paid.
+      if (paymentMethod !== 'cod') {
+        if (!result.payment?.clientSecret || !result.payment?.publishableKey) {
+          throw new Error(
+            result.payment?.error ||
+            'Secure payment could not be started. Please check Stripe configuration and try again.'
+          )
+        }
+        navigate(`/checkout/payment?order=${encodeURIComponent(order.id)}`, {
+          state: { order, payment: result.payment },
+        })
+        return
+      }
+
       dispatch(clearCart())
-      navigate('/orders', { state: { justPlaced: result.order || result } })
+      navigate('/orders', { state: { justPlaced: order } })
     } catch (err) {
       setCheckoutError(err.message || err || 'Failed to place order')
     } finally {

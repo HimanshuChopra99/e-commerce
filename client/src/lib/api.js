@@ -135,5 +135,7 @@ export const ordersApi = {
   create: (body) => post('/orders', body),
   listMine: () => get('/orders'),
   getOne: (id) => get(`/orders/${id}`),
+  paymentStatus: (id) => get(`/orders/${id}/payment-status`),
+  pay: (id) => post(`/orders/${id}/pay`),
   cancel: (id) => post(`/orders/${id}/cancel`),
 }
