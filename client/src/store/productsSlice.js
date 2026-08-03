@@ -1,10 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { productsApi } from '../lib/api'
 
+const cacheKey = (params = {}) => JSON.stringify(Object.keys(params).sort().reduce((out, key) => ({ ...out, [key]: params[key] }), {}))
+
 export const fetchProducts = createAsyncThunk('products/list', async (params, { rejectWithValue }) => {
   try {
     const res = await productsApi.list(params)
-    return res
+    return { ...res, cacheKey: cacheKey(params) }
   } catch (err) {
     return rejectWithValue(err.message || 'Failed to fetch products')
   }
@@ -44,6 +46,8 @@ const productsSlice = createSlice({
   name: 'products',
   initialState: {
     items: [],
+    // Response cache is keyed by the exact catalogue filters/page.
+    catalogCache: {},
     featured: [],
     current: null,
     filters: { sizes: [], genders: [], colors: [] },
@@ -66,6 +70,7 @@ const productsSlice = createSlice({
         s.loading = false
         s.items = a.payload.data || []
         s.meta = a.payload.meta || { page: 1, limit: 9, total: 0, totalPages: 1 }
+        s.catalogCache[a.payload.cacheKey] = { items: s.items, meta: s.meta }
       })
       .addCase(fetchProducts.rejected, (s, a) => {
         s.loading = false

@@ -104,7 +104,7 @@ function App() {
         />
 
         {/* ===== 5. Toast Notification ===== */}
-        <Toast isOpen={!!currentToast} message={currentToast?.message || ""} />
+        <Toast isOpen={!!currentToast} message={currentToast?.message || ""} onDismiss={() => currentToast && setToastQueue((q) => q.filter((t) => t.id !== currentToast.id))} />
 
         {/* ===== Main Page Sections ===== */}
         <main className="flex-1 pt-20 md:pt-24 w-full">
