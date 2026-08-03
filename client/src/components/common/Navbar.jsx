@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { logoutUser } from "../../store/authSlice";
-import { ChevronDown, Search, User, ShoppingBag, Menu, ArrowRight, LogOut, Package } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { ChevronDown, Search, User, ShoppingCart, Menu, ArrowRight } from "lucide-react";
 
 export default function Navbar({
   onOpenSearch,
@@ -11,8 +10,6 @@ export default function Navbar({
   onSelectLink,
   cartCount = 0,
 }) {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
   const [scrolled, setScrolled] = useState(false);
@@ -20,11 +17,6 @@ export default function Navbar({
   const [lastScrollY, setLastScrollY] = useState(0);
   const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownTimerRef = useRef(null);
-
-  const handleLogout = async () => {
-    await dispatch(logoutUser());
-    navigate('/login');
-  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -314,48 +306,29 @@ export default function Navbar({
             <Search className="w-[22px] h-[22px]" />
           </button>
 
-          {user ? (
-            <div className="flex items-center gap-2 pl-1">
-              <Link
-                to="/orders"
-                title="My Orders"
-                className="flex items-center gap-1 text-xs font-bold text-gray-800 hover:text-black bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-full transition"
-              >
-                <Package className="w-4 h-4" />
-                <span className="hidden sm:inline">Orders</span>
-              </Link>
-
-              <button
-                onClick={handleLogout}
-                title="Log Out"
-                className="p-1.5 text-gray-500 hover:text-red-600 transition"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              aria-label="Account"
-              className="icon-btn flex"
-            >
-              <User className="w-[22px] h-[22px]" />
-            </Link>
-          )}
+          <Link
+            to={user ? "/profile" : "/login"}
+            aria-label={user ? "My profile" : "Sign in"}
+            title={user ? "My profile" : "Sign in"}
+            className="icon-btn flex"
+          >
+            <User className="w-[22px] h-[22px]" />
+          </Link>
 
           <Link
             id="cart-btn"
             to="/cart"
             aria-label="Cart"
-            className="relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#FFA52F] hover:bg-[#f09a27] transition-colors active:scale-95 ml-1 sm:ml-2"
+            className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#FFA52F] hover:bg-[#f09a27] transition-colors active:scale-95 ml-1 sm:ml-2"
           >
-            <span
+            <ShoppingCart className="w-5 h-5 text-[#232321]" strokeWidth={2.4} />
+            {cartCount > 0 && <span
               id="cart-count"
               key={cartCount}
-              className="text-[11px] sm:text-[12px] font-bold text-black leading-none badge-pop"
+              className="absolute -right-1.5 -top-1.5 min-w-5 h-5 px-1 rounded-full bg-[#4A69E2] text-[10px] font-black text-white leading-5 text-center border-2 border-white badge-pop"
             >
-              {cartCount}
-            </span>
+              {cartCount > 99 ? '99+' : cartCount}
+            </span>}
           </Link>
         </div>
       </nav>

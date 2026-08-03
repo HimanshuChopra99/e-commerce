@@ -17,6 +17,9 @@ export const fetchFeaturedProducts = createAsyncThunk('products/featured', async
   } catch (err) {
     return rejectWithValue(err.message || 'Failed to fetch featured products')
   }
+}, {
+  // Keep catalogue data in Redux during the session rather than re-fetching on every visit.
+  condition: (_, { getState }) => getState().products.featured.length === 0,
 })
 
 export const fetchProductBySlug = createAsyncThunk('products/getBySlug', async (slug, { rejectWithValue }) => {

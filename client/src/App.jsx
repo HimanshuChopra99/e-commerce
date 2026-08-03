@@ -18,6 +18,8 @@ import Cart from './pages/Cart';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
+import Profile from './pages/Profile';
+import Company from './pages/Company';
 
 function App() {
   const dispatch = useDispatch();
@@ -112,6 +114,10 @@ function App() {
             <Route path="/product/:id" element={<ProductView />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/orders" element={<Orders />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/about" element={<Company page="about" />} />
+            <Route path="/contact" element={<Company page="contact" />} />
+            <Route path="/blogs" element={<Company page="blogs" />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
           </Routes>

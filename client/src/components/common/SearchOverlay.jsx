@@ -37,14 +37,10 @@ export default function SearchOverlay({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!query.trim()) {
-      setHits([]);
-      return;
-    }
-
+    // Opening search shows a small discovery set; typing narrows it on the server.
     const timer = setTimeout(() => {
       setLoading(true);
-      fetch(`${import.meta.env.VITE_API_URL || '/api'}/products?q=${encodeURIComponent(query.trim())}&limit=8`)
+      fetch(`${import.meta.env.VITE_API_URL || '/api'}/products?${query.trim() ? `q=${encodeURIComponent(query.trim())}&` : ''}limit=8&sort=popular`)
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data.data)) {
@@ -144,12 +140,7 @@ export default function SearchOverlay({
               <p className="col-span-full text-center text-neutral-400 font-medium py-10">
                 No results found for “{query}”. Try another term.
               </p>
-            ) : !query.trim() ? (
-              <p className="col-span-full text-center text-neutral-400 font-medium py-10">
-                Type above to search live products from the database.
-              </p>
-            ) : (
-              hits.map((p) => {
+            ) : hits.map((p) => {
                 const imgSrc = getImageSrc(p.image || (p.images && p.images[0]));
                 return (
                   <div
@@ -180,8 +171,7 @@ export default function SearchOverlay({
                     </div>
                   </div>
                 );
-              })
-            )}
+              })}
           </div>
         </div>
       </div>

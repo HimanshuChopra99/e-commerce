@@ -209,7 +209,7 @@ function NewsletterSection() {
 
 /* Links section */
 function LinksSection() {
-  const categories = ["Runners", "Sneakers", "Basketball", "Outdoor", "Golf", "Hiking"];
+  const categories = ["Runner", "Sneakers", "Basketball", "Outdoor", "Formal", "Casual shoes"];
   const company = ["About", "Contact", "Blogs"];
   const socials = [
     { label: "Facebook", Icon: FacebookIcon },
@@ -246,7 +246,7 @@ function LinksSection() {
             <h3 className="text-[#FFA52F] font-semibold text-lg lg:text-[22px] mb-3 lg:mb-4">Company</h3>
             <ul className="space-y-2 lg:space-y-2.5 text-[15px] lg:text-[17px]">
               {company.map(c => (
-                <li key={c}><Link to="/products" className="footer-link text-white/85">{c}</Link></li>
+                <li key={c}><Link to={`/${c.toLowerCase()}`} className="footer-link text-white/85">{c}</Link></li>
               ))}
             </ul>
           </Reveal>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { X, ChevronDown } from "lucide-react";
 
 export default function MobileDrawer({
@@ -10,18 +10,23 @@ export default function MobileDrawer({
   onSelectLink,
 }) {
   const [openAcc, setOpenAcc] = useState(null);
+  const navigate = useNavigate();
 
   const toggleAcc = (acc) => {
     setOpenAcc(openAcc === acc ? null : acc);
   };
 
   const handleSelect = (label) => {
-    if (onSelectLink) {
-      onSelectLink(label);
-    }
-    if (onClose) {
-      onClose();
-    }
+    if (onSelectLink) onSelectLink(label);
+    // Menu labels map to the same catalogue routes as desktop navigation.
+    if (label === 'All Collections') navigate('/products');
+    else if (label === 'About KICKS') navigate('/about');
+    else if (label.includes(' › ')) {
+      const [gender, category] = label.split(' › ');
+      navigate(`/products?category=${encodeURIComponent(category.replace('Sale — up to 40%', 'sale').toLowerCase())}&gender=${gender.toLowerCase()}`);
+    } else if (label === 'Sign In Button Clicked') navigate('/login');
+    else if (label === 'Register Button Clicked') navigate('/signup');
+    if (onClose) onClose();
   };
 
   return (

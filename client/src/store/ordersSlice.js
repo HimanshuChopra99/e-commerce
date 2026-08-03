@@ -17,6 +17,11 @@ export const fetchMyOrders = createAsyncThunk('orders/listMine', async (_, { rej
   } catch (err) {
     return rejectWithValue(err.message || 'Failed to fetch orders')
   }
+}, {
+  condition: (_, { getState }) => {
+    const state = getState().orders
+    return !state.loading && !state.loaded
+  },
 })
 
 export const quoteOrder = createAsyncThunk('orders/quote', async (body, { rejectWithValue }) => {
@@ -30,7 +35,7 @@ export const quoteOrder = createAsyncThunk('orders/quote', async (body, { reject
 
 const ordersSlice = createSlice({
   name: 'orders',
-  initialState: { items: [], current: null, quote: null, loading: false, error: null },
+  initialState: { items: [], current: null, quote: null, loading: false, error: null, loaded: false },
   reducers: {
     clearCurrentOrder: (state) => {
       state.current = null
@@ -59,6 +64,7 @@ const ordersSlice = createSlice({
       .addCase(fetchMyOrders.fulfilled, (s, a) => {
         s.loading = false
         s.items = a.payload || []
+        s.loaded = true
       })
       .addCase(fetchMyOrders.rejected, (s, a) => {
         s.loading = false

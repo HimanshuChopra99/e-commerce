@@ -341,6 +341,7 @@ export default function ProductView() {
             onQuickAdd={(item) => {
               navigate(`/product/${item.slug || item.id}`);
             }}
+            onViewAll={() => navigate('/products')}
           />
         )}
       </main>
