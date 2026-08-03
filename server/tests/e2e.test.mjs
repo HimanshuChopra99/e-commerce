@@ -31,7 +31,8 @@ function section(title) {
 const cookieJar = new Map()
 
 async function api(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...options.headers }
+  const headers = { ...options.headers }
+  if (!options.formData) headers['Content-Type'] = 'application/json'
   if (options.token) headers.Authorization = `Bearer ${options.token}`
   if (cookieJar.size && options.withCookies) {
     headers.Cookie = [...cookieJar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
@@ -40,7 +41,7 @@ async function api(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method: options.method ?? 'GET',
     headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: options.formData ?? (options.body ? JSON.stringify(options.body) : undefined),
   })
 
   const setCookie = res.headers.get('set-cookie')
@@ -409,6 +410,21 @@ let adminProductId = null
   const categories = await api('/api/admin/categories', { token: adminToken })
   const categoryId = categories.body?.data?.[0]?.id
 
+  const imageForm = new FormData()
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64'
+  )
+  imageForm.append('images', new Blob([png], { type: 'image/png' }), 'black.png')
+  imageForm.append('images', new Blob([png], { type: 'image/png' }), 'white.png')
+  const uploaded = await api('/api/admin/products/image-uploads', {
+    method: 'POST', token: adminToken, formData: imageForm,
+  })
+  const uploadedImages = uploaded.body?.data?.images ?? []
+  check('colour image upload persists both files',
+    uploaded.status === 201 && uploadedImages.length === 2 &&
+    uploadedImages.every((image) => image.startsWith('/uploads/')))
+
   const created = await api('/api/admin/products', {
     method: 'POST', token: adminToken,
     body: {
@@ -419,13 +435,26 @@ let adminProductId = null
       status: 'active', featured: false,
       colors: ['Black', 'White'],
       variants: [{ size: '8', stock: 5 }, { size: '9', stock: 3 }],
-      images: ['/products/running-01.png'], tags: ['test'],
+      colorImages: [
+        { color: 'Black', images: [uploadedImages[0]] },
+        { color: 'White', images: [uploadedImages[1]] },
+      ],
+      tags: ['test'],
     },
   })
   check('POST /admin/products creates a product', created.status === 201, `status ${created.status}`)
   adminProductId = created.body?.data?.id
   check('total_stock is computed from variants (2 colours x 8 = 16)',
     created.body?.data?.totalStock === 16, `got ${created.body?.data?.totalStock}`)
+  check('create response keeps a separate gallery for each colour',
+    created.body?.data?.colorImages?.length === 2 &&
+    created.body.data.colorImages[0].images[0] !== created.body.data.colorImages[1].images[0])
+
+  const publicColourProduct = await api(`/api/products/${created.body?.data?.slug}`)
+  check('storefront detail returns the exact admin colour-image mapping',
+    publicColourProduct.status === 200 &&
+    publicColourProduct.body?.data?.colorImages?.[0]?.images?.[0] === uploadedImages[0] &&
+    publicColourProduct.body?.data?.colorImages?.[1]?.images?.[0] === uploadedImages[1])
 
   const dupeSku = await api('/api/admin/products', {
     method: 'POST', token: adminToken,

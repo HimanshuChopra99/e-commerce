@@ -25,15 +25,25 @@ const storage = multer.diskStorage({
   },
 })
 
+const fileFilter = (_req, file, cb) => {
+  if (!ALLOWED_MIME.has(file.mimetype)) {
+    return cb(ApiError.badRequest('Only JPEG, PNG, WebP or AVIF images are allowed.'))
+  }
+  cb(null, true)
+}
+
 export const upload = multer({
   storage,
   limits: { fileSize: env.upload.maxBytes, files: 8 },
-  fileFilter: (_req, file, cb) => {
-    if (!ALLOWED_MIME.has(file.mimetype)) {
-      return cb(ApiError.badRequest('Only JPEG, PNG, WebP or AVIF images are allowed.'))
-    }
-    cb(null, true)
-  },
+  fileFilter,
+})
+
+// A product may have up to eight images per colour and 48 in total. Multer's
+// file-size limit applies to each file independently.
+export const productImageUpload = multer({
+  storage,
+  limits: { fileSize: env.upload.maxBytes, files: 48 },
+  fileFilter,
 })
 
 export { UPLOAD_DIR }

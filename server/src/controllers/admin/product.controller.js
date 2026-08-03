@@ -3,6 +3,7 @@ import { ok, created, noContent, paginated } from '../../utils/api-response.js'
 import { getPagination, buildMeta, toCsv } from '../../utils/helpers.js'
 import * as productService from '../../services/product.service.js'
 import * as productModel from '../../models/product.model.js'
+import { ApiError } from '../../utils/api-error.js'
 
 export const list = asyncHandler(async (req, res) => {
   const { page, limit, offset } = getPagination(req.query)
@@ -69,15 +70,24 @@ export const bulkRemove = asyncHandler(async (req, res) => {
   ok(res, { deleted })
 })
 
-/** POST /api/admin/products/:id/images — multipart upload. */
+/** POST /api/admin/products/image-uploads — persist assets before product save. */
+export const uploadImageAssets = asyncHandler(async (req, res) => {
+  const urls = (req.files ?? []).map((file) => `/uploads/${file.filename}`)
+  if (!urls.length) throw ApiError.badRequest('Select at least one image to upload.')
+  created(res, { images: urls })
+})
+
+/** POST /api/admin/products/:id/images — backwards-compatible scoped upload. */
 export const uploadImages = asyncHandler(async (req, res) => {
-  const urls = (req.files ?? []).map((f) => `/uploads/${f.filename}`)
-  ok(res, { images: await productService.addImages(req.params.id, urls) })
+  const urls = (req.files ?? []).map((file) => `/uploads/${file.filename}`)
+  if (!urls.length) throw ApiError.badRequest('Select at least one image to upload.')
+  ok(res, await productService.addImages(req.params.id, urls, req.body?.color))
 })
 
 export const deleteImage = asyncHandler(async (req, res) => {
   const url = req.query.url ?? req.body?.url
-  ok(res, { images: await productService.removeImage(req.params.id, url) })
+  if (!url) throw ApiError.badRequest('An image URL is required.')
+  ok(res, await productService.removeImage(req.params.id, url, req.query.color ?? req.body?.color))
 })
 
 export const exportCsv = asyncHandler(async (req, res) => {

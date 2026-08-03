@@ -174,7 +174,7 @@ export async function lockForUpdate(variantPublicIds, conn) {
         `SELECT v.id, v.public_id, v.product_id, v.size, v.color, v.sku,
                 v.stock, v.reserved, v.is_active,
                 p.name AS product_name, p.slug AS product_slug, p.sku AS product_sku,
-                p.price, p.status AS product_status, p.images, p.deleted_at
+                p.price, p.status AS product_status, p.images, p.color_images, p.deleted_at
          FROM product_variants v
          JOIN products p ON p.id = v.product_id
          WHERE v.public_id IN (${placeholders})

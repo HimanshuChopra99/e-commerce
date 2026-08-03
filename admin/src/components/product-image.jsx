@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils'
  * so a product without a photo never renders a broken image.
  */
 export function ProductImage({ src, alt, className, iconClassName }) {
-  const [failed, setFailed] = useState(false)
-  const showFallback = !src || failed
+  const [failedSrc, setFailedSrc] = useState(null)
+  const showFallback = !src || failedSrc === src
   return (
     <div
       className={cn(
@@ -26,7 +26,7 @@ export function ProductImage({ src, alt, className, iconClassName }) {
           src={src}
           alt={alt}
           loading='lazy'
-          onError={() => setFailed(true)}
+          onError={() => setFailedSrc(src)}
           className='h-full w-full object-cover'
         />
       )}

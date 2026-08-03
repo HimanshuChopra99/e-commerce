@@ -109,7 +109,11 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
       let img = item.image ?? item.productImage ?? item.product_image
       if (Array.isArray(img)) img = img[0]
       if (typeof img === 'string' && img.startsWith('[')) {
-        try { img = JSON.parse(img)[0] } catch {}
+        try {
+          img = JSON.parse(img)[0]
+        } catch {
+          // Keep the original value when a legacy image field is malformed.
+        }
       }
 
       return {
@@ -209,7 +213,6 @@ export function OrderDetailPage() {
   // Fetch full order detail (including order_items) from backend API endpoint
   useEffect(() => {
     let isMounted = true
-    setLoading(true)
 
     async function loadOrderDetail() {
       try {

@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS products (
   rating_count     INT NOT NULL DEFAULT 0,
 
   images           JSON DEFAULT NULL,
+  color_images     JSON DEFAULT NULL,
   tags             JSON DEFAULT NULL,
 
   deleted_at       TIMESTAMP NULL DEFAULT NULL,

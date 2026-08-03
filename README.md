@@ -26,6 +26,7 @@ Change these credentials and all JWT secrets before deploying.
 npm ci --prefix client && npm run build --prefix client
 npm ci --prefix admin && npm run build --prefix admin
 npm ci --prefix server
+NODE_ENV=production npm run db:migrate --prefix server
 NODE_ENV=production npm start --prefix server
 ```
 

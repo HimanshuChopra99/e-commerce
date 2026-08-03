@@ -18,8 +18,9 @@ export function getAccessToken() {
 }
 
 async function request(path, options = {}) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
   const headers = {
-    'Content-Type': 'application/json',
+    ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...options.headers,
   }
@@ -78,6 +79,7 @@ const get = (path, params) => {
 }
 
 const post = (path, body) => request(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined })
+const postForm = (path, body) => request(path, { method: 'POST', body })
 const patch = (path, body) => request(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined })
 const del = (path) => request(path, { method: 'DELETE' })
 
@@ -99,6 +101,11 @@ export const adminProductsApi = {
   getOne: (id) => get(`/admin/products/${id}`),
   create: (body) => post('/admin/products', body),
   update: (id, body) => patch(`/admin/products/${id}`, body),
+  uploadImages: (files) => {
+    const body = new FormData()
+    files.forEach((file) => body.append('images', file))
+    return postForm('/admin/products/image-uploads', body)
+  },
   delete: (id) => del(`/admin/products/${id}`),
   bulkStatus: (productIds, status) => post('/admin/products/bulk-status', { productIds, status }),
   bulkDelete: (productIds) => post('/admin/products/bulk-delete', { productIds }),

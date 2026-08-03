@@ -8,6 +8,35 @@ import * as orderModel from '../models/order.model.js'
 import { env } from '../config/env.js'
 import { memoryStore } from './memory-store.js'
 
+const MAX_COLOR_IMAGES = 48
+
+/**
+ * Keep media in one canonical shape. `colorImages` drives the product page;
+ * `images` is a flattened compatibility gallery for catalogue cards, order
+ * snapshots, and products created before colour galleries existed.
+ */
+function normalizeColorImages(entries = []) {
+  if (!Array.isArray(entries)) return []
+  return entries.map((entry) => ({
+    color: String(entry.color).trim(),
+    images: [...new Set((entry.images ?? []).map((image) => String(image).trim()).filter(Boolean))],
+  }))
+}
+
+function flattenColorImages(entries) {
+  return [...new Set(entries.flatMap((entry) => entry.images))].slice(0, MAX_COLOR_IMAGES)
+}
+
+function canonicalMedia(input) {
+  if (input.colorImages === undefined) return input
+  const colorImages = normalizeColorImages(input.colorImages)
+  return {
+    ...input,
+    colorImages,
+    images: colorImages.length ? flattenColorImages(colorImages) : (input.images ?? []),
+  }
+}
+
 /* ----------------------------- Storefront ------------------------------ */
 
 export async function listPublic(filters) {
@@ -69,6 +98,7 @@ export async function getForAdmin(productPublicId) {
   return {
     ...product,
     internalId: undefined,
+    colors: [...new Set(variants.map((variant) => variant.color))],
     variants: variants.map(({ internalId: _i, productId: _p, ...v }) => v),
     sales,
     recentOrders: recentOrders.map(orderModel.toPublicOrder),
@@ -78,7 +108,9 @@ export async function getForAdmin(productPublicId) {
 /**
  * Creates a product plus one variant per colour × size.
  */
-export async function create(input) {
+export async function create(rawInput) {
+  const input = canonicalMedia(rawInput)
+
   if (await productModel.skuExists(input.sku)) {
     throw ApiError.conflict(`SKU "${input.sku}" is already in use.`)
   }
@@ -116,6 +148,7 @@ export async function create(input) {
             status: totalStock === 0 && input.status === 'active' ? 'out_of_stock' : input.status,
             featured: input.featured,
             images: input.images ?? [],
+            colorImages: input.colorImages ?? [],
             tags: input.tags ?? [],
           },
           conn
@@ -163,6 +196,7 @@ export async function create(input) {
     featured: input.featured,
     categoryId: input.categoryId,
     images: input.images ?? [],
+    colorImages: input.colorImages ?? [],
     tags: input.tags ?? [],
     colors: input.colors,
     variants: input.colors.flatMap((color) =>
@@ -185,9 +219,25 @@ export async function create(input) {
   return newProduct
 }
 
-export async function update(productPublicId, input) {
+export async function update(productPublicId, rawInput) {
+  const input = canonicalMedia(rawInput)
   const product = await productModel.findByPublicId(productPublicId)
   if (!product) throw ApiError.notFound('Product not found.')
+
+  // PATCH requests may update galleries without resending `colors`. Validate
+  // those assignments against the product's actual variants as a second line
+  // of defence after the request schema.
+  if (input.colorImages?.length && !input.colors) {
+    const existingVariants = await variantModel.findByProduct(product.internalId || product.id)
+    const productColors = [...new Set(existingVariants.map((variant) => variant.color))]
+    const assigned = new Set(input.colorImages.map((entry) => entry.color.toLocaleLowerCase()))
+    const invalid = input.colorImages.find(
+      (entry) => !productColors.some((color) => color.toLocaleLowerCase() === entry.color.toLocaleLowerCase())
+    )
+    const missing = productColors.find((color) => !assigned.has(color.toLocaleLowerCase()))
+    if (invalid) throw ApiError.badRequest(`Colour "${invalid.color}" is not available on this product.`)
+    if (missing) throw ApiError.badRequest(`Add at least one image for ${missing}.`)
+  }
 
   if (input.sku && input.sku !== product.sku) {
     if (await productModel.skuExists(input.sku, product.internalId)) {
@@ -227,8 +277,9 @@ export async function update(productPublicId, input) {
           }
 
           const colors = input.colors ?? [...new Set(existing.map((v) => v.color))]
-          const variants = input.variants
-            ?? existing.map((v) => ({ size: v.size, stock: v.stock }))
+          const variants = input.variants ?? [
+            ...new Map(existing.map((v) => [String(v.size), { size: v.size, stock: v.stock }])).values(),
+          ]
           const sku = (input.sku ?? product.sku).toUpperCase()
 
           await variantModel.deleteByProduct(product.internalId, conn)
@@ -260,9 +311,44 @@ export async function update(productPublicId, input) {
     }
   }
 
-  // Memory store fallback
-  const updated = memoryStore.updateProduct(productPublicId, patch)
-  return updated
+  // Memory store fallback. Mirror the database variant rebuild so development
+  // without MySQL behaves exactly like production.
+  if (input.variants || input.colors) {
+    const existing = product.variants ?? []
+    if (existing.some((variant) => Number(variant.reserved) > 0)) {
+      throw ApiError.conflict(
+        'Some sizes are reserved by an in-flight checkout. Try again in a few minutes.'
+      )
+    }
+    const colors = input.colors ?? [...new Set(existing.map((variant) => variant.color))]
+    const variants = input.variants ?? [
+      ...new Map(existing.map((variant) => [
+        String(variant.size),
+        { size: variant.size, stock: variant.stock },
+      ])).values(),
+    ]
+    const sku = (input.sku ?? product.sku).toUpperCase()
+    patch.colors = colors
+    patch.variants = colors.flatMap((color) =>
+      variants.filter((variant) => variant.stock > 0).map((variant) => {
+        const id = publicId()
+        return {
+          id,
+          publicId: id,
+          size: variant.size,
+          color,
+          sku: `${sku}-${String(variant.size).padStart(2, '0')}-${colorCode(color)}`,
+          stock: variant.stock,
+          reserved: 0,
+          available: variant.stock,
+          inStock: variant.stock > 0,
+          isActive: true,
+        }
+      })
+    )
+    patch.totalStock = patch.variants.reduce((sum, variant) => sum + Number(variant.stock), 0)
+  }
+  return memoryStore.updateProduct(productPublicId, patch)
 }
 
 /** Adjusts stock for individual sizes without rebuilding the variant set. */
@@ -366,24 +452,63 @@ export async function bulkRemove(productPublicIds) {
   return count
 }
 
-export async function addImages(productPublicId, urls) {
+export async function addImages(productPublicId, urls, color = null) {
   const product = await productModel.findByPublicId(productPublicId)
   if (!product) throw ApiError.notFound('Product not found.')
 
-  const images = [...product.images, ...urls].slice(0, 10)
-  await productModel.update(product.internalId || product.id, { images })
-  memoryStore.updateProduct(productPublicId, { images })
-  return images
+  let colorImages = normalizeColorImages(product.colorImages)
+  let images
+
+  if (color) {
+    const variants = await variantModel.findByProduct(product.internalId || product.id)
+    const actualColor = [...new Set(variants.map((variant) => variant.color))].find(
+      (value) => value.toLocaleLowerCase() === String(color).trim().toLocaleLowerCase()
+    )
+    if (!actualColor) throw ApiError.badRequest('That colour is not available on this product.')
+
+    const current = colorImages.find(
+      (entry) => entry.color.toLocaleLowerCase() === actualColor.toLocaleLowerCase()
+    )
+    if (current) {
+      current.images = [...new Set([...current.images, ...urls])].slice(0, 8)
+    } else {
+      colorImages.push({ color: actualColor, images: [...new Set(urls)].slice(0, 8) })
+    }
+    images = flattenColorImages(colorImages)
+  } else {
+    images = [...new Set([...(product.images ?? []), ...urls])].slice(0, MAX_COLOR_IMAGES)
+  }
+
+  const patch = color ? { images, colorImages } : { images }
+  await productModel.update(product.internalId || product.id, patch)
+  memoryStore.updateProduct(productPublicId, patch)
+  return { images, colorImages }
 }
 
-export async function removeImage(productPublicId, url) {
+export async function removeImage(productPublicId, url, color = null) {
   const product = await productModel.findByPublicId(productPublicId)
   if (!product) throw ApiError.notFound('Product not found.')
 
-  const images = product.images.filter((i) => i !== url)
-  await productModel.update(product.internalId || product.id, { images })
-  memoryStore.updateProduct(productPublicId, { images })
-  return images
+  let colorImages = normalizeColorImages(product.colorImages)
+  if (color) {
+    colorImages = colorImages
+      .map((entry) => entry.color.toLocaleLowerCase() === String(color).toLocaleLowerCase()
+        ? { ...entry, images: entry.images.filter((image) => image !== url) }
+        : entry)
+      .filter((entry) => entry.images.length > 0)
+  } else if (colorImages.length) {
+    colorImages = colorImages
+      .map((entry) => ({ ...entry, images: entry.images.filter((image) => image !== url) }))
+      .filter((entry) => entry.images.length > 0)
+  }
+
+  const images = colorImages.length
+    ? flattenColorImages(colorImages)
+    : (product.images ?? []).filter((image) => image !== url)
+  const patch = { images, colorImages }
+  await productModel.update(product.internalId || product.id, patch)
+  memoryStore.updateProduct(productPublicId, patch)
+  return patch
 }
 
 export async function getLowStock(limit = 50) {

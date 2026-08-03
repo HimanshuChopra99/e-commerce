@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import * as controller from '../../controllers/admin/product.controller.js'
 import { validate } from '../../middlewares/validate.js'
-import { upload } from '../../middlewares/upload.js'
+import { productImageUpload, upload } from '../../middlewares/upload.js'
 import {
   adminProductQuerySchema, createProductSchema, updateProductSchema,
   updateVariantsSchema, bulkStatusSchema, bulkDeleteSchema,
@@ -22,6 +22,11 @@ router.post('/', validate(createProductSchema), controller.create)
 
 router.post('/bulk-status', validate(bulkStatusSchema), controller.bulkStatus)
 router.post('/bulk-delete', validate(bulkDeleteSchema), controller.bulkRemove)
+router.post(
+  '/image-uploads',
+  productImageUpload.array('images', 48),
+  controller.uploadImageAssets
+)
 
 router.get('/:id', validate(idParamSchema, 'params'), controller.getOne)
 router.patch('/:id', validate(idParamSchema, 'params'), validate(updateProductSchema), controller.update)

@@ -60,6 +60,73 @@ const variantSchema = z.object({
   stock: z.coerce.number().int().min(0, 'Stock cannot be negative.').max(100000),
 })
 
+const imageValue = z
+  .string()
+  .trim()
+  .min(1, 'Image URL is required.')
+  .max(500, 'Image URL is too long.')
+  .refine(
+    (value) => /^https?:\/\//i.test(value) || /^\/(?!\/)/.test(value),
+    'Use an http(s) image URL or an absolute site path.'
+  )
+
+const colorImagesSchema = z
+  .array(
+    z.object({
+      color: colorValue,
+      images: z.array(imageValue).min(1, 'Add at least one image for this colour.').max(8),
+    })
+  )
+  .max(12)
+  .superRefine((entries, ctx) => {
+    const seen = new Set()
+    let imageCount = 0
+    entries.forEach((entry, index) => {
+      const key = entry.color.toLocaleLowerCase()
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, 'color'],
+          message: 'Each colour can only have one image gallery.',
+        })
+      }
+      seen.add(key)
+      imageCount += entry.images.length
+    })
+    if (imageCount > 48) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A product can have at most 48 colour images in total.',
+      })
+    }
+  })
+
+function validateColorImageAssignments(data, ctx) {
+  if (!data.colorImages?.length || !data.colors) return
+  const selected = new Set(data.colors.map((color) => color.toLocaleLowerCase()))
+  const assigned = new Set(data.colorImages.map((entry) => entry.color.toLocaleLowerCase()))
+
+  data.colorImages.forEach((entry, index) => {
+    if (!selected.has(entry.color.toLocaleLowerCase())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['colorImages', index, 'color'],
+        message: `Colour "${entry.color}" is not selected for this product.`,
+      })
+    }
+  })
+
+  data.colors.forEach((color) => {
+    if (!assigned.has(color.toLocaleLowerCase())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['colorImages'],
+        message: `Add at least one image for ${color}.`,
+      })
+    }
+  })
+}
+
 export const createProductSchema = z
   .object({
     name: z.string().trim().min(2, 'Product name is required.').max(200),
@@ -88,7 +155,8 @@ export const createProductSchema = z
       .array(variantSchema)
       .min(1, 'Add at least one size.')
       .refine((v) => v.some((x) => x.stock > 0), 'Add stock to at least one size.'),
-    images: z.array(z.string().trim().max(500)).max(10).default([]),
+    images: z.array(imageValue).max(48).default([]),
+    colorImages: colorImagesSchema.default([]),
     tags: z.array(z.string().trim().max(40)).max(20).default([]),
   })
   .refine(
@@ -98,6 +166,7 @@ export const createProductSchema = z
       path: ['compareAtPrice'],
     }
   )
+  .superRefine(validateColorImageAssignments)
 
 export const updateProductSchema = z
   .object({
@@ -115,7 +184,8 @@ export const updateProductSchema = z
     featured: z.boolean().optional(),
     colors: z.array(colorValue).min(1).max(12).optional(),
     variants: z.array(variantSchema).optional(),
-    images: z.array(z.string().trim().max(500)).max(10).optional(),
+    images: z.array(imageValue).max(48).optional(),
+    colorImages: colorImagesSchema.optional(),
     tags: z.array(z.string().trim().max(40)).max(20).optional(),
   })
   .refine(
@@ -127,6 +197,7 @@ export const updateProductSchema = z
       d.compareAtPrice > d.price,
     { message: 'Compare-at price must be higher than the selling price.', path: ['compareAtPrice'] }
   )
+  .superRefine(validateColorImageAssignments)
 
 export const updateVariantsSchema = z.object({
   variants: z

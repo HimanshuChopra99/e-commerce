@@ -220,7 +220,22 @@ At checkout the client posts its lines and the server re-prices everything.
 `GET /` `GET /stats` `GET /low-stock` `GET /export` `GET /:id`
 `POST /` `PATCH /:id` `DELETE /:id`
 `POST /bulk-status` `POST /bulk-delete`
-`PATCH /:id/variants` `POST /:id/images` `DELETE /:id/images`
+`POST /image-uploads` `PATCH /:id/variants` `POST /:id/images` `DELETE /:id/images`
+
+`POST /image-uploads` accepts multipart field `images` (JPEG/PNG/WebP/AVIF)
+and returns persistent `/uploads/...` paths. Create/update products with one
+explicit gallery per selected colour; `images` is generated as a flattened
+backwards-compatible gallery:
+
+```json
+{
+  "colors": ["Black", "White"],
+  "colorImages": [
+    { "color": "Black", "images": ["/uploads/black-front.webp"] },
+    { "color": "White", "images": ["/uploads/white-front.webp"] }
+  ]
+}
+```
 
 **Categories** — `/categories`
 `GET /` `POST /` `GET /:id` `PATCH /:id` `DELETE /:id`

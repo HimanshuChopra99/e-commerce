@@ -94,7 +94,6 @@ export function ProductDetailPage() {
   // 1. Fetch product detail from store / API
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
 
     fetchProduct(productId)
       .then((data) => {

@@ -11,6 +11,16 @@ import * as productModel from '../models/product.model.js'
 import * as userModel from '../models/user.model.js'
 import { memoryStore } from './memory-store.js'
 
+function imageForColor(imagesValue, colorImagesValue, color) {
+  const colorImages = parseJson(colorImagesValue, [])
+  const gallery = Array.isArray(colorImages)
+    ? colorImages.find(
+      (entry) => entry.color?.toLocaleLowerCase() === String(color).toLocaleLowerCase()
+    )
+    : null
+  return gallery?.images?.[0] ?? parseJson(imagesValue, [])[0] ?? null
+}
+
 /**
  * Prices the cart WITHOUT creating an order.
  *
@@ -27,7 +37,7 @@ export async function quote(items) {
       const placeholders = ids.map(() => '?').join(',')
       const [dbRows] = await pool.query(
         `SELECT v.public_id, v.size, v.color, v.stock, v.reserved, v.is_active,
-                p.name, p.slug, p.price, p.status, p.images, p.deleted_at
+                p.name, p.slug, p.price, p.status, p.images, p.color_images, p.deleted_at
          FROM product_variants v
          JOIN products p ON p.id = v.product_id
          WHERE v.public_id IN (${placeholders})`,
@@ -55,6 +65,7 @@ export async function quote(items) {
             price: prod.price,
             status: prod.status || 'active',
             images: JSON.stringify(prod.images || [prod.image]),
+            color_images: JSON.stringify(prod.colorImages || []),
             deleted_at: null,
           })
         }
@@ -83,7 +94,7 @@ export async function quote(items) {
       variantId: item.variantId,
       name: row.name,
       slug: row.slug,
-      image: parseJson(row.images, [])[0] ?? null,
+      image: imageForColor(row.images, row.color_images, row.color),
       size: row.size,
       color: row.color,
       unitPrice: centsToNumber(unitCents),
@@ -224,7 +235,11 @@ export async function createOrder({ user, input }) {
               name: line.row.product_name,
               slug: line.row.product_slug,
               sku: line.row.sku,
-              image: parseJson(line.row.images, [])[0] ?? null,
+              image: imageForColor(
+                line.row.images,
+                line.row.color_images,
+                line.row.color
+              ),
               size: line.row.size,
               color: line.row.color,
               unitPrice: fromCents(line.unitCents),

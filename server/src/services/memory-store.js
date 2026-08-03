@@ -223,6 +223,10 @@ function buildInitialData() {
       reviewCount: p.reviewCount,
       images: p.images,
       image: p.image,
+      colorImages: p.colors.map((color, colorIndex) => ({
+        color,
+        images: [p.images[colorIndex % p.images.length]],
+      })),
       tags: p.tags,
       categoryId: cat.publicId,
       category: { id: cat.publicId, name: cat.name, slug: cat.slug },
@@ -445,6 +449,7 @@ class MemoryStore {
       reviewCount: 1,
       images: input.images && input.images.length ? input.images : [unsplashImages[0]],
       image: input.images && input.images[0] ? input.images[0] : unsplashImages[0],
+      colorImages: input.colorImages || [],
       tags: input.tags || [],
       categoryId: category ? category.publicId : null,
       category: category ? { id: category.publicId, name: category.name, slug: category.slug } : null,
@@ -470,6 +475,7 @@ class MemoryStore {
       }
     }
     Object.assign(prod, patch, { updatedAt: new Date().toISOString() })
+    if (patch.images !== undefined) prod.image = patch.images[0] ?? null
     return prod
   }
 
