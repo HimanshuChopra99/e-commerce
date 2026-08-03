@@ -43,15 +43,23 @@ export default function ProductListPage() {
 
   const [sortOpen, setSortOpen] = useState(false);
 
-  // Read filters from URL params supporting comma-separated multi-selects
-  const currentCategories = searchParams.get('category')?.split(',').filter(Boolean) || [];
-  const currentGenders = searchParams.get('gender')?.split(',').filter(Boolean) || [];
-  const currentSizes = searchParams.get('size')?.split(',').filter(Boolean) || [];
-  const currentColors = searchParams.get('color')?.split(',').filter(Boolean) || [];
-  const currentSort = searchParams.get('sort') || 'trending';
-  const currentPage = parseInt(searchParams.get('page') || '1', 10);
-  const currentSearch = searchParams.get('q') || '';
+  // Read filters from URL params supporting comma-separated multi-selects.
+  // We keep stable PRIMITIVE values (strings / numbers) so that useCallback
+  // deps don't change identity on every render the way inline .split() arrays do.
+  const categoryParam  = searchParams.get('category')  || '';
+  const genderParam    = searchParams.get('gender')    || '';
+  const sizeParam      = searchParams.get('size')      || '';
+  const colorParam     = searchParams.get('color')     || '';
+  const currentSort    = searchParams.get('sort')      || 'trending';
+  const currentPage    = parseInt(searchParams.get('page')     || '1',    10);
+  const currentSearch  = searchParams.get('q')         || '';
   const currentPriceMax = parseInt(searchParams.get('priceMax') || '1000', 10);
+
+  // Derived arrays — only used for rendering / passing to sidebar, NOT in deps.
+  const currentCategories = categoryParam.split(',').filter(Boolean);
+  const currentGenders    = genderParam.split(',').filter(Boolean);
+  const currentSizes      = sizeParam.split(',').filter(Boolean);
+  const currentColors     = colorParam.split(',').filter(Boolean);
 
   const sidebarFilters = useMemo(() => ({
     refineBy: currentSearch ? [currentSearch] : [],
@@ -60,7 +68,8 @@ export default function ProductListPage() {
     categories: currentCategories,
     gender: currentGenders,
     priceRange: currentPriceMax,
-  }), [currentSearch, currentSizes, currentColors, currentCategories, currentGenders, currentPriceMax]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [categoryParam, genderParam, sizeParam, colorParam, currentSearch, currentPriceMax]);
 
   const handleFilterChange = (newFilters) => {
     const next = new URLSearchParams(searchParams);
@@ -112,17 +121,19 @@ export default function ProductListPage() {
 
   const fetchData = useCallback(() => {
     dispatch(fetchProducts({
-      category: currentCategories.length > 0 ? currentCategories.join(',') : undefined,
-      gender: currentGenders.length > 0 ? currentGenders.join(',') : undefined,
-      size: currentSizes.length > 0 ? currentSizes.join(',') : undefined,
-      color: currentColors.length > 0 ? currentColors.join(',') : undefined,
-      sort: currentSort !== 'trending' ? currentSort : undefined,
-      page: currentPage,
-      limit: 12,
+      category: categoryParam  || undefined,
+      gender:   genderParam    || undefined,
+      size:     sizeParam      || undefined,
+      color:    colorParam     || undefined,
+      sort:     currentSort !== 'trending' ? currentSort : undefined,
+      page:     currentPage,
+      limit:    12,
       maxPrice: currentPriceMax < 1000 ? currentPriceMax : undefined,
-      q: currentSearch || undefined,
+      q:        currentSearch  || undefined,
     }));
-  }, [dispatch, currentCategories, currentGenders, currentSizes, currentColors, currentSort, currentPage, currentPriceMax, currentSearch]);
+  // Stable primitive deps — no new array references every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, categoryParam, genderParam, sizeParam, colorParam, currentSort, currentPage, currentPriceMax, currentSearch]);
 
   useEffect(() => {
     fetchData();

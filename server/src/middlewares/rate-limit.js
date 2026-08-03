@@ -74,9 +74,9 @@ export const checkoutLimiter = rateLimit({
   keyGenerator: (req) => req.user?.publicId ?? req.ip,
 })
 
-/** Search hits the FULLTEXT index; cap it. */
+/** Product listing / search hits the DB; cap it but allow normal browsing. */
 export const searchLimiter = rateLimit({
   ...base,
   windowMs: 60 * 1000,
-  limit: 60,
+  limit: 300,
 })
