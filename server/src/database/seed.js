@@ -11,7 +11,7 @@ import { logger } from '../config/logger.js'
 import { publicId, slugify, colorCode } from '../utils/helpers.js'
 
 const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL ?? 'admin@kick.com').toLowerCase()
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'AdminPassword123!'
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!'
 
 const CATEGORIES = [
   { name: 'Running', color: 'blue', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80', description: 'Road and trail shoes built for distance, speed and daily training.' },

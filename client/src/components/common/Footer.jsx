@@ -1,5 +1,6 @@
 // Footer.jsx
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 /* ─── tiny helpers ─── */
 const VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -235,7 +236,7 @@ function LinksSection() {
             <h3 className="text-[#FFA52F] font-semibold text-lg lg:text-[22px] mb-3 lg:mb-4">Categories</h3>
             <ul className="space-y-2 lg:space-y-2.5 text-[15px] lg:text-[17px]">
               {categories.map(c => (
-                <li key={c}><a href="#" className="footer-link text-white/85">{c}</a></li>
+                <li key={c}><Link to={`/products?category=${c.toLowerCase()}`} className="footer-link text-white/85">{c}</Link></li>
               ))}
             </ul>
           </Reveal>
@@ -245,7 +246,7 @@ function LinksSection() {
             <h3 className="text-[#FFA52F] font-semibold text-lg lg:text-[22px] mb-3 lg:mb-4">Company</h3>
             <ul className="space-y-2 lg:space-y-2.5 text-[15px] lg:text-[17px]">
               {company.map(c => (
-                <li key={c}><a href="#" className="footer-link text-white/85">{c}</a></li>
+                <li key={c}><Link to="/products" className="footer-link text-white/85">{c}</Link></li>
               ))}
             </ul>
           </Reveal>

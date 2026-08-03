@@ -4,6 +4,7 @@ import { env } from '../config/env.js'
 import { logger } from '../config/logger.js'
 import { ApiError } from '../utils/api-error.js'
 import { publicId, sha256, randomToken, normalizeEmail } from '../utils/helpers.js'
+import { isDatabaseConnected } from '../config/database.js'
 import * as userModel from '../models/user.model.js'
 import * as tokenModel from '../models/auth-token.model.js'
 import { memoryStore } from './memory-store.js'
@@ -176,45 +177,39 @@ export async function refresh(rawToken, context = {}) {
   }
   if (payload.type !== 'refresh') throw ApiError.unauthorized('Wrong token type.')
 
-  try {
-    const stored = await tokenModel.findActive(sha256(rawToken), 'refresh')
+  if (isDatabaseConnected()) {
+    try {
+      const stored = await tokenModel.findActive(sha256(rawToken), 'refresh')
 
-    if (!stored) {
-      const user = await userModel.findByPublicId(payload.sub)
-      if (user) {
-        await tokenModel.revokeAllForUser(user.internalId, 'refresh')
-        logger.warn({ userId: user.publicId }, 'refresh token reuse — all sessions revoked')
+      if (!stored) {
+        const user = await userModel.findByPublicId(payload.sub)
+        if (user) {
+          await tokenModel.revokeAllForUser(user.internalId, 'refresh')
+          logger.warn({ userId: user.publicId }, 'refresh token reuse — all sessions revoked')
+        }
+        throw ApiError.unauthorized('Session is no longer valid. Please sign in again.')
       }
-      throw ApiError.unauthorized('Session is no longer valid. Please sign in again.')
-    }
 
-    const user = await userModel.findByPublicId(payload.sub)
-    if (!user) throw ApiError.unauthorized('Account no longer exists.')
-    if (user.status === 'blocked') throw ApiError.forbidden('This account has been suspended.')
+      const user = await userModel.findByPublicId(payload.sub)
+      if (!user) throw ApiError.unauthorized('Account no longer exists.')
+      if (user.status === 'blocked') throw ApiError.forbidden('This account has been suspended.')
 
-    await tokenModel.consume(stored.id)
-    const tokens = await issueTokens(user, context)
-    return { user: userModel.toPublicUser(user), ...tokens }
-  } catch (err) {
-    // Only fall back to memory store when the DATABASE itself is unavailable,
-    // not when the error is a legitimate auth rejection (401/403).
-    // Checking statusCode means: if we threw ApiError.unauthorized() or
-    // ApiError.forbidden() above, we must NOT fall through — that was an
-    // intentional security rejection.
-    if (err.statusCode) {
-      // This is a deliberate auth error (reuse detected, account blocked, etc.)
-      // Re-throw it. Never bypass security checks.
-      throw err
+      await tokenModel.consume(stored.id)
+      const tokens = await issueTokens(user, context)
+      return { user: userModel.toPublicUser(user), ...tokens }
+    } catch (err) {
+      if (err.statusCode) throw err
     }
-    // Below here: DB connection failure (ECONNREFUSED, ENOTFOUND, etc.)
-    // Fall back to memory store only for genuine DB outages.
-    const memoryUser = memoryStore.getUserByPublicId(payload.sub)
-    if (!memoryUser) {
-      throw ApiError.unauthorized('Session is no longer valid. Please sign in again.')
-    }
-    const tokens = issueTokensMemory(memoryUser, context)
-    return { user: memoryUser, ...tokens }
   }
+
+  // Below here: Memory store / fallback mode
+  const memoryUser = await userModel.findByPublicId(payload.sub)
+  if (!memoryUser) {
+    throw ApiError.unauthorized('Session is no longer valid. Please sign in again.')
+  }
+  if (memoryUser.status === 'blocked') throw ApiError.forbidden('This account has been suspended.')
+  const tokens = issueTokensMemory(memoryUser, context)
+  return { user: userModel.toPublicUser(memoryUser), ...tokens }
 }
 
 export async function logout(rawToken) {

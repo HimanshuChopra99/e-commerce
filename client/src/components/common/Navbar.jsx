@@ -111,16 +111,16 @@ export default function Navbar({
                     "Running",
                     "Basketball",
                     "Lifestyle",
-                    "Skateboarding",
                   ].map((cat) => (
-                    <a
+                    <Link
                       key={cat}
+                      to={`/products?category=${cat.toLowerCase()}&gender=men`}
                       onClick={() => handleLinkClick(`Men › ${cat}`)}
                       className="mega-link select-none"
                     >
                       {cat}
                       <ArrowRight className="mega-arrow w-3.5 h-3.5" />
-                    </a>
+                    </Link>
                   ))}
                 </div>
                 {/* Collections */}
@@ -133,14 +133,15 @@ export default function Navbar({
                     "Best Sellers",
                     "Icons & Classics",
                   ].map((col) => (
-                    <a
+                    <Link
                       key={col}
+                      to="/products"
                       onClick={() => handleLinkClick(`Men › ${col}`)}
                       className="mega-link select-none"
                     >
                       {col}
                       <ArrowRight className="mega-arrow w-3.5 h-3.5" />
-                    </a>
+                    </Link>
                   ))}
                   <a
                     onClick={() =>
@@ -206,18 +207,17 @@ export default function Navbar({
                   {[
                     "Sneakers",
                     "Running",
-                    "Training & Gym",
                     "Lifestyle",
-                    "Sandals & Slides",
                   ].map((cat) => (
-                    <a
+                    <Link
                       key={cat}
+                      to={`/products?category=${cat.toLowerCase()}&gender=women`}
                       onClick={() => handleLinkClick(`Women › ${cat}`)}
                       className="mega-link select-none"
                     >
                       {cat}
                       <ArrowRight className="mega-arrow w-3.5 h-3.5" />
-                    </a>
+                    </Link>
                   ))}
                 </div>
                 {/* Collections */}
@@ -230,14 +230,15 @@ export default function Navbar({
                     "Best Sellers",
                     "Street Icons",
                   ].map((col) => (
-                    <a
+                    <Link
                       key={col}
+                      to="/products"
                       onClick={() => handleLinkClick(`Women › ${col}`)}
                       className="mega-link select-none"
                     >
                       {col}
                       <ArrowRight className="mega-arrow w-3.5 h-3.5" />
-                    </a>
+                    </Link>
                   ))}
                   <a
                     onClick={() =>
@@ -292,13 +293,14 @@ export default function Navbar({
         </button>
 
         {/* ===== Center logo ===== */}
-        <a
+        <Link
+          to="/"
           onClick={() => handleLinkClick("KICKS Home Logo")}
           className="absolute left-1/2 -translate-x-1/2 font-[900] text-[24px] md:text-[30px] tracking-tighter leading-none select-none hover:opacity-80 transition-opacity cursor-pointer text-[#141414]"
           style={{ fontFamily: "'Rubik', sans-serif" }}
         >
           KICKS
-        </a>
+        </Link>
 
         {/* ===== Right icons ===== */}
         <div className="flex items-center gap-1 sm:gap-2 ml-auto">

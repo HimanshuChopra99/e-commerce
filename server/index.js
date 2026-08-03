@@ -7,20 +7,18 @@ import { migrateDatabase } from './src/database/migrate.js'
 import { seedDatabase } from './src/database/seed.js'
 
 async function main() {
-  // On a local development clone create the database/schema before opening a
-  // pooled connection to it. This ordering matters after `db:reset`: a pool
-  // created while the database is being dropped can keep stale connections.
-  if (env.autoSeed && !env.isProd) {
-    await migrateDatabase()
-  }
-
   // Fail fast in production if MySQL is unreachable; development may use the
   // explicit fallback mode when a developer has not started MySQL yet.
   await assertDatabaseConnection()
 
-  // Seed only after the schema exists and the pool has successfully connected.
+  // On a local development clone create database schema and seed only when MySQL is connected.
   if (env.autoSeed && !env.isProd && isDatabaseConnected()) {
-    await seedDatabase()
+    try {
+      await migrateDatabase()
+      await seedDatabase()
+    } catch (err) {
+      logger.warn({ err: err.message }, 'MySQL migration/seeding failed')
+    }
   }
 
   const app = createApp()

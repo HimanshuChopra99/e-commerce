@@ -52,7 +52,7 @@ async function request(path, options = {}) {
     headers,
   })
 
-  if (res.status === 401 && path !== '/auth/refresh' && path !== '/auth/login') {
+  if (res.status === 401 && path !== '/auth/refresh' && path !== '/auth/login' && path !== '/auth/me') {
     const refreshed = await silentRefresh()
     if (refreshed) {
       return request(path, options)

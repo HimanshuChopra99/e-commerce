@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const products = [
   {
@@ -61,12 +62,13 @@ export default function Hero() {
               {products[active].desc}
             </p>
 
-            <button
-              className="mt-6 md:mt-8 bg-[#4A69E2] hover:bg-[#3b57c7] px-7 py-3.5 rounded-xl uppercase tracking-wider text-xs font-bold text-white transition-all shadow-md active:scale-95"
+            <Link
+              to="/products"
+              className="inline-block mt-6 md:mt-8 bg-[#4A69E2] hover:bg-[#3b57c7] px-7 py-3.5 rounded-xl uppercase tracking-wider text-xs font-bold text-white transition-all shadow-md active:scale-95"
               style={{ fontFamily: "'Rubik', sans-serif" }}
             >
               Shop Now
-            </button>
+            </Link>
           </div>
 
           {/* Thumbnails */}

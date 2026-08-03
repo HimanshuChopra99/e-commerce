@@ -254,32 +254,49 @@ export default function ShoppingCart() {
                               <span className="font-bold">{item.size}</span>
                             </div>
 
-                            <div className="flex items-center gap-1">
-                              <span className="text-gray-700 font-semibold">Quantity</span>
-                              <select
-                                value={item.quantity}
-                                onChange={(e) => {
-                                  const requested = Number(e.target.value)
-                                  if (requested > 10) {
-                                    window.dispatchEvent(
-                                      new CustomEvent('kick:toast', { detail: 'Maximum 10 per item.' })
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-700 font-semibold">Quantity:</span>
+                              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    dispatch(
+                                      updateQuantity({
+                                        variantId: item.variantId,
+                                        quantity: item.quantity - 1,
+                                      })
                                     )
                                   }
-                                  dispatch(
-                                    updateQuantity({
-                                      variantId: item.variantId,
-                                      quantity: Math.min(requested, 10),
-                                    })
-                                  )
-                                }}
-                                className="bg-transparent font-medium cursor-pointer border-none focus:ring-0 p-0 pr-4 text-gray-800"
-                              >
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((q) => (
-                                  <option key={q} value={q}>
-                                    {q}
-                                  </option>
-                                ))}
-                              </select>
+                                  className="w-7 h-7 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition font-bold text-sm select-none"
+                                  aria-label="Decrease quantity"
+                                >
+                                  −
+                                </button>
+                                <span className="px-2 text-xs font-bold text-gray-900 min-w-[1.5rem] text-center select-none">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (item.quantity >= 10) {
+                                      window.dispatchEvent(
+                                        new CustomEvent('kick:toast', { detail: 'Maximum 10 items allowed.' })
+                                      )
+                                      return
+                                    }
+                                    dispatch(
+                                      updateQuantity({
+                                        variantId: item.variantId,
+                                        quantity: item.quantity + 1,
+                                      })
+                                    )
+                                  }}
+                                  className="w-7 h-7 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition font-bold text-sm select-none"
+                                  aria-label="Increase quantity"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>

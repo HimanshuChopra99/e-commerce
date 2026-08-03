@@ -1,4 +1,4 @@
-import { withTransaction, pool } from '../config/database.js'
+import { withTransaction, pool, isDatabaseConnected } from '../config/database.js'
 import { env } from '../config/env.js'
 import { logger } from '../config/logger.js'
 import { ApiError } from '../utils/api-error.js'
@@ -9,6 +9,7 @@ import * as orderModel from '../models/order.model.js'
 import * as variantModel from '../models/variant.model.js'
 import * as productModel from '../models/product.model.js'
 import * as userModel from '../models/user.model.js'
+import { memoryStore } from './memory-store.js'
 
 /**
  * Prices the cart WITHOUT creating an order.
@@ -20,15 +21,46 @@ export async function quote(items) {
   const ids = [...new Set(items.map((i) => i.variantId))]
   if (!ids.length) throw ApiError.badRequest('Your cart is empty.')
 
-  const placeholders = ids.map(() => '?').join(',')
-  const [rows] = await pool.query(
-    `SELECT v.public_id, v.size, v.color, v.stock, v.reserved, v.is_active,
-            p.name, p.slug, p.price, p.status, p.images, p.deleted_at
-     FROM product_variants v
-     JOIN products p ON p.id = v.product_id
-     WHERE v.public_id IN (${placeholders})`,
-    ids
-  )
+  let rows = []
+  if (isDatabaseConnected()) {
+    try {
+      const placeholders = ids.map(() => '?').join(',')
+      const [dbRows] = await pool.query(
+        `SELECT v.public_id, v.size, v.color, v.stock, v.reserved, v.is_active,
+                p.name, p.slug, p.price, p.status, p.images, p.deleted_at
+         FROM product_variants v
+         JOIN products p ON p.id = v.product_id
+         WHERE v.public_id IN (${placeholders})`,
+        ids
+      )
+      if (dbRows && dbRows.length > 0) rows = dbRows
+    } catch {}
+  }
+
+  if (!rows.length) {
+    for (const prod of memoryStore.getProducts({ limit: 1000 }).items) {
+      if (!prod.variants) continue
+      for (const v of prod.variants) {
+        const vId = v.publicId || v.id
+        if (ids.includes(vId)) {
+          rows.push({
+            public_id: vId,
+            size: v.size,
+            color: v.color,
+            stock: v.stock ?? 10,
+            reserved: v.reserved ?? 0,
+            is_active: v.isActive !== false,
+            name: prod.name,
+            slug: prod.slug,
+            price: prod.price,
+            status: prod.status || 'active',
+            images: JSON.stringify(prod.images || [prod.image]),
+            deleted_at: null,
+          })
+        }
+      }
+    }
+  }
 
   const byId = new Map(rows.map((r) => [r.public_id, r]))
   const lines = []
@@ -114,112 +146,195 @@ export async function createOrder({ user, input }) {
     throw ApiError.badRequest('An email address is required to place an order.')
   }
 
-  return withTransaction(async (conn) => {
-    // ── 1. Lock the variants. Other checkouts block here. ──────────────
-    const rows = await variantModel.lockForUpdate(variantIds, conn)
+  if (isDatabaseConnected()) {
+    try {
+      return await withTransaction(async (conn) => {
+        // ── 1. Lock the variants. Other checkouts block here. ──────────────
+        const rows = await variantModel.lockForUpdate(variantIds, conn)
 
-    if (rows.length !== variantIds.length) {
+        if (rows.length !== variantIds.length) {
+          throw ApiError.badRequest('One of the items in your cart no longer exists.')
+        }
+
+        // ── 2. Verify every line is buyable ────────────────────────────────
+        for (const row of rows) {
+          const wanted = merged.get(row.public_id)
+
+          if (row.deleted_at || row.product_status !== 'active' || !row.is_active) {
+            throw ApiError.conflict(`"${row.product_name}" is no longer available.`)
+          }
+
+          const available = Number(row.stock) - Number(row.reserved)
+          if (available < wanted) {
+            throw ApiError.insufficientStock(
+              available === 0
+                ? `"${row.product_name}" in size ${row.size} just sold out.`
+                : `Only ${available} left of "${row.product_name}" in size ${row.size}.`,
+              [{ variantId: row.public_id, requested: wanted, available }]
+            )
+          }
+        }
+
+        // ── 3. Recalculate money FROM THE DATABASE ─────────────────────────
+        let subtotalCents = 0
+        const lines = rows.map((row) => {
+          const quantity = merged.get(row.public_id)
+          const unitCents = toCents(row.price)
+          const lineCents = unitCents * quantity
+          subtotalCents += lineCents
+          return { row, quantity, unitCents, lineCents }
+        })
+
+        const totals = calculateTotals(subtotalCents)
+
+        // ── 4. Create the order ────────────────────────────────────────────
+        const orderNumber = await orderModel.nextOrderNumber(conn)
+        const shipping = input.shippingAddress
+
+        const orderInternalId = await orderModel.create(
+          {
+            publicId: publicId(),
+            orderNumber,
+            userId: user?.id ?? null,
+            customerEmail,
+            customerName: input.customerName
+              ?? (user ? `${user.firstName} ${user.lastName}` : shipping.name),
+            customerPhone: input.customerPhone ?? shipping.phone ?? null,
+            // Cash on delivery is never "paid" up front.
+            paymentStatus: 'pending',
+            paymentMethod: input.paymentMethod,
+            subtotal: fromCents(totals.subtotalCents),
+            shipping: fromCents(totals.shippingCents),
+            tax: fromCents(totals.taxCents),
+            total: fromCents(totals.totalCents),
+            currency: env.currency,
+            shippingAddress: shipping,
+            customerNote: input.customerNote ?? null,
+          },
+          conn
+        )
+
+        // ── 5. Snapshot each line and reserve its stock ────────────────────
+        for (const line of lines) {
+          await orderModel.addItem(
+            orderInternalId,
+            {
+              productId: line.row.product_id,
+              variantId: line.row.id,
+              name: line.row.product_name,
+              slug: line.row.product_slug,
+              sku: line.row.sku,
+              image: parseJson(line.row.images, [])[0] ?? null,
+              size: line.row.size,
+              color: line.row.color,
+              unitPrice: fromCents(line.unitCents),
+              quantity: line.quantity,
+              lineTotal: fromCents(line.lineCents),
+            },
+            conn
+          )
+
+          const reserved = await variantModel.reserve(line.row.id, line.quantity, conn)
+          if (!reserved) {
+            // Belt and braces: the CHECK constraint would also catch this.
+            throw ApiError.insufficientStock(
+              `"${line.row.product_name}" in size ${line.row.size} just sold out.`
+            )
+          }
+        }
+
+        // Read the finished order back through the SAME connection, so we see
+        // our own uncommitted rows.
+        const order = await orderModel.findByInternalId(orderInternalId, conn)
+
+        logger.info(
+          { orderNumber, total: totals.total, items: lines.length, userId: user?.publicId },
+          'order created'
+        )
+
+        return { order, internalId: orderInternalId, totalCents: totals.totalCents }
+      })
+    } catch (err) {
+      if (err.statusCode) throw err
+    }
+  }
+
+  // Memory store fallback for checkout
+  const lines = []
+  let subtotalCents = 0
+
+  for (const variantId of variantIds) {
+    let foundProd = null
+    let foundVar = null
+    for (const prod of memoryStore.getProducts({ limit: 1000 }).items) {
+      const v = prod.variants?.find((v) => (v.publicId || v.id) === variantId)
+      if (v) {
+        foundProd = prod
+        foundVar = v
+        break
+      }
+    }
+
+    if (!foundProd || !foundVar) {
       throw ApiError.badRequest('One of the items in your cart no longer exists.')
     }
 
-    // ── 2. Verify every line is buyable ────────────────────────────────
-    for (const row of rows) {
-      const wanted = merged.get(row.public_id)
+    const wanted = merged.get(variantId)
+    const available = Number(foundVar.stock ?? 10) - Number(foundVar.reserved ?? 0)
 
-      if (row.deleted_at || row.product_status !== 'active' || !row.is_active) {
-        throw ApiError.conflict(`"${row.product_name}" is no longer available.`)
-      }
-
-      const available = Number(row.stock) - Number(row.reserved)
-      if (available < wanted) {
-        throw ApiError.insufficientStock(
-          available === 0
-            ? `"${row.product_name}" in size ${row.size} just sold out.`
-            : `Only ${available} left of "${row.product_name}" in size ${row.size}.`,
-          [{ variantId: row.public_id, requested: wanted, available }]
-        )
-      }
-    }
-
-    // ── 3. Recalculate money FROM THE DATABASE ─────────────────────────
-    let subtotalCents = 0
-    const lines = rows.map((row) => {
-      const quantity = merged.get(row.public_id)
-      const unitCents = toCents(row.price)
-      const lineCents = unitCents * quantity
-      subtotalCents += lineCents
-      return { row, quantity, unitCents, lineCents }
-    })
-
-    const totals = calculateTotals(subtotalCents)
-
-    // ── 4. Create the order ────────────────────────────────────────────
-    const orderNumber = await orderModel.nextOrderNumber(conn)
-    const shipping = input.shippingAddress
-
-    const orderInternalId = await orderModel.create(
-      {
-        publicId: publicId(),
-        orderNumber,
-        userId: user?.id ?? null,
-        customerEmail,
-        customerName: input.customerName
-          ?? (user ? `${user.firstName} ${user.lastName}` : shipping.name),
-        customerPhone: input.customerPhone ?? shipping.phone ?? null,
-        // Cash on delivery is never "paid" up front.
-        paymentStatus: 'pending',
-        paymentMethod: input.paymentMethod,
-        subtotal: fromCents(totals.subtotalCents),
-        shipping: fromCents(totals.shippingCents),
-        tax: fromCents(totals.taxCents),
-        total: fromCents(totals.totalCents),
-        currency: env.currency,
-        shippingAddress: shipping,
-        customerNote: input.customerNote ?? null,
-      },
-      conn
-    )
-
-    // ── 5. Snapshot each line and reserve its stock ────────────────────
-    for (const line of lines) {
-      await orderModel.addItem(
-        orderInternalId,
-        {
-          productId: line.row.product_id,
-          variantId: line.row.id,
-          name: line.row.product_name,
-          slug: line.row.product_slug,
-          sku: line.row.sku,
-          image: parseJson(line.row.images, [])[0] ?? null,
-          size: line.row.size,
-          color: line.row.color,
-          unitPrice: fromCents(line.unitCents),
-          quantity: line.quantity,
-          lineTotal: fromCents(line.lineCents),
-        },
-        conn
+    if (available < wanted) {
+      throw ApiError.insufficientStock(
+        available === 0
+          ? `"${foundProd.name}" in size ${foundVar.size} just sold out.`
+          : `Only ${available} left of "${foundProd.name}" in size ${foundVar.size}.`,
+        [{ variantId, requested: wanted, available }]
       )
-
-      const reserved = await variantModel.reserve(line.row.id, line.quantity, conn)
-      if (!reserved) {
-        // Belt and braces: the CHECK constraint would also catch this.
-        throw ApiError.insufficientStock(
-          `"${line.row.product_name}" in size ${line.row.size} just sold out.`
-        )
-      }
     }
 
-    // Read the finished order back through the SAME connection, so we see
-    // our own uncommitted rows.
-    const order = await orderModel.findByInternalId(orderInternalId, conn)
+    const unitCents = toCents(foundProd.price)
+    const lineCents = unitCents * wanted
+    subtotalCents += lineCents
 
-    logger.info(
-      { orderNumber, total: totals.total, items: lines.length, userId: user?.publicId },
-      'order created'
-    )
+    // Reserve stock in memory store
+    foundVar.reserved = (foundVar.reserved ?? 0) + wanted
 
-    return { order, internalId: orderInternalId, totalCents: totals.totalCents }
+    lines.push({
+      id: publicId(),
+      productPublicId: foundProd.publicId || foundProd.id,
+      productName: foundProd.name,
+      productSlug: foundProd.slug,
+      productImage: foundProd.image,
+      color: foundVar.color,
+      size: foundVar.size,
+      unitPrice: centsToNumber(unitCents),
+      quantity: wanted,
+      lineTotal: centsToNumber(lineCents),
+    })
+  }
+
+  const totals = calculateTotals(subtotalCents)
+  const shipping = input.shippingAddress
+
+  const order = memoryStore.addOrder({
+    customer: {
+      id: user?.publicId ?? 'guest',
+      name: input.customerName ?? (user ? `${user.firstName} ${user.lastName}` : shipping.name),
+      email: customerEmail,
+      phone: input.customerPhone ?? shipping.phone ?? null,
+    },
+    shippingAddress: shipping,
+    items: lines,
+    subtotal: totals.subtotal,
+    shippingCost: totals.shipping,
+    tax: totals.tax,
+    grandTotal: totals.total,
+    paymentMethod: input.paymentMethod,
+    customerNote: input.customerNote ?? null,
   })
+
+  order.orderNumber = `#${1000 + memoryStore.orders.length}`
+
+  return { order, internalId: order.internalId || order.id, totalCents: totals.totalCents }
 }
 
 /** Full order detail, with an ownership check for customers. */
@@ -268,22 +383,30 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
     throw ApiError.badRequest('A tracking number is required when marking an order shipped.')
   }
 
-  await withTransaction(async (conn) => {
-    await orderModel.updateStatus(order.internalId, nextStatus, extra, conn)
+  if (isDatabaseConnected()) {
+    try {
+      await withTransaction(async (conn) => {
+        await orderModel.updateStatus(order.internalId, nextStatus, extra, conn)
 
-    if (nextStatus === 'cancelled') {
-      await releaseOrRestock(order, conn)
-    }
+        if (nextStatus === 'cancelled') {
+          await releaseOrRestock(order, conn)
+        }
 
-    if (nextStatus === 'returned') {
-      const items = await orderModel.findRawItems(order.internalId, conn)
-      for (const item of items) {
-        if (!item.variant_id) continue
-        await variantModel.restock(item.variant_id, item.quantity, conn)
-        if (item.product_id) await productModel.recalcStock(item.product_id, conn)
-      }
+        if (nextStatus === 'returned') {
+          const items = await orderModel.findRawItems(order.internalId, conn)
+          for (const item of items) {
+            if (!item.variant_id) continue
+            await variantModel.restock(item.variant_id, item.quantity, conn)
+            if (item.product_id) await productModel.recalcStock(item.product_id, conn)
+          }
+        }
+      })
+    } catch (err) {
+      if (err.statusCode) throw err
     }
-  })
+  }
+
+  await orderModel.updateStatus(order.internalId || order.id || orderPublicId, nextStatus, extra)
 
   logger.info({ orderNumber: order.orderNumber, from: order.status, to: nextStatus }, 'order status changed')
   return orderModel.findByPublicId(orderPublicId).then((o) => ({ ...o, internalId: undefined }))

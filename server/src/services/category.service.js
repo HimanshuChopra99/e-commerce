@@ -2,7 +2,8 @@ import { ApiError } from '../utils/api-error.js'
 import { publicId, uniqueSlug } from '../utils/helpers.js'
 import * as categoryModel from '../models/category.model.js'
 import * as productModel from '../models/product.model.js'
-import { pool } from '../config/database.js'
+import { pool, isDatabaseConnected } from '../config/database.js'
+import { memoryStore } from './memory-store.js'
 
 export async function listPublic() {
   const categories = await categoryModel.findAll({ activeOnly: true })
@@ -87,18 +88,36 @@ export async function assignProducts(categoryPublicId, productPublicIds) {
   if (!category) throw ApiError.notFound('Category not found.')
   if (!productPublicIds.length) throw ApiError.badRequest('Select at least one product.')
 
-  const placeholders = productPublicIds.map(() => '?').join(',')
-  const [rows] = await pool.query(
-    `SELECT id FROM products WHERE public_id IN (${placeholders}) AND deleted_at IS NULL`,
-    productPublicIds
-  )
-  if (!rows.length) throw ApiError.badRequest('None of those products exist.')
+  if (isDatabaseConnected()) {
+    try {
+      const placeholders = productPublicIds.map(() => '?').join(',')
+      const [rows] = await pool.query(
+        `SELECT id FROM products WHERE public_id IN (${placeholders}) AND deleted_at IS NULL`,
+        productPublicIds
+      )
+      if (!rows.length) throw ApiError.badRequest('None of those products exist.')
 
-  const assigned = await productModel.assignCategory(
-    rows.map((r) => r.id),
-    category.internalId
-  )
-  return { assigned }
+      const assigned = await productModel.assignCategory(
+        rows.map((r) => r.id),
+        category.internalId
+      )
+      return { assigned }
+    } catch (err) {
+      if (err.statusCode) throw err
+    }
+  }
+
+  // Memory store fallback
+  let count = 0
+  for (const pid of productPublicIds) {
+    const p = memoryStore.getProductByPublicId(pid)
+    if (p) {
+      p.categoryId = category.publicId || category.id
+      p.category = { id: category.publicId || category.id, name: category.name, slug: category.slug }
+      count++
+    }
+  }
+  return { assigned: count }
 }
 
 export async function removeProduct(categoryPublicId, productPublicId) {
