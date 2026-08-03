@@ -33,7 +33,6 @@ async function _doRefresh() {
   }
 }
 
-<<<<<<< HEAD
 // Exported so authSlice.fetchMe can silently restore the token on boot.
 export function silentRefresh() {
   if (refreshPromise) return refreshPromise
@@ -41,13 +40,7 @@ export function silentRefresh() {
   return refreshPromise
 }
 
-async function request(path, options = {}) {
-=======
-// `retriedAfterRefresh` prevents an endless refresh/retry loop if the server
-// still rejects a newly-issued access token (for example, after an account was
-// deleted). It is kept out of `options`, so it can never become a fetch option.
 async function request(path, options = {}, retriedAfterRefresh = false) {
->>>>>>> 2012f163065f75531bb6ae0829e2c1d2e1d69199
   const headers = {
     'Content-Type': 'application/json',
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -143,6 +136,4 @@ export const ordersApi = {
   paymentStatus: (id) => get(`/orders/${id}/payment-status`),
   pay: (id) => post(`/orders/${id}/pay`),
   cancel: (id) => post(`/orders/${id}/cancel`),
-  pay: (id) => post(`/orders/${id}/pay`),
-  paymentStatus: (id) => get(`/orders/${id}/payment-status`),
 }
