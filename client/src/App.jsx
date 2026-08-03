@@ -15,6 +15,7 @@ import Home from './pages/Home';
 import Product from './pages/Product';
 import ProductView from './pages/ProductView';
 import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
@@ -113,6 +114,7 @@ function App() {
             <Route path="/products" element={<Product />} />
             <Route path="/product/:id" element={<ProductView />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/about" element={<Company page="about" />} />

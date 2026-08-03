@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { authApi, setAccessToken } from '../lib/api'
+import { authApi, setAccessToken, silentRefresh } from '../lib/api'
 import { clearCart } from './cartSlice'
 
 export const loginUser = createAsyncThunk('auth/login', async (credentials, { dispatch, rejectWithValue }) => {
@@ -40,7 +40,19 @@ export const logoutUser = createAsyncThunk('auth/logout', async (_, { dispatch, 
 
 export const fetchMe = createAsyncThunk('auth/me', async (_, { rejectWithValue }) => {
   try {
+    // On every page load the in-memory access token is gone.
+    // Silently exchange the HttpOnly refresh cookie for a fresh access token
+    // before calling /me — this is what keeps the user logged in across refreshes.
+    const refreshed = await silentRefresh()
+    if (!refreshed) {
+      // No valid refresh cookie — user is genuinely not logged in.
+      return rejectWithValue('No session')
+    }
     const res = await authApi.me()
+    // Server returns { user: null } with 200 when not authenticated.
+    if (!res.data || (res.data && 'authenticated' in res.data && !res.data.authenticated)) {
+      return rejectWithValue('No session')
+    }
     return res.data
   } catch (err) {
     return rejectWithValue(err.message)

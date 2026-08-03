@@ -27,6 +27,7 @@ export default function Orders() {
   const location = useLocation();
 
   const justPlaced = location.state?.justPlaced;
+  const paid = location.state?.paid;
 
   const { items, loading, error } = useSelector((state) => state.orders);
   const { user } = useSelector((state) => state.auth);
@@ -57,14 +58,16 @@ export default function Orders() {
       <h1 className="text-3xl font-black uppercase tracking-tight mb-8">My Orders</h1>
 
       {justPlaced && (
-        <div className="mb-6 p-5 bg-green-50 border border-green-200 rounded-2xl">
-          <h2 className="text-lg font-black text-green-800 mb-1">🎉 Order Placed!</h2>
-          <p className="text-sm text-green-700">
+        <div className={`mb-6 p-5 rounded-2xl border ${paid ? 'bg-emerald-50 border-emerald-200' : 'bg-green-50 border-green-200'}`}>
+          <h2 className={`text-lg font-black mb-1 ${paid ? 'text-emerald-800' : 'text-green-800'}`}>
+            {paid ? '✅ Payment Successful!' : '🎉 Order Placed!'}
+          </h2>
+          <p className={`text-sm ${paid ? 'text-emerald-700' : 'text-green-700'}`}>
             Order <span className="font-mono font-bold">#{justPlaced.orderNumber || justPlaced.id}</span> confirmed.
             Total: <strong>${Number(justPlaced.total || justPlaced.grandTotal || 0).toFixed(2)}</strong>
           </p>
           {justPlaced.customerEmail && (
-            <p className="text-xs text-green-600 mt-1">
+            <p className={`text-xs mt-1 ${paid ? 'text-emerald-600' : 'text-green-600'}`}>
               A confirmation will be sent to {justPlaced.customerEmail}.
             </p>
           )}

@@ -115,8 +115,23 @@ export default function ShoppingCart() {
       }
 
       const result = await dispatch(placeOrder(orderData)).unwrap()
+      const { order, payment } = result
+
+      // Card payment: go to Stripe checkout page.
+      if (paymentMethod === 'card' && payment?.clientSecret) {
+        navigate('/checkout', {
+          state: {
+            clientSecret: payment.clientSecret,
+            orderId: order?.id,
+            order,
+          },
+        })
+        return
+      }
+
+      // COD or Stripe not configured: go straight to orders.
       dispatch(clearCart())
-      navigate('/orders', { state: { justPlaced: result.order || result } })
+      navigate('/orders', { state: { justPlaced: order } })
     } catch (err) {
       setCheckoutError(err.message || err || 'Failed to place order')
     } finally {
@@ -168,8 +183,23 @@ export default function ShoppingCart() {
       }
 
       const result = await dispatch(placeOrder(orderData)).unwrap()
+      const { order, payment } = result
+
+      // Card payment: go to Stripe checkout page.
+      if (paymentMethod === 'card' && payment?.clientSecret) {
+        navigate('/checkout', {
+          state: {
+            clientSecret: payment.clientSecret,
+            orderId: order?.id,
+            order,
+          },
+        })
+        return
+      }
+
+      // COD or Stripe not configured: go straight to orders.
       dispatch(clearCart())
-      navigate('/orders', { state: { justPlaced: result.order || result } })
+      navigate('/orders', { state: { justPlaced: order } })
     } catch (err) {
       setCheckoutError(err.message || err || 'Failed to place order')
     } finally {

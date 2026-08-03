@@ -14,12 +14,6 @@ export function getAccessToken() {
 
 let refreshPromise = null
 
-async function silentRefresh() {
-  if (refreshPromise) return refreshPromise
-  refreshPromise = _doRefresh().finally(() => { refreshPromise = null })
-  return refreshPromise
-}
-
 async function _doRefresh() {
   try {
     const res = await fetch(`${BASE_URL}/auth/refresh`, {
@@ -37,6 +31,13 @@ async function _doRefresh() {
     setAccessToken(null)
     return false
   }
+}
+
+// Exported so authSlice.fetchMe can silently restore the token on boot.
+export function silentRefresh() {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = _doRefresh().finally(() => { refreshPromise = null })
+  return refreshPromise
 }
 
 async function request(path, options = {}) {
@@ -117,4 +118,6 @@ export const ordersApi = {
   listMine: () => get('/orders'),
   getOne: (id) => get(`/orders/${id}`),
   cancel: (id) => post(`/orders/${id}/cancel`),
+  pay: (id) => post(`/orders/${id}/pay`),
+  paymentStatus: (id) => get(`/orders/${id}/payment-status`),
 }
