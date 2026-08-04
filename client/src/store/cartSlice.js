@@ -149,6 +149,7 @@ const cartSlice = createSlice({
     initialized: false,
     syncedFor: null,
     error: null,
+    rollbackItems: null,
   },
   reducers: {
     resetCartState: (state) => {
@@ -157,6 +158,7 @@ const cartSlice = createSlice({
       state.initialized = true
       state.syncedFor = null
       state.error = null
+      state.rollbackItems = null
       saveGuestCart([])
     },
   },
@@ -170,9 +172,16 @@ const cartSlice = createSlice({
       state.initialized = true
       state.items = action.payload.items
       state.syncedFor = action.payload.userId
+      state.rollbackItems = null
     }
     const rejected = (state, action) => {
       state.loading = false
+      state.error = action.payload || 'Cart request failed.'
+    }
+    const mutationRejected = (state, action) => {
+      state.loading = false
+      if (state.rollbackItems) state.items = state.rollbackItems
+      state.rollbackItems = null
       state.error = action.payload || 'Cart request failed.'
     }
 
@@ -183,12 +192,25 @@ const cartSlice = createSlice({
       .addCase(addToCart.pending, pending)
       .addCase(addToCart.fulfilled, fulfilled)
       .addCase(addToCart.rejected, rejected)
-      .addCase(updateQuantity.pending, pending)
+      .addCase(updateQuantity.pending, (state, action) => {
+        pending(state)
+        state.rollbackItems = state.items.map((item) => ({ ...item }))
+        const { variantId, quantity } = action.meta.arg
+        const capped = Math.min(Math.max(Number(quantity), 0), MAX_QTY)
+        state.items = capped <= 0
+          ? state.items.filter((item) => item.variantId !== variantId)
+          : state.items.map((item) =>
+            item.variantId === variantId ? { ...item, quantity: capped } : item)
+      })
       .addCase(updateQuantity.fulfilled, fulfilled)
-      .addCase(updateQuantity.rejected, rejected)
-      .addCase(removeFromCart.pending, pending)
+      .addCase(updateQuantity.rejected, mutationRejected)
+      .addCase(removeFromCart.pending, (state, action) => {
+        pending(state)
+        state.rollbackItems = state.items.map((item) => ({ ...item }))
+        state.items = state.items.filter((item) => item.variantId !== action.meta.arg)
+      })
       .addCase(removeFromCart.fulfilled, fulfilled)
-      .addCase(removeFromCart.rejected, rejected)
+      .addCase(removeFromCart.rejected, mutationRejected)
       .addCase(clearCart.pending, pending)
       .addCase(clearCart.fulfilled, fulfilled)
       .addCase(clearCart.rejected, rejected)

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { registerUser, clearError } from '../store/authSlice';
+import { showToast } from '../lib/toast';
 
 export default function Signup() {
   const dispatch = useDispatch();
@@ -26,6 +27,7 @@ export default function Signup() {
           password,
         })
       ).unwrap();
+      showToast('Your KICKS account is ready.', 'profile', { title: 'Welcome to KICKS' });
       navigate('/');
     } catch {
       // Error in slice state

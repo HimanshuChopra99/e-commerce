@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { clearCart } from '../store/cartSlice'
 import { ordersApi } from '../lib/api'
+import { showToast } from '../lib/toast'
 
 const appearance = {
   theme: 'stripe',
@@ -35,7 +36,9 @@ function PaymentForm({ order, onPaid }) {
 
     const { error: submitError } = await elements.submit()
     if (submitError) {
-      setError(submitError.message || 'Please check your payment details.')
+      const message = submitError.message || 'Please check your payment details.'
+      setError(message)
+      showToast(message, 'error', { title: 'Payment details need attention' })
       setSubmitting(false)
       return
     }
@@ -49,7 +52,9 @@ function PaymentForm({ order, onPaid }) {
     })
 
     if (paymentError) {
-      setError(paymentError.message || 'Payment could not be completed. Please try again.')
+      const message = paymentError.message || 'Payment could not be completed. Please try again.'
+      setError(message)
+      showToast(message, 'error', { title: 'Payment failed' })
       setSubmitting(false)
       return
     }
@@ -59,7 +64,9 @@ function PaymentForm({ order, onPaid }) {
       return
     }
 
-    setError('Payment was not completed. You can safely try again.')
+    const message = 'Payment was not completed. You can safely try again.'
+    setError(message)
+    showToast(message, 'warning', { title: 'Payment incomplete' })
     setSubmitting(false)
   }
 
@@ -145,6 +152,9 @@ export default function Payment() {
         const response = await ordersApi.paymentStatus(order.id)
         if (response.data?.paymentStatus === 'paid') {
           dispatch(clearCart())
+          showToast(`Payment confirmed for order ${order.orderNumber || order.id}.`, 'order', {
+            title: 'Payment successful',
+          })
           navigate('/orders', {
             replace: true,
             state: { justPlaced: { ...order, ...response.data, paymentStatus: 'paid' } },

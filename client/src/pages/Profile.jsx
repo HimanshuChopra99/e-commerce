@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { logoutUser, setUser } from '../store/authSlice'
 import { authApi } from '../lib/api'
+import { showToast } from '../lib/toast'
 import { fetchMyOrders } from '../store/ordersSlice'
 import { selectCartItems } from '../store/cartSlice'
 import {
@@ -133,9 +134,13 @@ export default function Profile() {
       }
       const response = await authApi.updateMe(payload)
       dispatch(setUser(response.data))
-      setMessage({ type: 'success', text: 'Your account details have been saved.' })
+      const successMessage = 'Your account details have been saved.'
+      setMessage({ type: 'success', text: successMessage })
+      showToast(successMessage, 'profile')
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || 'Unable to save changes.' })
+      const errorMessage = error.message || 'Unable to save changes.'
+      setMessage({ type: 'error', text: errorMessage })
+      showToast(errorMessage, 'error', { title: 'Profile update failed' })
     } finally {
       setSaving(false)
     }
@@ -146,6 +151,7 @@ export default function Profile() {
     await dispatch(logoutUser())
     setLoggingOut(false)
     setLogoutOpen(false)
+    showToast('You have been logged out safely.', 'profile', { title: 'Signed out' })
     navigate('/', { replace: true })
   }
 
@@ -446,9 +452,11 @@ function FavouritesPanel({ products, loading, dispatch }) {
   const remove = async (productId) => {
     try {
       await dispatch(toggleWishlist(productId)).unwrap()
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'Removed from favourites' }))
+      showToast('Product removed from favourites.', 'favourite')
     } catch (error) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: error || 'Unable to update favourites.' }))
+      showToast(error || 'Unable to update favourites.', 'error', {
+        title: 'Favourite update failed',
+      })
     }
   }
 

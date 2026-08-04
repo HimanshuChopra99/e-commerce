@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, removeFromCart, selectCartItems } from "../store/cartSlice";
 import { toggleWishlist, selectIsWishlisted } from "../store/wishlistSlice";
+import { showToast } from "../lib/toast";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { ProductDetails } from "../components/product/ProductDetails";
 import { SizeChartModal } from "../components/product/SizeChartModal";
@@ -216,9 +217,9 @@ export default function ProductView() {
     if (!selectedVariant?.id) return;
     try {
       await dispatch(removeFromCart(selectedVariant.id)).unwrap();
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} removed from your cart.` }));
+      showToast(`${product.name} removed from your cart.`, 'cart');
     } catch (requestError) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: requestError || 'Unable to remove this item.' }));
+      showToast(requestError || 'Unable to remove this item.', 'error', { title: 'Cart update failed' });
     }
   };
 
@@ -227,13 +228,13 @@ export default function ProductView() {
       (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
     );
     if (!variant?.id || !(variant.inStock ?? Number(variant.available ?? 0) > 0)) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'This size is currently unavailable.' }));
+      showToast('This size is currently unavailable.', 'warning', { title: 'Sold out' });
       return false;
     }
 
     const alreadyInCart = cartItems.some((i) => i.variantId === variant.id);
     if (alreadyInCart) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'Already available in cart.' }));
+      showToast('This item is already in your cart.', 'cart');
       return false;
     }
 
@@ -251,10 +252,10 @@ export default function ProductView() {
           quantity: 1,
         })
       ).unwrap();
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} added to your cart.` }));
+      showToast(`${product.name} added to your cart.`, 'cart');
       return true;
     } catch (requestError) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: requestError || 'Unable to add this item.' }));
+      showToast(requestError || 'Unable to add this item.', 'error', { title: 'Cart update failed' });
       return false;
     }
   };
@@ -272,19 +273,18 @@ export default function ProductView() {
   const handleToggleWishlist = async () => {
     if (!product?.id) return;
     if (!user) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'Sign in to save favourites.' }));
+      showToast('Sign in to save favourites across your devices.', 'profile', { title: 'Account required' });
       navigate(`/login?redirect=${encodeURIComponent(`/product/${product.slug}`)}`);
       return;
     }
     try {
       const result = await dispatch(toggleWishlist(product.id)).unwrap();
-      window.dispatchEvent(
-        new CustomEvent('kick:toast', {
-          detail: result.saved ? 'Saved to favourites ❤️' : 'Removed from favourites',
-        })
+      showToast(
+        result.saved ? `${product.name} saved to favourites.` : `${product.name} removed from favourites.`,
+        'favourite'
       );
     } catch (requestError) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: requestError || 'Unable to update favourites.' }));
+      showToast(requestError || 'Unable to update favourites.', 'error', { title: 'Favourite update failed' });
     }
   };
 

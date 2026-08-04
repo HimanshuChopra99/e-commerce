@@ -10,6 +10,7 @@ import {
 } from '../../store/cartSlice'
 import { placeOrder } from '../../store/ordersSlice'
 import { ordersApi } from '../../lib/api'
+import { showToast } from '../../lib/toast'
 
 export default function ShoppingCart() {
   const dispatch = useDispatch()
@@ -21,7 +22,6 @@ export default function ShoppingCart() {
   const { user } = useSelector((state) => state.auth)
 
   const [quote, setQuote] = useState(null)
-  const [quoteLoading, setQuoteLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('card')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState(null)
@@ -37,34 +37,86 @@ export default function ShoppingCart() {
     country: user?.address?.country || 'USA',
   })
 
+  const cartSignature = cartItems
+    .map((item) => `${item.variantId}:${item.quantity}`)
+    .sort()
+    .join('|')
+
   useEffect(() => {
-    if (cartItems.length === 0) {
+    if (!cartSignature) {
       setQuote(null)
-      return
+      return undefined
     }
-    setQuoteLoading(true)
+
+    let cancelled = false
+    const requestedSignature = cartSignature
     ordersApi
-      .quote({ items: cartItems.map((i) => ({ variantId: i.variantId, quantity: i.quantity })) })
-      .then((res) => {
-        setQuote(res.data)
-        const unavailable = (res.data?.lines || []).filter((l) => !l.available)
+      .quote({ items: cartItems.map((item) => ({ variantId: item.variantId, quantity: item.quantity })) })
+      .then(async (response) => {
+        if (cancelled) return
+        setQuote({ signature: requestedSignature, data: response.data })
+        const unavailable = (response.data?.lines || []).filter((line) => !line.available)
         if (unavailable.length > 0) {
-          unavailable.forEach((l) => dispatch(removeFromCart(l.variantId)))
-          window.dispatchEvent(
-            new CustomEvent('kick:toast', {
-              detail: `${unavailable.length} item(s) removed — no longer available.`,
-            })
+          for (const line of unavailable) {
+            await dispatch(removeFromCart(line.variantId))
+          }
+          showToast(
+            `${unavailable.length} unavailable ${unavailable.length === 1 ? 'item was' : 'items were'} removed.`,
+            'warning',
+            { title: 'Cart adjusted' }
           )
         }
       })
-      .catch(() => setQuote(null))
-      .finally(() => setQuoteLoading(false))
-  }, [cartItems, dispatch])
+      .catch(() => {
+        // Keep the locally calculated summary visible. Checkout performs the
+        // same authoritative validation again on the server.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  // cartSignature fully represents the quote payload and prevents a duplicate
+  // request when the server confirms the same optimistic cart state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSignature, dispatch])
 
   const totalItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0)
+  const currentQuote = quote?.signature === cartSignature ? quote.data : null
+  const localShipping = subtotal === 0 || subtotal >= 150 ? 0 : 9.99
+  const localTax = Number((subtotal * 0.08).toFixed(2))
+  const displaySubtotal = Number(currentQuote?.subtotal ?? subtotal)
+  const displayShipping = Number(currentQuote?.shipping ?? localShipping)
+  const displayTax = Number(currentQuote?.tax ?? localTax)
+  const displayTotal = Number(
+    currentQuote?.total ?? (displaySubtotal + displayShipping + displayTax)
+  )
 
   const handleAddressChange = (field, value) => {
     setShippingAddress((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleQuantityChange = async (item, quantity) => {
+    try {
+      await dispatch(updateQuantity({ variantId: item.variantId, quantity })).unwrap()
+      if (quantity <= 0) {
+        showToast(`${item.name} removed from your cart.`, 'cart')
+      }
+    } catch (error) {
+      showToast(error || 'Unable to update the item quantity.', 'error', {
+        title: 'Cart update failed',
+      })
+    }
+  }
+
+  const handleRemoveItem = async (item) => {
+    try {
+      await dispatch(removeFromCart(item.variantId)).unwrap()
+      showToast(`${item.name} removed from your cart.`, 'cart')
+    } catch (error) {
+      showToast(error || 'Unable to remove this item.', 'error', {
+        title: 'Cart update failed',
+      })
+    }
   }
 
   const isAddressValid = () => {
@@ -82,6 +134,7 @@ export default function ShoppingCart() {
     if (cartItems.length === 0) return
 
     if (!user) {
+      showToast('Sign in to continue to checkout.', 'profile', { title: 'Account required' })
       navigate('/login?redirect=/cart')
       return
     }
@@ -92,7 +145,9 @@ export default function ShoppingCart() {
     }
 
     if (!isAddressValid()) {
-      setCheckoutError('Please fill in all required shipping address fields.')
+      const message = 'Please fill in all required shipping address fields.'
+      setCheckoutError(message)
+      showToast(message, 'warning', { title: 'Delivery address required' })
       return
     }
 
@@ -134,9 +189,12 @@ export default function ShoppingCart() {
       }
 
       dispatch(clearCart())
+      showToast(`Order ${order.orderNumber || order.id} was placed successfully.`, 'order')
       navigate('/orders', { state: { justPlaced: order } })
     } catch (err) {
-      setCheckoutError(err.message || err || 'Failed to place order')
+      const message = err.message || err || 'Failed to place order'
+      setCheckoutError(message)
+      showToast(message, 'error', { title: 'Checkout failed' })
     } finally {
       setCheckoutLoading(false)
     }
@@ -208,7 +266,7 @@ export default function ShoppingCart() {
                               {item.name}
                             </h3>
                             <span className="font-bold text-blue-600 text-sm sm:text-base whitespace-nowrap">
-                              ${(item.price * item.quantity).toFixed(2)}
+                              <AnimatedMoney value={item.price * item.quantity} />
                             </span>
                           </div>
 
@@ -228,14 +286,7 @@ export default function ShoppingCart() {
                                 <button
                                   type="button"
                                   disabled={cartLoading}
-                                  onClick={() =>
-                                    dispatch(
-                                      updateQuantity({
-                                        variantId: item.variantId,
-                                        quantity: item.quantity - 1,
-                                      })
-                                    )
-                                  }
+                                  onClick={() => handleQuantityChange(item, item.quantity - 1)}
                                   className="w-7 h-7 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition font-bold text-sm select-none"
                                   aria-label="Decrease quantity"
                                 >
@@ -249,17 +300,12 @@ export default function ShoppingCart() {
                                   disabled={cartLoading}
                                   onClick={() => {
                                     if (item.quantity >= 10) {
-                                      window.dispatchEvent(
-                                        new CustomEvent('kick:toast', { detail: 'Maximum 10 items allowed.' })
-                                      )
+                                      showToast('Maximum 10 items allowed for one product.', 'warning', {
+                                        title: 'Quantity limit',
+                                      })
                                       return
                                     }
-                                    dispatch(
-                                      updateQuantity({
-                                        variantId: item.variantId,
-                                        quantity: item.quantity + 1,
-                                      })
-                                    )
+                                    handleQuantityChange(item, item.quantity + 1)
                                   }}
                                   className="w-7 h-7 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition font-bold text-sm select-none"
                                   aria-label="Increase quantity"
@@ -274,7 +320,7 @@ export default function ShoppingCart() {
                         <div className="flex items-center gap-4 mt-4 pt-1">
                           <button
                             disabled={cartLoading}
-                            onClick={() => dispatch(removeFromCart(item.variantId))}
+                            onClick={() => handleRemoveItem(item)}
                             className="text-red-500 hover:text-red-700 text-xs font-semibold transition-colors flex items-center gap-1"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -295,53 +341,45 @@ export default function ShoppingCart() {
           <div className="lg:col-span-5 pt-2">
             <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
 
-            {quoteLoading ? (
-              <div className="p-6 text-center text-sm text-gray-500 font-medium">Calculating totals...</div>
-            ) : (
-              <div className="space-y-3 text-sm sm:text-base">
-                <div className="flex justify-between text-gray-800">
-                  <span className="uppercase font-medium text-xs tracking-wider">
-                    {totalItemCount} {totalItemCount === 1 ? 'ITEM' : 'ITEMS'} (SUBTOTAL)
-                  </span>
-                  <span className="font-medium">
-                    ${Number(quote?.subtotal ?? subtotal).toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between text-gray-800">
-                  <span>Delivery</span>
-                  <span className="font-medium">
-                    {quote ? (
-                      quote.shipping === 0 ? (
-                        <span className="text-green-600 font-bold">FREE</span>
-                      ) : (
-                        `$${Number(quote.shipping).toFixed(2)}`
-                      )
-                    ) : (
-                      '$0.00'
-                    )}
-                  </span>
-                </div>
-
-                <div className="flex justify-between text-gray-800">
-                  <span>Tax (8%)</span>
-                  <span className="font-medium">
-                    ${Number(quote?.tax ?? 0).toFixed(2)}
-                  </span>
-                </div>
-
-                {quote && quote.shipping > 0 && (
-                  <div className="text-xs text-amber-600 font-medium">
-                    Free shipping on orders over $150
-                  </div>
-                )}
-
-                <div className="flex justify-between text-base sm:text-lg font-bold pt-2 text-black border-t">
-                  <span>Total</span>
-                  <span>${Number(quote?.total ?? subtotal).toFixed(2)}</span>
-                </div>
+            <div className="space-y-3 text-sm sm:text-base" aria-live="polite">
+              <div className="flex justify-between text-gray-800">
+                <span className="uppercase font-medium text-xs tracking-wider">
+                  {totalItemCount} {totalItemCount === 1 ? 'ITEM' : 'ITEMS'} (SUBTOTAL)
+                </span>
+                <span className="font-medium">
+                  <AnimatedMoney value={displaySubtotal} />
+                </span>
               </div>
-            )}
+
+              <div className="flex justify-between text-gray-800">
+                <span>Delivery</span>
+                <span className="font-medium">
+                  {displayShipping === 0 ? (
+                    <span key="free" className="price-value-change inline-block font-bold text-green-600">FREE</span>
+                  ) : (
+                    <AnimatedMoney value={displayShipping} />
+                  )}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-gray-800">
+                <span>Tax (8%)</span>
+                <span className="font-medium">
+                  <AnimatedMoney value={displayTax} />
+                </span>
+              </div>
+
+              {displayShipping > 0 && (
+                <div className="text-xs text-amber-600 font-medium">
+                  Free shipping on orders over $150
+                </div>
+              )}
+
+              <div className="flex justify-between text-base sm:text-lg font-bold pt-2 text-black border-t">
+                <span>Total</span>
+                <AnimatedMoney value={displayTotal} />
+              </div>
+            </div>
 
             {/* Payment Method Selector */}
             <div className="mt-6 p-4 bg-gray-50 rounded-xl space-y-2">
@@ -433,7 +471,7 @@ export default function ShoppingCart() {
 
             <button
               onClick={handleCheckout}
-              disabled={checkoutLoading || quoteLoading || cartItems.length === 0}
+              disabled={checkoutLoading || cartLoading || cartItems.length === 0}
               className="w-full bg-[#1E1E1E] hover:bg-black disabled:bg-gray-400 text-white font-bold py-3.5 px-4 rounded-xl mt-4 uppercase tracking-wider text-xs sm:text-sm transition-all duration-200 active:scale-[0.99]"
             >
               {checkoutLoading
@@ -455,5 +493,14 @@ export default function ShoppingCart() {
         </div>
       </div>
     </div>
+  )
+}
+
+function AnimatedMoney({ value }) {
+  const formatted = Number(value || 0).toFixed(2)
+  return (
+    <span key={formatted} className='price-value-change inline-block'>
+      ${formatted}
+    </span>
   )
 }
