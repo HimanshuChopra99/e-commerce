@@ -116,6 +116,10 @@ function generate200Products() {
       material,
       colors,
       images: [image, secondaryImage],
+      colorImages: colors.map((color, colorIndex) => ({
+        color,
+        images: [colorIndex % 2 === 0 ? image : secondaryImage],
+      })),
       tags: [category.toLowerCase(), brand.toLowerCase(), gender, 'footwear'],
       featured: isFeatured,
       description: `Premium ${brand} ${name} designed for maximum performance, comfort, and style. Engineered with ${material} and durable traction outer sole.`
@@ -205,15 +209,15 @@ export async function seedDatabase() {
       `INSERT INTO products
          (public_id, category_id, name, slug, sku, description, brand, gender,
           material, price, compare_at_price, cost_per_item, status, is_featured,
-          images, tags, rating_avg, rating_count, total_stock)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?,?,?,?,100)`,
+          images, color_images, tags, rating_avg, rating_count, total_stock)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?,?,?,?,?,100)`,
       [
         publicId(), categoryId, p.name,
         slug, p.sku, p.description,
         p.brand, p.gender, p.material, p.price,
         p.compareAt, Number((p.price * 0.45).toFixed(2)),
         p.featured ? 1 : 0,
-        JSON.stringify(p.images), JSON.stringify(p.tags),
+        JSON.stringify(p.images), JSON.stringify(p.colorImages), JSON.stringify(p.tags),
         (4.2 + (createdCount % 8) * 0.1).toFixed(1), 25 + (createdCount * 7) % 300,
       ]
     )

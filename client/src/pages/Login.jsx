@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { loginUser, clearError } from '../store/authSlice'
+import { showToast } from '../lib/toast'
 
 export default function Login() {
   const dispatch = useDispatch()
@@ -9,7 +10,7 @@ export default function Login() {
   const [searchParams] = useSearchParams()
   const redirect = searchParams.get('redirect') || '/'
 
-  const { loading, error, user } = useSelector((state) => state.auth)
+  const { loading, error } = useSelector((state) => state.auth)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,6 +25,9 @@ export default function Login() {
         // Admins go to admin panel - use relative path
         window.location.href = '/admin'
       } else {
+        showToast(`Welcome back, ${res?.user?.firstName || 'member'}!`, 'profile', {
+          title: 'Signed in',
+        })
         navigate(redirect, { replace: true })
       }
     } catch {

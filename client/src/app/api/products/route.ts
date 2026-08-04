@@ -2,7 +2,6 @@ import { NextResponse, NextRequest } from "next/server";
 import { db } from "@/db";
 import { products } from "@/db/schema";
 import { SEED_PRODUCTS } from "@/db/seed-data";
-import { eq, ilike, or, and } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {

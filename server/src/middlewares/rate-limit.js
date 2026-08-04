@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit'
 import { env } from '../config/env.js'
+import { logger } from '../config/logger.js'
 
 /**
  * Rate limits.
@@ -12,14 +13,30 @@ import { env } from '../config/env.js'
  *   store: new RedisStore({ sendCommand: (...a) => redis.call(...a) })
  */
 let store
-if (process.env.REDIS_URL) {
+if (env.redis.url) {
+  let redis
   try {
     const { default: RedisStore } = await import('rate-limit-redis')
     const { default: Redis } = await import('ioredis')
-    const redis = new Redis(process.env.REDIS_URL)
+    redis = new Redis(env.redis.url, {
+      lazyConnect: true,
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 750,
+      retryStrategy: () => null,
+    })
+    let warned = false
+    redis.on('error', (error) => {
+      if (warned) return
+      warned = true
+      logger.warn({ err: error.message }, 'Redis rate-limit store unavailable; requests will fail open')
+    })
+    redis.on('ready', () => { warned = false })
+    await redis.connect()
     store = new RedisStore({ sendCommand: (...args) => redis.call(...args) })
-  } catch (err) {
-    console.warn('Failed to initialize RedisStore for rate limiting:', err.message)
+  } catch (error) {
+    redis?.disconnect(false)
+    logger.warn({ err: error.message }, 'Redis rate-limit store unavailable; using process-local limits')
   }
 }
 
@@ -31,6 +48,7 @@ const body = {
 const base = {
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  passOnStoreError: true,
   message: body,
   skip: (req) => env.isTest || req.path === '/api/health',
   ...(store ? { store } : {}),

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, removeFromCart, selectCartItems } from "../store/cartSlice";
 import { toggleWishlist, selectIsWishlisted } from "../store/wishlistSlice";
+import { showToast } from "../lib/toast";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { ProductDetails } from "../components/product/ProductDetails";
 import { SizeChartModal } from "../components/product/SizeChartModal";
@@ -20,42 +21,6 @@ function getImageSrc(img) {
   return `${IMAGE_BASE}${img}`;
 }
 
-const COLOR_PHOTOS = {
-  black: [
-    'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=800&q=80',
-  ],
-  white: [
-    'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=800&q=80',
-  ],
-  red: [
-    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?auto=format&fit=crop&w=800&q=80',
-  ],
-  blue: [
-    'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=800&q=80',
-  ],
-  green: [
-    'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&w=800&q=80',
-  ],
-  grey: [
-    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=800&q=80',
-  ],
-  gray: [
-    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=800&q=80',
-  ],
-  yellow: [
-    'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&w=800&q=80',
-  ],
-  pink: [
-    'https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?auto=format&fit=crop&w=800&q=80',
-  ],
-};
-
 const EU_TO_US = { '35': 5, '36': 6, '37': 6.5, '38': 7.5, '39': 8, '40': 9, '41': 10, '42': 10.5, '43': 11.5, '44': 12, '45': 13, '46': 14 }
 const EU_TO_UK = { '35': 3, '36': 4, '37': 4.5, '38': 5.5, '39': 6, '40': 7, '41': 8, '42': 8.5, '43': 9.5, '44': 10, '45': 11, '46': 12 }
 const EU_TO_CM = { '35': 22.5, '36': 23, '37': 23.5, '38': 24, '39': 25, '40': 25.5, '41': 26, '42': 26.5, '43': 27.5, '44': 28, '45': 28.5, '46': 29 }
@@ -66,6 +31,7 @@ export default function ProductView() {
   const navigate = useNavigate();
 
   const cartItems = useSelector(selectCartItems);
+  const user = useSelector((state) => state.auth.user);
 
   const [product, setProduct] = useState(null);
   const [relatedList, setRelatedList] = useState([]);
@@ -123,20 +89,23 @@ export default function ProductView() {
 
         const imgList = rawImages.map(getImageSrc);
 
-        const colorImageMap = {};
-        variants.forEach((v) => {
-          if (v.color && !colorImageMap[v.color]) {
-            colorImageMap[v.color] = v.image ? [getImageSrc(v.image), ...imgList] : imgList;
-          }
-        });
-
-        const colorHex = { white: '#FFFFFF', black: '#1E1E1E', red: '#EF4444', blue: '#3B82F6', green: '#22C55E', yellow: '#EAB308', grey: '#6B7280', gray: '#6B7280', pink: '#EC4899', brown: '#92400E', tan: '#D2B48C' };
+        const colorImageEntries = Array.isArray(item.colorImages) ? item.colorImages : [];
+        const colorHex = {
+          white: '#FFFFFF', black: '#1E1E1E', red: '#EF4444', blue: '#3B82F6',
+          navy: '#1E3A8A', green: '#22C55E', yellow: '#EAB308', grey: '#6B7280',
+          gray: '#6B7280', pink: '#EC4899', brown: '#92400E', tan: '#D2B48C',
+          beige: '#E7DBC8', olive: '#6B7A32',
+        };
         const colors = colorList.map((col, idx) => {
           const key = col.toLowerCase();
-          const colorSpecificImgs = colorImageMap[col] || COLOR_PHOTOS[key] || [
-            imgList[idx % imgList.length],
-            ...imgList.filter((_, i) => i !== (idx % imgList.length))
-          ];
+          const assignedGallery = colorImageEntries.find(
+            (entry) => entry.color?.toLowerCase() === key
+          );
+          // Exact admin-assigned images win. Products created before colour
+          // galleries were introduced retain their general gallery as fallback.
+          const colorSpecificImgs = assignedGallery?.images?.length
+            ? assignedGallery.images.map(getImageSrc)
+            : imgList;
           return {
             id: `col-${idx}`,
             name: col,
@@ -233,7 +202,9 @@ export default function ProductView() {
     const matchingSize = product.sizes.find((size) => product.variants.some(
       (variant) => variant.color === color.name && String(variant.size) === String(size.value) && Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)
     ));
-    if (matchingSize) setSelectedSize({ ...matchingSize, available: true, inStock: true });
+    setSelectedSize(
+      matchingSize ? { ...matchingSize, available: true, inStock: true } : null
+    );
   };
 
   const isSizeAvailable = (size) => product.variants.some((variant) =>
@@ -242,62 +213,79 @@ export default function ProductView() {
 
   const selectedVariant = product.variants?.find((v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name);
   const selectedVariantInCart = Boolean(selectedVariant?.id && cartItems.some((item) => item.variantId === selectedVariant.id));
-  const handleRemoveFromCart = () => {
+  const handleRemoveFromCart = async () => {
     if (!selectedVariant?.id) return;
-    dispatch(removeFromCart(selectedVariant.id));
-    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} removed from your cart.` }));
+    try {
+      await dispatch(removeFromCart(selectedVariant.id)).unwrap();
+      showToast(`${product.name} removed from your cart.`, 'cart');
+    } catch (requestError) {
+      showToast(requestError || 'Unable to remove this item.', 'error', { title: 'Cart update failed' });
+    }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     const variant = product.variants?.find(
       (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
     );
-    if (!variant?.id || !Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'This size is currently unavailable.' }));
+    if (!variant?.id || !(variant.inStock ?? Number(variant.available ?? 0) > 0)) {
+      showToast('This size is currently unavailable.', 'warning', { title: 'Sold out' });
       return false;
     }
 
     const alreadyInCart = cartItems.some((i) => i.variantId === variant.id);
     if (alreadyInCart) {
-      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'Already available in cart.' }));
+      showToast('This item is already in your cart.', 'cart');
       return false;
     }
 
-    dispatch(
-      addToCart({
-        variantId: variant.id,
-        productId: product.id,
-        name: product.name,
-        image: selectedColor?.images?.[0] || product.image,
-        price: product.price,
-        size: selectedSize.value,
-        color: selectedColor.name,
-        slug: product.slug,
-        quantity: 1,
-      })
-    );
-    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} added to your cart.` }));
-    return true;
+    try {
+      await dispatch(
+        addToCart({
+          variantId: variant.id,
+          productId: product.id,
+          name: product.name,
+          image: selectedColor?.images?.[0] || product.image,
+          price: product.price,
+          size: selectedSize.value,
+          color: selectedColor.name,
+          slug: product.slug,
+          quantity: 1,
+        })
+      ).unwrap();
+      showToast(`${product.name} added to your cart.`, 'cart');
+      return true;
+    } catch (requestError) {
+      showToast(requestError || 'Unable to add this item.', 'error', { title: 'Cart update failed' });
+      return false;
+    }
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     const variant = product.variants?.find(
       (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
     );
     const alreadyInCart = variant && cartItems.some((i) => i.variantId === variant.id);
-    if (alreadyInCart || handleAddToCart()) {
+    if (alreadyInCart || await handleAddToCart()) {
       navigate("/cart");
     }
   };
 
-  const handleToggleWishlist = () => {
+  const handleToggleWishlist = async () => {
     if (!product?.id) return;
-    dispatch(toggleWishlist(product.id));
-    window.dispatchEvent(
-      new CustomEvent('kick:toast', {
-        detail: isWishlisted ? 'Removed from wishlist' : 'Saved to wishlist ❤️',
-      })
-    );
+    if (!user) {
+      showToast('Sign in to save favourites across your devices.', 'profile', { title: 'Account required' });
+      navigate(`/login?redirect=${encodeURIComponent(`/product/${product.slug}`)}`);
+      return;
+    }
+    try {
+      const result = await dispatch(toggleWishlist(product.id)).unwrap();
+      showToast(
+        result.saved ? `${product.name} saved to favourites.` : `${product.name} removed from favourites.`,
+        'favourite'
+      );
+    } catch (requestError) {
+      showToast(requestError || 'Unable to update favourites.', 'error', { title: 'Favourite update failed' });
+    }
   };
 
   return (
@@ -316,7 +304,8 @@ export default function ProductView() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           <div className="lg:col-span-7">
             <ProductGallery
-              images={selectedColor ? selectedColor.images : [product.image]}
+              key={selectedColor?.id || 'default-gallery'}
+              images={selectedColor?.images?.length ? selectedColor.images : [product.image]}
               productName={product.name}
             />
           </div>

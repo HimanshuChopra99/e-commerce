@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Kick — MySQL 8 / MariaDB 10.6+ schema
--- 9 tables. Run: mysql -u root -p Kick < schema.sql
+-- 11 tables. Run: mysql -u root -p Kick < schema.sql
 -- =====================================================================
 
 SET NAMES utf8mb4;
@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS products (
   rating_count     INT NOT NULL DEFAULT 0,
 
   images           JSON DEFAULT NULL,
+  color_images     JSON DEFAULT NULL,
   tags             JSON DEFAULT NULL,
 
   deleted_at       TIMESTAMP NULL DEFAULT NULL,
@@ -161,7 +162,47 @@ CREATE TABLE IF NOT EXISTS product_variants (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 6. orders
+-- 6. cart_items (one durable cart per authenticated customer)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS cart_items (
+  id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    BIGINT UNSIGNED NOT NULL,
+  variant_id BIGINT UNSIGNED NOT NULL,
+  quantity   INT UNSIGNED NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                       ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_cart_user_variant (user_id, variant_id),
+  KEY idx_cart_user_updated (user_id, updated_at),
+  KEY idx_cart_variant (variant_id),
+  CONSTRAINT fk_cart_user FOREIGN KEY (user_id)
+    REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_cart_variant FOREIGN KEY (variant_id)
+    REFERENCES product_variants (id) ON DELETE CASCADE,
+  CONSTRAINT chk_cart_quantity CHECK (quantity BETWEEN 1 AND 10)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 7. favourites (durable customer product collection)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS favourites (
+  id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    BIGINT UNSIGNED NOT NULL,
+  product_id BIGINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_favourites_user_product (user_id, product_id),
+  KEY idx_favourites_user_created (user_id, created_at),
+  KEY idx_favourites_product (product_id),
+  CONSTRAINT fk_favourites_user FOREIGN KEY (user_id)
+    REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_favourites_product FOREIGN KEY (product_id)
+    REFERENCES products (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 8. orders
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS orders (
   id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -225,7 +266,7 @@ CREATE TABLE IF NOT EXISTS orders (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 7. order_items
+-- 9. order_items
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS order_items (
   id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -254,7 +295,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 8. stripe_events
+-- 10. stripe_events
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS stripe_events (
   id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -269,7 +310,7 @@ CREATE TABLE IF NOT EXISTS stripe_events (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 9. schema_migrations
+-- 11. schema_migrations
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS schema_migrations (
   filename   VARCHAR(200) NOT NULL,

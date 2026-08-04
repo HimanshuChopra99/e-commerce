@@ -3,7 +3,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMe } from './store/authSlice';
 import { fetchCategories } from './store/categoriesSlice';
-import { selectCartCount } from './store/cartSlice';
+import { hydrateCart, selectCartCount } from './store/cartSlice';
+import { fetchFavourites } from './store/wishlistSlice';
+import { showToast } from './lib/toast';
 
 import Navbar from './components/common/Navbar';
 import SearchOverlay from './components/common/SearchOverlay';
@@ -25,9 +27,9 @@ import Company from './pages/Company';
 function App() {
   const dispatch = useDispatch();
   const cartCount = useSelector(selectCartCount);
+  const userId = useSelector((state) => state.auth.user?.id);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [toastQueue, setToastQueue] = useState([]);
 
@@ -36,21 +38,38 @@ function App() {
     dispatch(fetchCategories());
   }, [dispatch]);
 
+  // Every authenticated account hydrates its own database-backed state. Guest
+  // cart lines are merged once, then removed from browser storage.
+  useEffect(() => {
+    if (!userId) return;
+    dispatch(hydrateCart());
+    dispatch(fetchFavourites());
+  }, [dispatch, userId]);
+
   // Lock body scroll when any overlay/drawer is open
   useEffect(() => {
-    if (isSearchOpen || isCartOpen || isMobileOpen) {
+    if (isSearchOpen || isMobileOpen) {
       document.body.classList.add("locked");
     } else {
       document.body.classList.remove("locked");
     }
-  }, [isSearchOpen, isCartOpen, isMobileOpen]);
+  }, [isSearchOpen, isMobileOpen]);
 
-  // Listen for toast events
+  // Global typed notifications. String details remain supported for older
+  // callers, while new callers provide { message, type, title }.
   useEffect(() => {
-    const showToast = (event) =>
-      setToastQueue((q) => [...q, { id: Date.now() + Math.random(), message: event.detail || 'Updated successfully.' }]);
-    window.addEventListener('kick:toast', showToast);
-    return () => window.removeEventListener('kick:toast', showToast);
+    const enqueueToast = (event) => {
+      const detail = event.detail;
+      const notification = typeof detail === 'string'
+        ? { message: detail, type: 'success' }
+        : { message: detail?.message || 'Updated successfully.', type: detail?.type || 'success', title: detail?.title };
+      setToastQueue((queue) => [
+        ...queue.slice(-4),
+        { id: Date.now() + Math.random(), ...notification },
+      ]);
+    };
+    window.addEventListener('kick:toast', enqueueToast);
+    return () => window.removeEventListener('kick:toast', enqueueToast);
   }, []);
 
   // Consume the queue one at a time
@@ -60,7 +79,7 @@ function App() {
     if (!currentToast) return;
     const timer = setTimeout(() => {
       setToastQueue((q) => q.filter((t) => t.id !== currentToast.id));
-    }, 2400);
+    }, currentToast.type === 'error' ? 4200 : 3200);
     return () => clearTimeout(timer);
   }, [currentToast]);
 
@@ -69,11 +88,11 @@ function App() {
   };
 
   const handleSearchSelectProduct = (item) => {
-    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `Selected ${item.brand || ''} ${item.name || ''}` }));
+    showToast(`Opening ${item.brand || ''} ${item.name || ''}`.trim(), 'info', { title: 'Product selected' });
   };
 
   const handleSearchSelectTag = (tag) => {
-    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `Filtered by tag: #${tag}` }));
+    showToast(`Showing products tagged #${tag}`, 'info', { title: 'Filter applied' });
   };
 
   return (
@@ -83,7 +102,6 @@ function App() {
         {/* ===== 1. Site Header & Navbar ===== */}
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
-          onOpenCart={() => setIsCartOpen(true)}
           onOpenMobile={() => setIsMobileOpen(true)}
           onSelectLink={handleLinkSelect}
           cartCount={cartCount}
@@ -104,8 +122,14 @@ function App() {
           onSelectLink={handleLinkSelect}
         />
 
-        {/* ===== 5. Toast Notification ===== */}
-        <Toast isOpen={!!currentToast} message={currentToast?.message || ""} onDismiss={() => currentToast && setToastQueue((q) => q.filter((t) => t.id !== currentToast.id))} />
+        {/* ===== 5. Global Toast Notification ===== */}
+        {currentToast && (
+          <Toast
+            key={currentToast.id}
+            toast={currentToast}
+            onDismiss={() => setToastQueue((queue) => queue.filter((item) => item.id !== currentToast.id))}
+          />
+        )}
 
         {/* ===== Main Page Sections ===== */}
         <main className="flex-1 pt-20 md:pt-24 w-full">

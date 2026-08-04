@@ -11,6 +11,7 @@ import { memoryStore } from '../services/memory-store.js'
 export function mapProduct(row) {
   if (!row) return null
   const images = parseJson(row.images, [])
+  const colorImages = parseJson(row.color_images, [])
   return {
     id: row.public_id,
     internalId: row.id,
@@ -32,6 +33,7 @@ export function mapProduct(row) {
     reviewCount: Number(row.rating_count),
     images,
     image: images[0] ?? null,
+    colorImages: Array.isArray(colorImages) ? colorImages : [],
     tags: parseJson(row.tags, []),
     categoryId: row.category_public_id ?? null,
     category: row.category_public_id
@@ -228,14 +230,15 @@ export async function create(data, conn = pool) {
     `INSERT INTO products
        (public_id, category_id, name, slug, sku, description, brand, gender,
         material, price, compare_at_price, cost_per_item, status, is_featured,
-        images, tags)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        images, color_images, tags)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       data.publicId, data.categoryInternalId ?? null, data.name, data.slug,
       data.sku, data.description, data.brand, data.gender,
       data.material ?? null, data.price, data.compareAtPrice ?? null,
       data.costPerItem ?? null, data.status, data.featured ? 1 : 0,
-      JSON.stringify(data.images ?? []), JSON.stringify(data.tags ?? []),
+      JSON.stringify(data.images ?? []), JSON.stringify(data.colorImages ?? []),
+      JSON.stringify(data.tags ?? []),
     ]
   )
   return result.insertId
@@ -270,6 +273,10 @@ export async function update(internalId, patch, conn = pool) {
   if (patch.images !== undefined) {
     sets.push('images = ?')
     params.push(JSON.stringify(patch.images))
+  }
+  if (patch.colorImages !== undefined) {
+    sets.push('color_images = ?')
+    params.push(JSON.stringify(patch.colorImages))
   }
   if (patch.tags !== undefined) {
     sets.push('tags = ?')

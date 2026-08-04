@@ -50,7 +50,10 @@ export function ProductEditPage() {
               </div>
             </div>
 
-            <ProductForm currentRow={product} />
+            <ProductForm
+              key={`${product.id}-${product.updatedAt ?? ''}`}
+              currentRow={product}
+            />
           </>
         )}
       </Main>

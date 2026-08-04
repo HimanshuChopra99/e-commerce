@@ -11,6 +11,7 @@ export function mapOrder(row) {
     internalId: row.id,
     orderNumber: row.order_number,
     customerId: row.user_public_id ?? null,
+    customerInternalId: row.user_id ?? null,
     customerName: row.customer_name,
     customerEmail: row.customer_email,
     customerPhone: row.customer_phone,
@@ -86,7 +87,7 @@ export function mapOrderMemory(mem) {
 /** Hides internal ids and staff-only notes from the customer. */
 export function toPublicOrder(order) {
   if (!order) return null
-  const { internalId: _i, adminNote: _a, ...rest } = order
+  const { internalId: _i, customerInternalId: _u, adminNote: _a, ...rest } = order
   return rest
 }
 
@@ -270,9 +271,7 @@ export async function findAll(filters = {}) {
         params
       )
 
-      if (rows && rows.length > 0) {
-        return { items: rows.map(mapOrder), total: Number(countRow?.total ?? 0) }
-      }
+      return { items: (rows ?? []).map(mapOrder), total: Number(countRow?.total ?? 0) }
     } catch {}
   }
 

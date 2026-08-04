@@ -1,83 +1,228 @@
-import { createSlice } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import { cartApi } from '../lib/api'
 
-const loadCart = () => {
-  try {
-    if (typeof window !== 'undefined') {
-      const raw = localStorage.getItem('kick_cart')
-      return raw ? JSON.parse(raw) : []
-    }
-    return []
-  } catch {
-    return []
-  }
-}
-
-const saveCart = (items) => {
-  try {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('kick_cart', JSON.stringify(items))
-    }
-  } catch {
-    // Ignore storage errors
-  }
-}
-
+const GUEST_CART_KEY = 'kick_guest_cart'
 const MAX_QTY = 10
+
+function loadGuestCart() {
+  try {
+    if (typeof window === 'undefined') return []
+    // The old key was shared by every account. Never hydrate it into another
+    // customer; account carts now come exclusively from the authenticated API.
+    localStorage.removeItem('kick_cart')
+    return JSON.parse(localStorage.getItem(GUEST_CART_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveGuestCart(items) {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items))
+    }
+  } catch {
+    // Browsers can deny storage; the in-memory cart still works for this tab.
+  }
+}
+
+function addLocal(items, payload) {
+  const { variantId, productId, name, image, price, size, color, slug } = payload
+  const id = variantId || `${productId}-${size}-${color}`
+  if (items.some((item) => item.variantId === id)) return items
+  return [
+    ...items,
+    {
+      variantId: id,
+      productId,
+      name,
+      image,
+      price,
+      size,
+      color,
+      slug,
+      quantity: Math.min(payload.quantity || 1, MAX_QTY),
+    },
+  ]
+}
+
+export const hydrateCart = createAsyncThunk(
+  'cart/hydrate',
+  async (_, { getState, rejectWithValue }) => {
+    const user = getState().auth.user
+    if (!user) return { items: loadGuestCart(), userId: null }
+    try {
+      const guestItems = loadGuestCart()
+      const response = guestItems.length
+        ? await cartApi.sync(guestItems.map(({ variantId, quantity }) => ({ variantId, quantity })))
+        : await cartApi.get()
+      saveGuestCart([])
+      return { items: response.data?.items || [], userId: user.id }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Unable to load your cart.')
+    }
+  }
+)
+
+export const addToCart = createAsyncThunk(
+  'cart/add',
+  async (payload, { getState, rejectWithValue }) => {
+    const { user } = getState().auth
+    if (!user) {
+      const items = addLocal(getState().cart.items, payload)
+      saveGuestCart(items)
+      return { items, userId: null }
+    }
+    try {
+      const response = await cartApi.addItem(payload.variantId, payload.quantity || 1)
+      return { items: response.data?.items || [], userId: user.id }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Unable to add this item.')
+    }
+  }
+)
+
+export const updateQuantity = createAsyncThunk(
+  'cart/updateQuantity',
+  async ({ variantId, quantity }, { getState, rejectWithValue }) => {
+    const capped = Math.min(Math.max(Number(quantity), 0), MAX_QTY)
+    const { user } = getState().auth
+    if (!user) {
+      const items = capped === 0
+        ? getState().cart.items.filter((item) => item.variantId !== variantId)
+        : getState().cart.items.map((item) =>
+          item.variantId === variantId ? { ...item, quantity: capped } : item)
+      saveGuestCart(items)
+      return { items, userId: null }
+    }
+    try {
+      const response = capped === 0
+        ? await cartApi.removeItem(variantId)
+        : await cartApi.setItem(variantId, capped)
+      return { items: response.data?.items || [], userId: user.id }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Unable to update this item.')
+    }
+  }
+)
+
+export const removeFromCart = createAsyncThunk(
+  'cart/remove',
+  async (variantId, { getState, rejectWithValue }) => {
+    const { user } = getState().auth
+    if (!user) {
+      const items = getState().cart.items.filter((item) => item.variantId !== variantId)
+      saveGuestCart(items)
+      return { items, userId: null }
+    }
+    try {
+      const response = await cartApi.removeItem(variantId)
+      return { items: response.data?.items || [], userId: user.id }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Unable to remove this item.')
+    }
+  }
+)
+
+export const clearCart = createAsyncThunk(
+  'cart/clear',
+  async (_, { getState, rejectWithValue }) => {
+    const { user } = getState().auth
+    if (!user) {
+      saveGuestCart([])
+      return { items: [], userId: null }
+    }
+    try {
+      const response = await cartApi.clear()
+      return { items: response.data?.items || [], userId: user.id }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Unable to clear your cart.')
+    }
+  }
+)
 
 const cartSlice = createSlice({
   name: 'cart',
-  initialState: { items: loadCart() },
+  initialState: {
+    items: loadGuestCart(),
+    loading: false,
+    initialized: false,
+    syncedFor: null,
+    error: null,
+    rollbackItems: null,
+  },
   reducers: {
-    addToCart: (state, action) => {
-      const { variantId, productId, name, image, price, size, color, slug } = action.payload
-      const idToMatch = variantId || `${productId}-${size}-${color}`
-      const existing = state.items.find((i) => (i.variantId || `${i.productId}-${i.size}-${i.color}`) === idToMatch)
-      if (!existing) {
-        state.items.push({
-          variantId: idToMatch,
-          productId,
-          name,
-          image,
-          price,
-          size,
-          color,
-          slug,
-          quantity: Math.min(action.payload.quantity || 1, MAX_QTY),
-        })
-        saveCart(state.items)
-      }
-    },
-    removeFromCart: (state, action) => {
-      state.items = state.items.filter((i) => i.variantId !== action.payload)
-      saveCart(state.items)
-    },
-    updateQuantity: (state, action) => {
-      const { variantId, quantity } = action.payload
-      const item = state.items.find((i) => i.variantId === variantId)
-      if (item) {
-        const capped = Math.min(Math.max(quantity, 0), MAX_QTY)
-        if (capped <= 0) {
-          state.items = state.items.filter((i) => i.variantId !== variantId)
-        } else {
-          item.quantity = capped
-        }
-      }
-      saveCart(state.items)
-    },
-    clearCart: (state) => {
+    resetCartState: (state) => {
       state.items = []
-      saveCart([])
+      state.loading = false
+      state.initialized = true
+      state.syncedFor = null
+      state.error = null
+      state.rollbackItems = null
+      saveGuestCart([])
     },
+  },
+  extraReducers: (builder) => {
+    const pending = (state) => {
+      state.loading = true
+      state.error = null
+    }
+    const fulfilled = (state, action) => {
+      state.loading = false
+      state.initialized = true
+      state.items = action.payload.items
+      state.syncedFor = action.payload.userId
+      state.rollbackItems = null
+    }
+    const rejected = (state, action) => {
+      state.loading = false
+      state.error = action.payload || 'Cart request failed.'
+    }
+    const mutationRejected = (state, action) => {
+      state.loading = false
+      if (state.rollbackItems) state.items = state.rollbackItems
+      state.rollbackItems = null
+      state.error = action.payload || 'Cart request failed.'
+    }
+
+    builder
+      .addCase(hydrateCart.pending, pending)
+      .addCase(hydrateCart.fulfilled, fulfilled)
+      .addCase(hydrateCart.rejected, rejected)
+      .addCase(addToCart.pending, pending)
+      .addCase(addToCart.fulfilled, fulfilled)
+      .addCase(addToCart.rejected, rejected)
+      .addCase(updateQuantity.pending, (state, action) => {
+        pending(state)
+        state.rollbackItems = state.items.map((item) => ({ ...item }))
+        const { variantId, quantity } = action.meta.arg
+        const capped = Math.min(Math.max(Number(quantity), 0), MAX_QTY)
+        state.items = capped <= 0
+          ? state.items.filter((item) => item.variantId !== variantId)
+          : state.items.map((item) =>
+            item.variantId === variantId ? { ...item, quantity: capped } : item)
+      })
+      .addCase(updateQuantity.fulfilled, fulfilled)
+      .addCase(updateQuantity.rejected, mutationRejected)
+      .addCase(removeFromCart.pending, (state, action) => {
+        pending(state)
+        state.rollbackItems = state.items.map((item) => ({ ...item }))
+        state.items = state.items.filter((item) => item.variantId !== action.meta.arg)
+      })
+      .addCase(removeFromCart.fulfilled, fulfilled)
+      .addCase(removeFromCart.rejected, mutationRejected)
+      .addCase(clearCart.pending, pending)
+      .addCase(clearCart.fulfilled, fulfilled)
+      .addCase(clearCart.rejected, rejected)
   },
 })
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart } = cartSlice.actions
-
+export const { resetCartState } = cartSlice.actions
 export const selectCartItems = (state) => state.cart.items
-// The nav badge represents distinct products/variants, not the total quantity.
 export const selectCartCount = (state) => state.cart.items.length
-export const selectCartQuantity = (state) => state.cart.items.reduce((s, i) => s + i.quantity, 0)
+export const selectCartQuantity = (state) =>
+  state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
 export const selectCartTotal = (state) =>
-  state.cart.items.reduce((s, i) => s + i.price * i.quantity, 0)
+  state.cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
 export default cartSlice.reducer

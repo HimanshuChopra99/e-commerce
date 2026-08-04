@@ -1,8 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { authApi, setAccessToken, silentRefresh } from '../lib/api'
-import { clearCart } from './cartSlice'
+import { resetCartState } from './cartSlice'
+import { resetWishlistState } from './wishlistSlice'
+import { resetOrdersState } from './ordersSlice'
 
-export const loginUser = createAsyncThunk('auth/login', async (credentials, { dispatch, rejectWithValue }) => {
+export const loginUser = createAsyncThunk('auth/login', async (credentials, { rejectWithValue }) => {
   try {
     const res = await authApi.login(credentials)
     if (res.data?.accessToken) {
@@ -14,7 +16,7 @@ export const loginUser = createAsyncThunk('auth/login', async (credentials, { di
   }
 })
 
-export const registerUser = createAsyncThunk('auth/register', async (body, { dispatch, rejectWithValue }) => {
+export const registerUser = createAsyncThunk('auth/register', async (body, { rejectWithValue }) => {
   try {
     const res = await authApi.register(body)
     if (res.data?.accessToken) {
@@ -27,15 +29,20 @@ export const registerUser = createAsyncThunk('auth/register', async (body, { dis
 })
 
 export const logoutUser = createAsyncThunk('auth/logout', async (_, { dispatch, rejectWithValue }) => {
+  let error = null
   try {
     await authApi.logout()
-    setAccessToken(null)
-    dispatch(clearCart())
   } catch (err) {
+    error = err.message
+  } finally {
+    // Clear only this browser's Redux state. The server cart/favourites remain
+    // in MySQL for the next login and for the customer's other devices.
     setAccessToken(null)
-    dispatch(clearCart())
-    return rejectWithValue(err.message)
+    dispatch(resetCartState())
+    dispatch(resetWishlistState())
+    dispatch(resetOrdersState())
   }
+  return error ? rejectWithValue(error) : undefined
 })
 
 export const fetchMe = createAsyncThunk('auth/me', async (_, { rejectWithValue }) => {
@@ -105,6 +112,11 @@ const authSlice = createSlice({
 
       .addCase(logoutUser.fulfilled, (s) => {
         s.user = null
+        s.initialized = true
+      })
+      .addCase(logoutUser.rejected, (s) => {
+        s.user = null
+        s.initialized = true
       })
 
       .addCase(fetchMe.fulfilled, (s, a) => {

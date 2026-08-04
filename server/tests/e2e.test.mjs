@@ -31,7 +31,8 @@ function section(title) {
 const cookieJar = new Map()
 
 async function api(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...options.headers }
+  const headers = { ...options.headers }
+  if (!options.formData) headers['Content-Type'] = 'application/json'
   if (options.token) headers.Authorization = `Bearer ${options.token}`
   if (cookieJar.size && options.withCookies) {
     headers.Cookie = [...cookieJar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
@@ -40,7 +41,7 @@ async function api(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method: options.method ?? 'GET',
     headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: options.formData ?? (options.body ? JSON.stringify(options.body) : undefined),
   })
 
   const setCookie = res.headers.get('set-cookie')
@@ -193,6 +194,7 @@ let adminToken = null
 
 section('STOREFRONT — PRODUCTS & CATEGORIES')
 let sampleSlug = null
+let sampleProductId = null
 let sampleVariantId = null
 {
   const list = await api('/api/products')
@@ -202,6 +204,7 @@ let sampleVariantId = null
 
   const first = list.body?.data?.[0]
   sampleSlug = first?.slug
+  sampleProductId = first?.id
   check('product exposes a slug', Boolean(sampleSlug), sampleSlug)
   check('storefront NEVER exposes costPerItem', first && first.costPerItem === undefined)
   check('storefront NEVER exposes internalId', first && first.internalId === undefined)
@@ -262,6 +265,36 @@ let sampleVariantId = null
   const catSlug = categories.body?.data?.[0]?.slug
   const catProducts = await api(`/api/categories/${catSlug}/products`)
   check('GET /categories/:slug/products works', catProducts.status === 200)
+}
+
+section('CUSTOMER CART & FAVOURITES')
+{
+  const anonymousCart = await api('/api/cart')
+  check('anonymous customer cannot read an account cart', anonymousCart.status === 401)
+
+  const added = await api('/api/cart/items', {
+    method: 'POST', token: customerToken,
+    body: { variantId: sampleVariantId, quantity: 2 },
+  })
+  check('cart item is persisted for the signed-in customer',
+    added.status === 200 && added.body?.data?.items?.[0]?.quantity === 2)
+
+  const synced = await api('/api/cart/sync', {
+    method: 'POST', token: customerToken,
+    body: { items: [{ variantId: sampleVariantId, quantity: 3 }] },
+  })
+  check('guest cart sync merges without losing the larger quantity',
+    synced.status === 200 && synced.body?.data?.items?.[0]?.quantity === 3)
+
+  const saved = await api(`/api/favourites/${sampleProductId}`, {
+    method: 'POST', token: customerToken,
+  })
+  check('product can be saved as a database-backed favourite',
+    saved.status === 200 && saved.body?.data?.products?.some((p) => p.id === sampleProductId))
+
+  const restored = await api('/api/favourites', { token: customerToken })
+  check('favourites are restored on a separate request',
+    restored.status === 200 && restored.body?.data?.products?.some((p) => p.id === sampleProductId))
 }
 
 section('CHECKOUT — QUOTE & VALIDATION')
@@ -353,6 +386,10 @@ let orderId = null
 
   const mine = await api('/api/orders', { token: customerToken })
   check('GET /api/orders lists my orders', mine.status === 200 && mine.body.data.length >= 1)
+
+  const cartAfterOrder = await api('/api/cart', { token: customerToken })
+  check('successful COD checkout clears the durable account cart',
+    cartAfterOrder.status === 200 && cartAfterOrder.body?.data?.items?.length === 0)
 }
 
 section('OWNERSHIP (IDOR)')
@@ -363,6 +400,13 @@ section('OWNERSHIP (IDOR)')
     body: { firstName: 'Other', lastName: 'User', email: otherEmail, password: 'Password123' },
   })
   const otherToken = other.body?.data?.accessToken
+
+  const otherCart = await api('/api/cart', { token: otherToken })
+  const otherFavourites = await api('/api/favourites', { token: otherToken })
+  check('cart data never leaks between customer accounts',
+    otherCart.status === 200 && otherCart.body?.data?.items?.length === 0)
+  check('favourites never leak between customer accounts',
+    otherFavourites.status === 200 && otherFavourites.body?.data?.products?.length === 0)
 
   const stolen = await api(`/api/orders/${orderId}`, { token: otherToken })
   check("another customer gets 404 for someone else's order (not 403)",
@@ -409,6 +453,21 @@ let adminProductId = null
   const categories = await api('/api/admin/categories', { token: adminToken })
   const categoryId = categories.body?.data?.[0]?.id
 
+  const imageForm = new FormData()
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64'
+  )
+  imageForm.append('images', new Blob([png], { type: 'image/png' }), 'black.png')
+  imageForm.append('images', new Blob([png], { type: 'image/png' }), 'white.png')
+  const uploaded = await api('/api/admin/products/image-uploads', {
+    method: 'POST', token: adminToken, formData: imageForm,
+  })
+  const uploadedImages = uploaded.body?.data?.images ?? []
+  check('colour image upload persists both files',
+    uploaded.status === 201 && uploadedImages.length === 2 &&
+    uploadedImages.every((image) => image.startsWith('/uploads/')))
+
   const created = await api('/api/admin/products', {
     method: 'POST', token: adminToken,
     body: {
@@ -419,13 +478,26 @@ let adminProductId = null
       status: 'active', featured: false,
       colors: ['Black', 'White'],
       variants: [{ size: '8', stock: 5 }, { size: '9', stock: 3 }],
-      images: ['/products/running-01.png'], tags: ['test'],
+      colorImages: [
+        { color: 'Black', images: [uploadedImages[0]] },
+        { color: 'White', images: [uploadedImages[1]] },
+      ],
+      tags: ['test'],
     },
   })
   check('POST /admin/products creates a product', created.status === 201, `status ${created.status}`)
   adminProductId = created.body?.data?.id
   check('total_stock is computed from variants (2 colours x 8 = 16)',
     created.body?.data?.totalStock === 16, `got ${created.body?.data?.totalStock}`)
+  check('create response keeps a separate gallery for each colour',
+    created.body?.data?.colorImages?.length === 2 &&
+    created.body.data.colorImages[0].images[0] !== created.body.data.colorImages[1].images[0])
+
+  const publicColourProduct = await api(`/api/products/${created.body?.data?.slug}`)
+  check('storefront detail returns the exact admin colour-image mapping',
+    publicColourProduct.status === 200 &&
+    publicColourProduct.body?.data?.colorImages?.[0]?.images?.[0] === uploadedImages[0] &&
+    publicColourProduct.body?.data?.colorImages?.[1]?.images?.[0] === uploadedImages[1])
 
   const dupeSku = await api('/api/admin/products', {
     method: 'POST', token: adminToken,

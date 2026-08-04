@@ -4,7 +4,7 @@ Storefront, admin dashboard, and Express/MySQL API in one repository.
 
 ## Local launch with complete demo data
 
-1. Start MySQL: `docker compose up -d`
+1. Start MySQL and Redis: `docker compose up -d`
 2. Configure the API: `cp server/.env.example server/.env`, then set `DB_PASSWORD=kick_local_password`.
 3. Install packages: `npm ci --prefix server && npm ci --prefix client && npm ci --prefix admin`
 4. Create and populate the database: `npm run db:reset --prefix server`
@@ -26,6 +26,7 @@ Change these credentials and all JWT secrets before deploying.
 npm ci --prefix client && npm run build --prefix client
 npm ci --prefix admin && npm run build --prefix admin
 npm ci --prefix server
+NODE_ENV=production npm run db:migrate --prefix server
 NODE_ENV=production npm start --prefix server
 ```
 

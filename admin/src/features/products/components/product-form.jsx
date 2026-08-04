@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { z } from 'zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
 import { ImagePlus, Loader2, Save, Trash2, X } from 'lucide-react'
@@ -53,6 +53,13 @@ import { CategorySelect } from './category-select'
 
 /* ------------------------------ Form schema ------------------------------ */
 
+const colorValue = z
+  .string()
+  .trim()
+  .min(1, 'A colour is required.')
+  .max(40, 'Colour must be 40 characters or fewer.')
+  .regex(/^[a-zA-Z0-9#(),.%\s-]+$/, 'Use a valid CSS colour value.')
+
 const formSchema = z
   .object({
     name: z.string().min(2, 'Product name is required.'),
@@ -72,18 +79,17 @@ const formSchema = z
     costPerItem: z.coerce.number().min(0).optional(),
     status: z.string().min(1, 'Pick a status.'),
     featured: z.boolean(),
-    colors: z.array(z.string()).min(1, 'Select at least one colour.'),
+    colors: z.array(colorValue).min(1, 'Select at least one colour.').max(12),
     variants: z
       .array(
         z.object({
           size: z.string(),
-          stock: z.coerce.number().min(0),
+          stock: z.coerce.number().int().min(0),
         })
       )
       .refine((v) => v.some((x) => x.stock > 0), {
         message: 'Add stock to at least one size.',
       }),
-    images: z.array(z.string()),
     tags: z.array(z.string()),
   })
   .refine(
@@ -95,11 +101,167 @@ const formSchema = z
     }
   )
 
-const slugify = (s) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
+const MAX_IMAGE_SIZE_MB = 5
+const MAX_IMAGES_PER_COLOR = 8
+const MAX_IMAGES_PER_PRODUCT = 48
+
+function assetId() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+}
+
+function isValidImageUrl(value) {
+  const url = value.trim()
+  if (/^\/(?!\/)/.test(url)) return true
+  try {
+    return ['http:', 'https:'].includes(new URL(url).protocol)
+  } catch {
+    return false
+  }
+}
+
+function colorsFromProduct(row) {
+  if (Array.isArray(row?.colors) && row.colors.length) return row.colors
+  if (!Array.isArray(row?.variants)) return []
+  return [...new Set(row.variants.map((variant) => variant.color).filter(Boolean))]
+}
+
+function legacyImagesFromProduct(row) {
+  if (Array.isArray(row?.images) && row.images.length) return row.images
+  return row?.image ? [row.image] : []
+}
+
+/**
+ * Older products only have a general gallery. Showing that gallery under each
+ * colour keeps them editable and gives shoppers the same backwards-compatible
+ * fallback until an admin replaces it with colour-specific photos.
+ */
+function buildColorMedia(row) {
+  if (!row) return []
+  const colors = colorsFromProduct(row)
+  const saved = Array.isArray(row.colorImages) ? row.colorImages : []
+  const legacy = legacyImagesFromProduct(row)
+
+  return colors.map((color) => {
+    const gallery = saved.find(
+      (entry) => entry.color?.toLocaleLowerCase() === color.toLocaleLowerCase()
+    )
+    const images = gallery?.images?.length ? gallery.images : legacy
+    return {
+      color,
+      assets: [...new Set(images)].map((url) => ({ id: assetId(), url })),
+    }
+  })
+}
+
+function assetsForColor(media, color) {
+  return media.find(
+    (entry) => entry.color.toLocaleLowerCase() === color.toLocaleLowerCase()
+  )?.assets ?? []
+}
+
+function ColorMediaEditor({ color, assets, onFiles, onAddUrl, onRemove }) {
+  const [url, setUrl] = useState('')
+  const swatch = colorHex.get(color) ?? color
+  const full = assets.length >= MAX_IMAGES_PER_COLOR
+
+  const submitUrl = () => {
+    if (onAddUrl(url)) setUrl('')
+  }
+
+  return (
+    <div className='rounded-lg border bg-muted/10 p-4'>
+      <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
+        <div className='flex items-center gap-2'>
+          <span
+            className='size-5 rounded-full border shadow-sm'
+            style={{ backgroundColor: swatch }}
+            aria-hidden
+          />
+          <div>
+            <p className='text-sm font-semibold'>{color}</p>
+            <p className='text-xs text-muted-foreground'>
+              {assets.length}/{MAX_IMAGES_PER_COLOR} images
+            </p>
+          </div>
+        </div>
+        <label
+          className={cn(
+            'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border bg-background px-3 text-xs font-medium shadow-xs',
+            'hover:bg-accent hover:text-accent-foreground focus-within:ring-2 focus-within:ring-ring',
+            full && 'pointer-events-none opacity-50'
+          )}
+        >
+          <ImagePlus className='size-4' />
+          Upload files
+          <input
+            type='file'
+            accept='image/jpeg,image/png,image/webp,image/avif'
+            multiple
+            disabled={full}
+            onChange={(event) => onFiles(event)}
+            className='sr-only'
+          />
+        </label>
+      </div>
+
+      {assets.length > 0 ? (
+        <div className='mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4'>
+          {assets.map((asset, index) => (
+            <div key={asset.id} className='group relative'>
+              <ProductImage
+                src={asset.url}
+                alt={`${color} product image ${index + 1}`}
+                className='aspect-square w-full'
+              />
+              {index === 0 && (
+                <Badge className='absolute start-1.5 top-1.5'>Colour main</Badge>
+              )}
+              <Button
+                type='button'
+                size='icon'
+                variant='destructive'
+                onClick={() => onRemove(asset.id)}
+                className='absolute end-1.5 top-1.5 size-7 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100'
+                aria-label={`Remove ${color} image ${index + 1}`}
+              >
+                <X className='size-3.5' />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className='mb-3 flex min-h-24 items-center justify-center rounded-md border border-dashed text-center text-xs text-muted-foreground'>
+          Add at least one image for {color}.
+        </div>
+      )}
+
+      <div className='flex flex-col gap-2 sm:flex-row'>
+        <Input
+          value={url}
+          disabled={full}
+          onChange={(event) => setUrl(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              submitUrl()
+            }
+          }}
+          placeholder='https://… or /products/image.png'
+          aria-label={`Image URL for ${color}`}
+        />
+        <Button
+          type='button'
+          variant='outline'
+          disabled={full || !url.trim()}
+          onClick={submitUrl}
+        >
+          Add URL
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 function buildFormValues(row) {
   if (!row) {
@@ -117,22 +279,12 @@ function buildFormValues(row) {
       status: 'draft',
       featured: false,
       colors: [],
-      variants: sizeRun.map((size) => ({
-        size,
-        stock: 0,
-      })),
-      images: [],
+      variants: sizeRun.map((size) => ({ size, stock: 0 })),
       tags: [],
     }
   }
 
-  const images = Array.isArray(row.images) && row.images.length > 0
-    ? row.images
-    : row.image
-      ? [row.image]
-      : []
-
-  const colors = Array.isArray(row.colors) ? row.colors : []
+  const colors = colorsFromProduct(row)
   const tags = Array.isArray(row.tags) ? row.tags : []
   const variants = Array.isArray(row.variants) ? row.variants : []
 
@@ -152,9 +304,8 @@ function buildFormValues(row) {
     colors,
     variants: sizeRun.map((size) => ({
       size,
-      stock: variants.find((v) => String(v.size) === String(size))?.stock ?? 0,
+      stock: variants.find((variant) => String(variant.size) === String(size))?.stock ?? 0,
     })),
-    images,
     tags,
   }
 }
@@ -164,31 +315,30 @@ export function ProductForm({ currentRow }) {
   const navigate = useNavigate()
   const addProduct = useCatalogStore((s) => s.addProduct)
   const updateProduct = useCatalogStore((s) => s.updateProduct)
+  const uploadProductImages = useCatalogStore((s) => s.uploadProductImages)
   const [saving, setSaving] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [customColor, setCustomColor] = useState('')
+  const [colorMedia, setColorMedia] = useState(() => buildColorMedia(currentRow))
 
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: buildFormValues(currentRow),
   })
 
-  // Reset form whenever currentRow updates asynchronously after fetching details
-  useEffect(() => {
-    if (currentRow) {
-      form.reset(buildFormValues(currentRow))
-    }
-  }, [currentRow, form])
+  const watchedVariants = useWatch({ control: form.control, name: 'variants' }) ?? []
+  const watchedTags = useWatch({ control: form.control, name: 'tags' }) ?? []
+  const watchedColors = useWatch({ control: form.control, name: 'colors' }) ?? []
+  const watchedPrice = useWatch({ control: form.control, name: 'price' })
+  const watchedCost = useWatch({ control: form.control, name: 'costPerItem' })
 
-  const watchedVariants = form.watch('variants') ?? []
-  const watchedImages = form.watch('images') ?? []
-  const watchedTags = form.watch('tags') ?? []
-  const watchedColors = form.watch('colors') ?? []
-  const watchedPrice = form.watch('price')
-  const watchedCost = form.watch('costPerItem')
-
-  const totalStock = watchedVariants.reduce(
-    (sum, v) => sum + (Number(v?.stock) || 0),
+  const stockPerColor = watchedVariants.reduce(
+    (sum, variant) => sum + (Number(variant?.stock) || 0),
+    0
+  )
+  const totalStock = stockPerColor * watchedColors.length
+  const imageCount = watchedColors.reduce(
+    (sum, color) => sum + assetsForColor(colorMedia, color).length,
     0
   )
 
@@ -197,34 +347,151 @@ export function ProductForm({ currentRow }) {
       ? ((watchedPrice - watchedCost) / watchedPrice) * 100
       : null
 
-  const onSubmit = async (values) => {
-    setSaving(true)
-    const payload = {
-      name: values.name.trim(),
-      slug: slugify(values.name),
-      sku: values.sku.trim(),
-      description: values.description.trim(),
-      image: values.images[0] ?? '',
-      images: values.images,
-      categoryId: values.categoryId,
-      gender: values.gender,
-      brand: values.brand.trim(),
-      price: Number(values.price),
-      compareAtPrice: Number(values.compareAtPrice) || null,
-      costPerItem: Number(values.costPerItem) || null,
-      status: values.status,
-      featured: values.featured,
-      colors: values.colors,
-      variants: values.variants.map((v) => ({
-        size: v.size,
-        stock: Number(v.stock) || 0,
-      })),
-      totalStock,
-      material: values.material,
-      tags: values.tags,
+  const appendAssets = (color, assets) => {
+    setColorMedia((current) => {
+      const existing = current.find(
+        (entry) => entry.color.toLocaleLowerCase() === color.toLocaleLowerCase()
+      )
+      if (!existing) return [...current, { color, assets }]
+      return current.map((entry) =>
+        entry === existing ? { ...entry, assets: [...entry.assets, ...assets] } : entry
+      )
+    })
+  }
+
+  const handleFileChange = (color, event) => {
+    const files = Array.from(event.target.files || [])
+    event.target.value = ''
+    if (!files.length) return
+
+    const currentAssets = assetsForColor(colorMedia, color)
+    const invalid = files.find(
+      (file) =>
+        !ALLOWED_IMAGE_TYPES.includes(file.type) ||
+        file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024
+    )
+    if (invalid) {
+      toast.error(`Only JPEG, PNG, WebP or AVIF files under ${MAX_IMAGE_SIZE_MB}MB are allowed.`)
+      return
+    }
+    if (currentAssets.length + files.length > MAX_IMAGES_PER_COLOR) {
+      toast.error(`${color} can have at most ${MAX_IMAGES_PER_COLOR} images.`)
+      return
+    }
+    if (imageCount + files.length > MAX_IMAGES_PER_PRODUCT) {
+      toast.error(`A product can have at most ${MAX_IMAGES_PER_PRODUCT} images.`)
+      return
     }
 
+    appendAssets(
+      color,
+      files.map((file) => ({ id: assetId(), url: URL.createObjectURL(file), file }))
+    )
+  }
+
+  const handleAddImageUrl = (color, value) => {
+    const url = value.trim()
+    const currentAssets = assetsForColor(colorMedia, color)
+    if (!isValidImageUrl(url)) {
+      toast.error('Use an http(s) image URL or an absolute site path beginning with /.')
+      return false
+    }
+    if (currentAssets.length >= MAX_IMAGES_PER_COLOR || imageCount >= MAX_IMAGES_PER_PRODUCT) {
+      toast.error('The image limit for this product has been reached.')
+      return false
+    }
+    if (currentAssets.some((asset) => asset.url === url)) {
+      toast.info('That image is already in this colour gallery.')
+      return false
+    }
+    appendAssets(color, [{ id: assetId(), url }])
+    return true
+  }
+
+  const handleRemoveImage = (color, id) => {
+    setColorMedia((current) => current.map((entry) => {
+      if (entry.color.toLocaleLowerCase() !== color.toLocaleLowerCase()) return entry
+      const removed = entry.assets.find((asset) => asset.id === id)
+      if (removed?.file) URL.revokeObjectURL(removed.url)
+      return { ...entry, assets: entry.assets.filter((asset) => asset.id !== id) }
+    }))
+  }
+
+  const removeColorMedia = (color) => {
+    setColorMedia((current) => {
+      const removed = current.find(
+        (entry) => entry.color.toLocaleLowerCase() === color.toLocaleLowerCase()
+      )
+      removed?.assets.forEach((asset) => {
+        if (asset.file) URL.revokeObjectURL(asset.url)
+      })
+      return current.filter((entry) => entry !== removed)
+    })
+  }
+
+  const onSubmit = async (values) => {
+    let selectedMedia = values.colors.map((color) => ({
+      color,
+      assets: assetsForColor(colorMedia, color),
+    }))
+    const missingColor = selectedMedia.find((entry) => entry.assets.length === 0)
+    if (missingColor) {
+      toast.error(`Add at least one image for ${missingColor.color}.`)
+      return
+    }
+
+    setSaving(true)
     try {
+      const pending = selectedMedia.flatMap((entry) =>
+        entry.assets.filter((asset) => asset.file)
+      )
+      if (pending.length) {
+        const uploadedUrls = await uploadProductImages(pending.map((asset) => asset.file))
+        if (uploadedUrls.length !== pending.length) {
+          throw new Error('Some images did not finish uploading. Please try again.')
+        }
+        let uploadIndex = 0
+        selectedMedia = selectedMedia.map((entry) => ({
+          ...entry,
+          assets: entry.assets.map((asset) => {
+            if (!asset.file) return asset
+            URL.revokeObjectURL(asset.url)
+            return { id: asset.id, url: uploadedUrls[uploadIndex++] }
+          }),
+        }))
+        // Keep successful uploads in the form if the following product request
+        // fails, so retrying never uploads the same file twice.
+        setColorMedia(selectedMedia)
+      }
+
+      const colorImages = selectedMedia.map((entry) => ({
+        color: entry.color,
+        images: entry.assets.map((asset) => asset.url),
+      }))
+      const images = [...new Set(colorImages.flatMap((entry) => entry.images))]
+      const payload = {
+        name: values.name.trim(),
+        sku: values.sku.trim(),
+        description: values.description.trim(),
+        images,
+        colorImages,
+        categoryId: values.categoryId,
+        gender: values.gender,
+        brand: values.brand.trim(),
+        price: Number(values.price),
+        compareAtPrice: Number(values.compareAtPrice) || null,
+        costPerItem: Number(values.costPerItem) || null,
+        status: values.status,
+        featured: values.featured,
+        colors: values.colors,
+        variants: values.variants.map((variant) => ({
+          size: variant.size,
+          stock: Number(variant.stock) || 0,
+        })),
+        material: values.material?.trim() || null,
+        tags: values.tags,
+      }
+
       if (isEdit && currentRow) {
         await updateProduct(currentRow.id, payload)
       } else {
@@ -245,35 +512,6 @@ export function ProductForm({ currentRow }) {
 
   const onInvalid = () => {
     toast.error('Please fix the highlighted fields before saving.')
-  }
-
-  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-  const MAX_SIZE_MB = 5
-
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
-    const invalid = files.filter(
-      (f) => !ALLOWED_TYPES.includes(f.type) || f.size > MAX_SIZE_MB * 1024 * 1024
-    )
-    if (invalid.length > 0) {
-      toast.error(`Invalid file(s): only JPEG/PNG/WebP/GIF under ${MAX_SIZE_MB}MB are allowed.`)
-      e.target.value = ''
-      return
-    }
-    // Convert to object URLs or paths for demo preview
-    const newUrls = files.map((f) => URL.createObjectURL(f))
-    form.setValue('images', [...watchedImages, ...newUrls], { shouldValidate: true })
-  }
-
-  const handleAddImage = () => {
-    const url = window.prompt(
-      'Paste an image URL or a path from /public (e.g. /products/sneaker-01.png)'
-    )
-    if (!url) return
-    form.setValue('images', [...watchedImages, url.trim()], {
-      shouldValidate: true,
-    })
   }
 
   const handleAddTag = () => {
@@ -374,62 +612,40 @@ export function ProductForm({ currentRow }) {
             </CardContent>
           </Card>
 
-          {/* ----------------------- Media ----------------------- */}
+          {/* ------------------- Colour-specific media ------------------- */}
           <Card>
             <CardHeader>
-              <CardTitle>Media</CardTitle>
+              <CardTitle>Colour images</CardTitle>
               <CardDescription>
-                The first image is used as the main thumbnail.
+                Add the exact gallery shoppers should see for every selected
+                colour. The first image of the first colour is the catalogue thumbnail.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-                {watchedImages.map((src, idx) => (
-                  <div key={`${src}-${idx}`} className='group relative'>
-                    <ProductImage
-                      src={src}
-                      alt={`Product image ${idx + 1}`}
-                      className='aspect-square w-full'
-                    />
-                    {idx === 0 && (
-                      <Badge className='absolute start-1.5 top-1.5'>Main</Badge>
-                    )}
-                    <Button
-                      type='button'
-                      size='icon'
-                      variant='destructive'
-                      onClick={() =>
-                        form.setValue(
-                          'images',
-                          watchedImages.filter((_, i) => i !== idx)
-                        )
-                      }
-                      className='absolute end-1.5 top-1.5 size-6 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100'
-                      aria-label={`Remove image ${idx + 1}`}
-                    >
-                      <X className='size-3' />
-                    </Button>
-                  </div>
-                ))}
-
-                <button
-                  type='button'
-                  onClick={handleAddImage}
-                  className={cn(
-                    'flex aspect-square flex-col items-center justify-center gap-1.5 rounded-md border border-dashed',
-                    'text-muted-foreground transition-colors hover:border-primary hover:text-primary',
-                    'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-                  )}
-                >
-                  <ImagePlus className='size-6' />
-                  <span className='text-xs font-medium'>Add image</span>
-                </button>
-              </div>
-              <p className='mt-3 text-xs text-muted-foreground'>
-                Demo mode accepts an image URL or a path from{' '}
-                <code className='rounded bg-muted px-1'>/public</code>. Wire
-                this to your uploader (S3, Cloudinary, UploadThing) in
-                production.
+            <CardContent className='space-y-4'>
+              {watchedColors.length === 0 ? (
+                <div className='flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed px-4 text-center'>
+                  <ImagePlus className='mb-2 size-7 text-muted-foreground' />
+                  <p className='text-sm font-medium'>Select a colour first</p>
+                  <p className='mt-1 text-xs text-muted-foreground'>
+                    A separate image uploader will appear here for each colour.
+                  </p>
+                </div>
+              ) : (
+                watchedColors.map((color) => (
+                  <ColorMediaEditor
+                    key={color}
+                    color={color}
+                    assets={assetsForColor(colorMedia, color)}
+                    onFiles={(event) => handleFileChange(color, event)}
+                    onAddUrl={(url) => handleAddImageUrl(color, url)}
+                    onRemove={(id) => handleRemoveImage(color, id)}
+                  />
+                ))
+              )}
+              <p className='text-xs text-muted-foreground'>
+                JPEG, PNG, WebP or AVIF · up to {MAX_IMAGE_SIZE_MB}MB each ·{' '}
+                {MAX_IMAGES_PER_COLOR} per colour. Uploaded files are persisted
+                by the backend and remain available after refresh.
               </p>
             </CardContent>
           </Card>
@@ -529,8 +745,8 @@ export function ProductForm({ currentRow }) {
             <CardHeader>
               <CardTitle>Sizes &amp; stock</CardTitle>
               <CardDescription>
-                Set how many pairs you hold in each size. Leave 0 for sizes you
-                don&apos;t stock.
+                Set pairs per colour in each size. The same size run is created
+                for every selected colour; leave 0 for sizes you don&apos;t stock.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -568,7 +784,7 @@ export function ProductForm({ currentRow }) {
               )}
               <Separator className='my-4' />
               <div className='flex items-center justify-between text-sm'>
-                <span className='text-muted-foreground'>Total stock</span>
+                <span className='text-muted-foreground'>Total across all colours</span>
                 <span className='font-semibold'>{totalStock} pairs</span>
               </div>
             </CardContent>
@@ -737,9 +953,14 @@ export function ProductForm({ currentRow }) {
                                   <Checkbox
                                     checked={checked}
                                     onCheckedChange={(value) => {
+                                      if (value && list.length >= 12) {
+                                        toast.error('A product can have at most 12 colours.')
+                                        return
+                                      }
                                       const next = value
                                         ? [...list, color.value]
                                         : list.filter((v) => v !== color.value)
+                                      if (!value) removeColorMedia(color.value)
                                       field.onChange(next)
                                     }}
                                   />
@@ -774,10 +995,20 @@ export function ProductForm({ currentRow }) {
                   type='button'
                   variant='outline'
                   onClick={() => {
-                    const value = customColor.trim()
-                    if (!value) return
-                    if (watchedColors.includes(value)) {
+                    const parsed = colorValue.safeParse(customColor)
+                    if (!parsed.success) {
+                      toast.error(parsed.error.issues[0]?.message || 'Use a valid colour value.')
+                      return
+                    }
+                    const value = parsed.data
+                    if (watchedColors.some(
+                      (color) => color.toLocaleLowerCase() === value.toLocaleLowerCase()
+                    )) {
                       setCustomColor('')
+                      return
+                    }
+                    if (watchedColors.length >= 12) {
+                      toast.error('A product can have at most 12 colours.')
                       return
                     }
                     form.setValue('colors', [...watchedColors, value], { shouldValidate: true })
@@ -787,10 +1018,42 @@ export function ProductForm({ currentRow }) {
                   Add
                 </Button>
               </div>
+              {watchedColors.some(
+                (color) => !colorOptions.some((option) => option.value === color)
+              ) && (
+                <div className='mt-3 flex flex-wrap gap-1.5'>
+                  {watchedColors
+                    .filter((color) => !colorOptions.some((option) => option.value === color))
+                    .map((color) => (
+                      <Badge key={color} variant='secondary' className='gap-1'>
+                        <span
+                          className='size-3 rounded-full border'
+                          style={{ backgroundColor: color }}
+                          aria-hidden
+                        />
+                        {color}
+                        <button
+                          type='button'
+                          onClick={() => {
+                            removeColorMedia(color)
+                            form.setValue(
+                              'colors',
+                              watchedColors.filter((value) => value !== color),
+                              { shouldValidate: true }
+                            )
+                          }}
+                          aria-label={`Remove ${color}`}
+                        >
+                          <X className='size-3' />
+                        </button>
+                      </Badge>
+                    ))}
+                </div>
+              )}
               {watchedColors.length > 0 && (
                 <p className='mt-3 text-xs text-muted-foreground'>
                   {watchedColors.length} colour
-                  {watchedColors.length > 1 ? 's' : ''} selected
+                  {watchedColors.length > 1 ? 's' : ''} selected · add images in the Colour images section
                 </p>
               )}
             </CardContent>
@@ -863,8 +1126,8 @@ export function ProductForm({ currentRow }) {
                 <span className='font-medium'>{totalStock}</span>
               </div>
               <div className='flex justify-between'>
-                <span className='text-muted-foreground'>Images</span>
-                <span className='font-medium'>{watchedImages.length}</span>
+                <span className='text-muted-foreground'>Colour images</span>
+                <span className='font-medium'>{imageCount}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-muted-foreground'>Stock value</span>

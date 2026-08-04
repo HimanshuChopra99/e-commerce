@@ -1,5 +1,7 @@
 import "./globals.css";
 
+// Next.js consumes this alongside the layout component by design.
+// oxlint-disable-next-line react/only-export-components
 export const metadata = {
   title: "KICKS — Premium Sneaker Store",
   description:

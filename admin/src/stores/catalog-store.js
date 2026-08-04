@@ -58,6 +58,11 @@ export const useCatalogStore = create((set, get) => ({
     return product
   },
 
+  uploadProductImages: async (files) => {
+    const response = await adminProductsApi.uploadImages(files)
+    return response.data?.images || []
+  },
+
   addProduct: async (input) => {
     const response = await adminProductsApi.create(input)
     const product = response.data

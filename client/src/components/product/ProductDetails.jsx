@@ -46,7 +46,7 @@ export const ProductDetails = ({
       </label>
       <div className="flex items-center space-x-3">
         {product.colors.map((color) => {
-          const isSelected = selectedColor.id === color.id;
+          const isSelected = selectedColor?.id === color.id;
           return <button
             key={color.id}
             onClick={() => onSelectColor(color)}
@@ -54,6 +54,7 @@ export const ProductDetails = ({
             style={{ backgroundColor: color.hex }}
             title={color.name}
             aria-label={`Select color ${color.name}`}
+            aria-pressed={isSelected}
           >
             {isSelected && <Check className={`w-4 h-4 ${color.id === "shadow-navy" ? "text-white" : "text-neutral-900"}`} />}
           </button>;
@@ -142,7 +143,7 @@ export const ProductDetails = ({
       </h3>
 
       <div className="text-xs text-neutral-600 font-medium">
-        {selectedColor.name}
+        {selectedColor?.name || 'Select a colour'}
       </div>
 
       <p className="text-xs text-neutral-600 leading-relaxed font-normal">

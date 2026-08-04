@@ -128,6 +128,21 @@ export const categoriesApi = {
   getBySlug: (slug) => get(`/categories/${slug}`),
 }
 
+export const cartApi = {
+  get: () => get('/cart'),
+  sync: (items) => post('/cart/sync', { items }),
+  setItem: (variantId, quantity) => patch(`/cart/items/${variantId}`, { quantity }),
+  addItem: (variantId, quantity = 1) => post('/cart/items', { variantId, quantity }),
+  removeItem: (variantId) => del(`/cart/items/${variantId}`),
+  clear: () => del('/cart'),
+}
+
+export const favouritesApi = {
+  get: () => get('/favourites'),
+  add: (productId) => post(`/favourites/${productId}`),
+  remove: (productId) => del(`/favourites/${productId}`),
+}
+
 export const ordersApi = {
   quote: (body) => post('/orders/quote', body),
   create: (body) => post('/orders', body),

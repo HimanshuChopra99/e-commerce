@@ -223,6 +223,10 @@ function buildInitialData() {
       reviewCount: p.reviewCount,
       images: p.images,
       image: p.image,
+      colorImages: p.colors.map((color, colorIndex) => ({
+        color,
+        images: [p.images[colorIndex % p.images.length]],
+      })),
       tags: p.tags,
       categoryId: cat.publicId,
       category: { id: cat.publicId, name: cat.name, slug: cat.slug },
@@ -317,6 +321,8 @@ class MemoryStore {
     this.products = [...initialData.products]
     this.users = [...initialData.users]
     this.orders = [...initialData.orders]
+    this.carts = new Map()
+    this.favourites = new Map()
   }
 
   // Categories
@@ -445,6 +451,7 @@ class MemoryStore {
       reviewCount: 1,
       images: input.images && input.images.length ? input.images : [unsplashImages[0]],
       image: input.images && input.images[0] ? input.images[0] : unsplashImages[0],
+      colorImages: input.colorImages || [],
       tags: input.tags || [],
       categoryId: category ? category.publicId : null,
       category: category ? { id: category.publicId, name: category.name, slug: category.slug } : null,
@@ -470,6 +477,7 @@ class MemoryStore {
       }
     }
     Object.assign(prod, patch, { updatedAt: new Date().toISOString() })
+    if (patch.images !== undefined) prod.image = patch.images[0] ?? null
     return prod
   }
 
@@ -480,6 +488,41 @@ class MemoryStore {
       return true
     }
     return false
+  }
+
+  // Durable customer state fallback (used only when MySQL is unavailable).
+  getCart(userId) {
+    return [...(this.carts.get(String(userId))?.values() ?? [])]
+  }
+
+  setCartItem(userId, variantId, quantity) {
+    const key = String(userId)
+    const cart = this.carts.get(key) ?? new Map()
+    cart.set(String(variantId), { variantId: String(variantId), quantity: Number(quantity) })
+    this.carts.set(key, cart)
+  }
+
+  removeCartItem(userId, variantId) {
+    this.carts.get(String(userId))?.delete(String(variantId))
+  }
+
+  clearCart(userId) {
+    this.carts.delete(String(userId))
+  }
+
+  getFavourites(userId) {
+    return [...(this.favourites.get(String(userId)) ?? new Set())]
+  }
+
+  addFavourite(userId, productId) {
+    const key = String(userId)
+    const favourites = this.favourites.get(key) ?? new Set()
+    favourites.add(String(productId))
+    this.favourites.set(key, favourites)
+  }
+
+  removeFavourite(userId, productId) {
+    this.favourites.get(String(userId))?.delete(String(productId))
   }
 
   // Users
