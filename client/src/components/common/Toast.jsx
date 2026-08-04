@@ -75,11 +75,11 @@ export default function Toast({ toast, onDismiss }) {
       <span className={`absolute inset-y-0 left-0 w-1 ${config.line}`} aria-hidden />
       <div className='flex items-center gap-3 p-3.5 pl-4'>
         <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${config.icon}`}>
-          <Icon className={`size-5 ${toast?.type === 'favourite' ? 'fill-current' : ''}`} strokeWidth={2.3} />
+          <Icon className={`size-5 ${toast?.type === 'favourite' ? 'fill-current' : ''}`} strokeWidth={2} />
         </span>
         <div className='min-w-0 flex-1'>
-          <p className='text-[11px] font-black uppercase tracking-[0.12em] text-neutral-400'>{title}</p>
-          <p className='mt-0.5 text-sm font-bold leading-snug text-[#232321]'>{toast?.message}</p>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400'>{title}</p>
+          <p className='mt-0.5 text-sm font-medium leading-snug text-[#232321]'>{toast?.message}</p>
         </div>
         <button
           type='button'
