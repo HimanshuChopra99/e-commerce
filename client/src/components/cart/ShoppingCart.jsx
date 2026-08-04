@@ -16,6 +16,7 @@ export default function ShoppingCart() {
   const navigate = useNavigate()
 
   const cartItems = useSelector(selectCartItems)
+  const cartLoading = useSelector((state) => state.cart.loading)
   const subtotal = useSelector(selectCartTotal)
   const { user } = useSelector((state) => state.auth)
 
@@ -141,75 +142,6 @@ export default function ShoppingCart() {
     }
   }
 
-  const handleQuickCheckout = async () => {
-    if (!user) {
-      navigate('/login?redirect=/cart')
-      return
-    }
-
-    const savedAddress = user.address
-      ? {
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-          phone: user.phone || undefined,
-          line1: user.address.line1 || '',
-          line2: user.address.line2 || undefined,
-          city: user.address.city || '',
-          state: user.address.state || '',
-          postalCode: user.address.postalCode || '',
-          country: user.address.country || '',
-        }
-      : null
-
-    const isValid =
-      savedAddress &&
-      savedAddress.name.trim() &&
-      savedAddress.line1.trim() &&
-      savedAddress.city.trim() &&
-      savedAddress.state.trim() &&
-      savedAddress.postalCode.trim() &&
-      savedAddress.country.trim()
-
-    if (!isValid) {
-      setShowAddressForm(true)
-      return
-    }
-
-    setCheckoutLoading(true)
-    setCheckoutError(null)
-
-    try {
-      const orderData = {
-        items: cartItems.map((item) => ({ variantId: item.variantId, quantity: item.quantity })),
-        shippingAddress: savedAddress,
-        paymentMethod,
-      }
-
-      const result = await dispatch(placeOrder(orderData)).unwrap()
-      const order = result.order || result
-
-      // A card order is only pending at this point. Preserve the cart until
-      // Stripe confirms payment and the backend webhook records it as paid.
-      if (paymentMethod !== 'cod') {
-        if (!result.payment?.clientSecret || !result.payment?.publishableKey) {
-          throw new Error(
-            result.payment?.error ||
-            'Secure payment could not be started. Please check Stripe configuration and try again.'
-          )
-        }
-        navigate(`/checkout/payment?order=${encodeURIComponent(order.id)}`, {
-          state: { order, payment: result.payment },
-        })
-        return
-      }
-
-      dispatch(clearCart())
-      navigate('/orders', { state: { justPlaced: order } })
-    } catch (err) {
-      setCheckoutError(err.message || err || 'Failed to place order')
-    } finally {
-      setCheckoutLoading(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-[#ECEAE5] text-[#111111] font-sans p-4 sm:p-8 md:p-12 lg:p-16 flex justify-center items-start">
@@ -244,7 +176,9 @@ export default function ShoppingCart() {
             </p>
 
             <div className="max-h-[460px] overflow-y-auto pr-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              {cartItems.length === 0 ? (
+              {cartLoading && cartItems.length === 0 ? (
+                <div className="py-12 text-center text-sm font-semibold text-gray-500">Syncing your saved bag…</div>
+              ) : cartItems.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-sm text-gray-500 mb-4">Your bag is empty.</p>
                   <button
@@ -293,6 +227,7 @@ export default function ShoppingCart() {
                               <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
                                 <button
                                   type="button"
+                                  disabled={cartLoading}
                                   onClick={() =>
                                     dispatch(
                                       updateQuantity({
@@ -311,6 +246,7 @@ export default function ShoppingCart() {
                                 </span>
                                 <button
                                   type="button"
+                                  disabled={cartLoading}
                                   onClick={() => {
                                     if (item.quantity >= 10) {
                                       window.dispatchEvent(
@@ -337,6 +273,7 @@ export default function ShoppingCart() {
 
                         <div className="flex items-center gap-4 mt-4 pt-1">
                           <button
+                            disabled={cartLoading}
                             onClick={() => dispatch(removeFromCart(item.variantId))}
                             className="text-red-500 hover:text-red-700 text-xs font-semibold transition-colors flex items-center gap-1"
                           >

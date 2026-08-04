@@ -8,6 +8,8 @@ import * as orderModel from '../models/order.model.js'
 import * as variantModel from '../models/variant.model.js'
 import * as productModel from '../models/product.model.js'
 import * as eventModel from '../models/stripe-event.model.js'
+import * as cartModel from '../models/cart.model.js'
+import { deleteCached, deleteCachedPattern } from './cache.service.js'
 
 // Initialize Stripe only if secret key is configured
 let stripe = null
@@ -154,12 +156,14 @@ export async function markEventFailed(eventId, message) {
  * server-to-server webhook can mark money as received.
  */
 export async function handlePaymentSucceeded(intent) {
+  let customerId = null
   await withTransaction(async (conn) => {
     const row = await orderModel.findByPaymentIntentForUpdate(intent.id, conn)
     if (!row) {
       logger.error({ intentId: intent.id }, 'webhook for an unknown order')
       return
     }
+    customerId = row.user_id
 
     // Replay guard — a duplicate webhook must not deduct stock twice.
     if (row.payment_status === 'paid') {
@@ -201,16 +205,25 @@ export async function handlePaymentSucceeded(intent) {
     for (const productId of touchedProducts) {
       await productModel.recalcStock(productId, conn)
     }
+    if (row.user_id) await cartModel.clearByUser(row.user_id, conn)
 
     logger.info({ orderNumber: row.order_number, amount: received }, 'payment succeeded')
   })
+  if (customerId) {
+    await Promise.all([
+      deleteCached(`customer:${customerId}:cart`),
+      deleteCachedPattern(`customer:${customerId}:orders:*`),
+    ])
+  }
 }
 
 /** Payment failed — release the hold so the stock goes back on sale. */
 export async function handlePaymentFailed(intent) {
+  let customerId = null
   await withTransaction(async (conn) => {
     const row = await orderModel.findByPaymentIntentForUpdate(intent.id, conn)
     if (!row || row.payment_status === 'paid') return
+    customerId = row.user_id
 
     await orderModel.markPaymentFailed(row.id, conn)
 
@@ -226,6 +239,7 @@ export async function handlePaymentFailed(intent) {
       'payment failed'
     )
   })
+  if (customerId) await deleteCachedPattern(`customer:${customerId}:orders:*`)
 }
 
 export async function handlePaymentCanceled(intent) {
@@ -237,9 +251,11 @@ export async function handleRefund(charge) {
   const intentId = charge.payment_intent
   if (!intentId) return
 
+  let customerId = null
   await withTransaction(async (conn) => {
     const row = await orderModel.findByPaymentIntentForUpdate(intentId, conn)
     if (!row) return
+    customerId = row.user_id
 
     const refundedCents = charge.amount_refunded ?? 0
     const totalCents = toCents(row.grand_total)
@@ -251,6 +267,7 @@ export async function handleRefund(charge) {
       'refund recorded'
     )
   })
+  if (customerId) await deleteCachedPattern(`customer:${customerId}:orders:*`)
 }
 
 /**

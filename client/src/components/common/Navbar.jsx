@@ -5,7 +5,6 @@ import { ChevronDown, Search, User, ShoppingCart, Menu, ArrowRight } from "lucid
 
 export default function Navbar({
   onOpenSearch,
-  onOpenCart,
   onOpenMobile,
   onSelectLink,
   cartCount = 0,

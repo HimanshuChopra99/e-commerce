@@ -6,6 +6,8 @@ import productRoutes from './product.routes.js'
 import categoryRoutes from './category.routes.js'
 import orderRoutes from './order.routes.js'
 import adminRoutes from './admin/index.js'
+import customerStateRoutes from './customer-state.routes.js'
+import { cacheStatus } from '../services/cache.service.js'
 
 const router = Router()
 
@@ -40,6 +42,7 @@ router.get('/health', async (_req, res) => {
     data: {
       status: healthy ? 'ok' : 'unavailable',
       database,
+      redis: cacheStatus(),
       stripe: env.stripe.enabled ? 'configured' : 'disabled',
       uptime: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
@@ -49,6 +52,7 @@ router.get('/health', async (_req, res) => {
 
 // ── Storefront ────────────────────────────────────────────────────────
 router.use('/auth', authRoutes)
+router.use(customerStateRoutes)
 router.use('/products', productRoutes)
 router.use('/categories', categoryRoutes)
 router.use('/orders', orderRoutes)

@@ -27,6 +27,10 @@ const schema = z.object({
   DB_SOCKET: z.string().optional(),
   DB_POOL_SIZE: z.coerce.number().int().min(2).max(200).default(20),
 
+  // Optional shared cache. Database tables remain the source of truth.
+  REDIS_URL: z.string().trim().optional().default(''),
+  REDIS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(120),
+
   JWT_ACCESS_SECRET: z.string().min(32).default(DEFAULT_ACCESS_SECRET),
   JWT_REFRESH_SECRET: z.string().min(32).default(DEFAULT_REFRESH_SECRET),
   JWT_ACCESS_TTL: z.string().default('15m'),
@@ -107,6 +111,11 @@ export const env = {
     database: eFinal.DB_NAME,
     socketPath: eFinal.DB_SOCKET || undefined,
     poolSize: eFinal.DB_POOL_SIZE,
+  },
+
+  redis: {
+    url: eFinal.REDIS_URL || null,
+    cacheTtlSeconds: eFinal.REDIS_CACHE_TTL_SECONDS,
   },
 
   jwt: {

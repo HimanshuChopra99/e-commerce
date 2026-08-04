@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import SearchOverlay from "@/components/SearchOverlay";
 import MobileDrawer from "@/components/MobileDrawer";
-import CartDrawer from "@/components/CartDrawer";
 import Toast from "@/components/Toast";
 import { Search, ShoppingBag, Menu, CheckCircle2, Sparkles } from "lucide-react";
 

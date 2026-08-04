@@ -321,6 +321,8 @@ class MemoryStore {
     this.products = [...initialData.products]
     this.users = [...initialData.users]
     this.orders = [...initialData.orders]
+    this.carts = new Map()
+    this.favourites = new Map()
   }
 
   // Categories
@@ -486,6 +488,41 @@ class MemoryStore {
       return true
     }
     return false
+  }
+
+  // Durable customer state fallback (used only when MySQL is unavailable).
+  getCart(userId) {
+    return [...(this.carts.get(String(userId))?.values() ?? [])]
+  }
+
+  setCartItem(userId, variantId, quantity) {
+    const key = String(userId)
+    const cart = this.carts.get(key) ?? new Map()
+    cart.set(String(variantId), { variantId: String(variantId), quantity: Number(quantity) })
+    this.carts.set(key, cart)
+  }
+
+  removeCartItem(userId, variantId) {
+    this.carts.get(String(userId))?.delete(String(variantId))
+  }
+
+  clearCart(userId) {
+    this.carts.delete(String(userId))
+  }
+
+  getFavourites(userId) {
+    return [...(this.favourites.get(String(userId)) ?? new Set())]
+  }
+
+  addFavourite(userId, productId) {
+    const key = String(userId)
+    const favourites = this.favourites.get(key) ?? new Set()
+    favourites.add(String(productId))
+    this.favourites.set(key, favourites)
+  }
+
+  removeFavourite(userId, productId) {
+    this.favourites.get(String(userId))?.delete(String(productId))
   }
 
   // Users

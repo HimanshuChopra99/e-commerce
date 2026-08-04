@@ -60,7 +60,7 @@ Kick-backend/
     │   └── logger.js         structured JSON logging
     │
     ├── database/
-    │   ├── schema.sql        the 9 tables
+    │   ├── schema.sql        the 11 tables
     │   ├── migrate.js        migration runner
     │   ├── seed.js           demo catalogue
     │   └── migrations/       001_*.sql, 002_*.sql …
@@ -89,7 +89,7 @@ reuse the same services without Express.
 
 ---
 
-## Database — 9 tables
+## Database — 11 tables
 
 | Table | Holds |
 |---|---|
@@ -98,6 +98,8 @@ reuse the same services without Express.
 | `categories` | Admin-created groupings |
 | `products` | The catalogue (images/tags as JSON) |
 | `product_variants` | **size + colour + stock** |
+| `cart_items` | Durable, account-scoped cart variant quantities |
+| `favourites` | Durable customer-to-product saved items |
 | `orders` | Placed orders, including the Stripe fields |
 | `order_items` | Immutable line snapshots |
 | `stripe_events` | Webhook idempotency guard |
@@ -194,13 +196,23 @@ Base URL `/api`. Every response uses one envelope:
 | GET | `/categories/:slug` | One category |
 | GET | `/categories/:slug/products` | Products inside it |
 
-### Cart & checkout
+### Cart, favourites & checkout
 
-**There is no cart API** — the cart lives in the browser's `localStorage`.
-At checkout the client posts its lines and the server re-prices everything.
+Authenticated carts and favourites are stored in MySQL and cached in Redis.
+Redis is never the source of truth: cache loss or downtime falls back cleanly
+to MySQL. A guest browser cart is merged into the account at sign-in.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
+| GET | `/cart` | user | Restore the customer's cart on any device |
+| POST | `/cart/sync` | user | Merge a guest browser cart into the account |
+| POST | `/cart/items` | user | Add/set a variant quantity |
+| PATCH | `/cart/items/:variantId` | user | Change quantity |
+| DELETE | `/cart/items/:variantId` | user | Remove one line |
+| DELETE | `/cart` | user | Clear the cart |
+| GET | `/favourites` | user | List saved products |
+| POST | `/favourites/:productId` | user | Save a product |
+| DELETE | `/favourites/:productId` | user | Remove a saved product |
 | POST | `/orders/quote` | optional | Live totals, nothing saved |
 | POST | `/orders` | optional | Place the order (guest needs `email`) |
 | GET | `/orders` | user | My order history |
@@ -371,6 +383,7 @@ When you outgrow one box:
 - [ ] `NODE_ENV=production`
 - [ ] HTTPS enforced (cookies are `secure` in production)
 - [ ] `CORS_ORIGINS` set to your real domains
+- [ ] `REDIS_URL` points to a durable/shared Redis service
 - [ ] Live Stripe keys + webhook endpoint registered
 - [ ] `STRIPE_WEBHOOK_SECRET` is the **live** one (it differs from test)
 - [ ] MySQL user has no `DROP`/`GRANT`

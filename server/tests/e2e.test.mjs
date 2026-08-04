@@ -194,6 +194,7 @@ let adminToken = null
 
 section('STOREFRONT — PRODUCTS & CATEGORIES')
 let sampleSlug = null
+let sampleProductId = null
 let sampleVariantId = null
 {
   const list = await api('/api/products')
@@ -203,6 +204,7 @@ let sampleVariantId = null
 
   const first = list.body?.data?.[0]
   sampleSlug = first?.slug
+  sampleProductId = first?.id
   check('product exposes a slug', Boolean(sampleSlug), sampleSlug)
   check('storefront NEVER exposes costPerItem', first && first.costPerItem === undefined)
   check('storefront NEVER exposes internalId', first && first.internalId === undefined)
@@ -263,6 +265,36 @@ let sampleVariantId = null
   const catSlug = categories.body?.data?.[0]?.slug
   const catProducts = await api(`/api/categories/${catSlug}/products`)
   check('GET /categories/:slug/products works', catProducts.status === 200)
+}
+
+section('CUSTOMER CART & FAVOURITES')
+{
+  const anonymousCart = await api('/api/cart')
+  check('anonymous customer cannot read an account cart', anonymousCart.status === 401)
+
+  const added = await api('/api/cart/items', {
+    method: 'POST', token: customerToken,
+    body: { variantId: sampleVariantId, quantity: 2 },
+  })
+  check('cart item is persisted for the signed-in customer',
+    added.status === 200 && added.body?.data?.items?.[0]?.quantity === 2)
+
+  const synced = await api('/api/cart/sync', {
+    method: 'POST', token: customerToken,
+    body: { items: [{ variantId: sampleVariantId, quantity: 3 }] },
+  })
+  check('guest cart sync merges without losing the larger quantity',
+    synced.status === 200 && synced.body?.data?.items?.[0]?.quantity === 3)
+
+  const saved = await api(`/api/favourites/${sampleProductId}`, {
+    method: 'POST', token: customerToken,
+  })
+  check('product can be saved as a database-backed favourite',
+    saved.status === 200 && saved.body?.data?.products?.some((p) => p.id === sampleProductId))
+
+  const restored = await api('/api/favourites', { token: customerToken })
+  check('favourites are restored on a separate request',
+    restored.status === 200 && restored.body?.data?.products?.some((p) => p.id === sampleProductId))
 }
 
 section('CHECKOUT — QUOTE & VALIDATION')
@@ -354,6 +386,10 @@ let orderId = null
 
   const mine = await api('/api/orders', { token: customerToken })
   check('GET /api/orders lists my orders', mine.status === 200 && mine.body.data.length >= 1)
+
+  const cartAfterOrder = await api('/api/cart', { token: customerToken })
+  check('successful COD checkout clears the durable account cart',
+    cartAfterOrder.status === 200 && cartAfterOrder.body?.data?.items?.length === 0)
 }
 
 section('OWNERSHIP (IDOR)')
@@ -364,6 +400,13 @@ section('OWNERSHIP (IDOR)')
     body: { firstName: 'Other', lastName: 'User', email: otherEmail, password: 'Password123' },
   })
   const otherToken = other.body?.data?.accessToken
+
+  const otherCart = await api('/api/cart', { token: otherToken })
+  const otherFavourites = await api('/api/favourites', { token: otherToken })
+  check('cart data never leaks between customer accounts',
+    otherCart.status === 200 && otherCart.body?.data?.items?.length === 0)
+  check('favourites never leak between customer accounts',
+    otherFavourites.status === 200 && otherFavourites.body?.data?.products?.length === 0)
 
   const stolen = await api(`/api/orders/${orderId}`, { token: otherToken })
   check("another customer gets 404 for someone else's order (not 403)",

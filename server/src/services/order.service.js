@@ -9,7 +9,22 @@ import * as orderModel from '../models/order.model.js'
 import * as variantModel from '../models/variant.model.js'
 import * as productModel from '../models/product.model.js'
 import * as userModel from '../models/user.model.js'
+import * as cartModel from '../models/cart.model.js'
+import { deleteCached, deleteCachedPattern, getCachedJson, setCachedJson } from './cache.service.js'
 import { memoryStore } from './memory-store.js'
+
+const orderCacheKey = (userId, limit, offset) =>
+  `customer:${userId}:orders:${limit}:${offset}`
+
+export async function invalidateOrderCache(userId) {
+  if (userId === null || userId === undefined) return
+  await deleteCachedPattern(`customer:${userId}:orders:*`)
+}
+
+async function invalidateCartCache(userId) {
+  if (userId === null || userId === undefined) return
+  await deleteCached(`customer:${userId}:cart`)
+}
 
 function imageForColor(imagesValue, colorImagesValue, color) {
   const colorImages = parseJson(colorImagesValue, [])
@@ -159,7 +174,7 @@ export async function createOrder({ user, input }) {
 
   if (isDatabaseConnected()) {
     try {
-      return await withTransaction(async (conn) => {
+      const result = await withTransaction(async (conn) => {
         // ── 1. Lock the variants. Other checkouts block here. ──────────────
         const rows = await variantModel.lockForUpdate(variantIds, conn)
 
@@ -278,6 +293,7 @@ export async function createOrder({ user, input }) {
           for (const productId of touchedProducts) {
             await productModel.recalcStock(productId, conn)
           }
+          if (user?.id) await cartModel.clearByUser(user.id, conn)
         }
 
         // Read the finished order back through the SAME connection, so we see
@@ -291,6 +307,11 @@ export async function createOrder({ user, input }) {
 
         return { order, internalId: orderInternalId, totalCents: totals.totalCents }
       })
+      if (result) {
+        await invalidateOrderCache(user?.id)
+        if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id)
+        return result
+      }
     } catch (err) {
       if (err.statusCode) throw err
     }
@@ -346,7 +367,7 @@ export async function createOrder({ user, input }) {
       productPublicId: foundProd.publicId || foundProd.id,
       productName: foundProd.name,
       productSlug: foundProd.slug,
-      productImage: foundProd.image,
+      productImage: imageForColor(foundProd.images, foundProd.colorImages, foundVar.color),
       color: foundVar.color,
       size: foundVar.size,
       unitPrice: centsToNumber(unitCents),
@@ -376,6 +397,9 @@ export async function createOrder({ user, input }) {
   })
 
   order.orderNumber = `#${1000 + memoryStore.orders.length}`
+  if (user?.id && input.paymentMethod === 'cod') memoryStore.clearCart(user.id)
+  await invalidateOrderCache(user?.id)
+  if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id)
 
   return { order, internalId: order.internalId || order.id, totalCents: totals.totalCents }
 }
@@ -397,6 +421,10 @@ export async function getOrder(orderPublicId, requester) {
 }
 
 export async function listForUser(userId, { limit, offset }) {
+  const key = orderCacheKey(userId, limit, offset)
+  const cached = await getCachedJson(key)
+  if (cached) return cached
+
   const { items, total } = await orderModel.findAll({ userId, limit, offset })
   const ordersWithItems = await Promise.all(
     items.map(async (order) => {
@@ -404,7 +432,9 @@ export async function listForUser(userId, { limit, offset }) {
       return { ...order, items: orderItems }
     })
   )
-  return { items: ordersWithItems.map(orderModel.toPublicOrder), total }
+  const result = { items: ordersWithItems.map(orderModel.toPublicOrder), total }
+  await setCachedJson(key, result)
+  return result
 }
 
 export async function listForAdmin(filters) {
@@ -464,7 +494,12 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
   await orderModel.updateStatus(order.internalId || order.id || orderPublicId, nextStatus, extra)
 
   logger.info({ orderNumber: order.orderNumber, from: order.status, to: nextStatus }, 'order status changed')
-  return orderModel.findByPublicId(orderPublicId).then((o) => ({ ...o, internalId: undefined }))
+  await invalidateOrderCache(order.customerInternalId)
+  return orderModel.findByPublicId(orderPublicId).then((o) => ({
+    ...o,
+    internalId: undefined,
+    customerInternalId: undefined,
+  }))
 }
 
 /**
@@ -508,7 +543,12 @@ export async function updateTracking(orderPublicId, { courier, trackingNumber })
   if (!order) throw ApiError.notFound('Order not found.')
 
   await orderModel.updateStatus(order.internalId, order.status, { courier, trackingNumber })
-  return orderModel.findByPublicId(orderPublicId).then((o) => ({ ...o, internalId: undefined }))
+  await invalidateOrderCache(order.customerInternalId)
+  return orderModel.findByPublicId(orderPublicId).then((o) => ({
+    ...o,
+    internalId: undefined,
+    customerInternalId: undefined,
+  }))
 }
 
 export async function updateNote(orderPublicId, adminNote) {
@@ -547,6 +587,7 @@ export async function releaseStaleReservations() {
         await orderModel.updateStatus(row.id, 'cancelled', {}, conn)
         await orderModel.markPaymentFailed(row.id, conn)
       })
+      await invalidateOrderCache(row.user_id)
       released += 1
       logger.info({ orderNumber: row.order_number }, 'released stale reservation')
     } catch (err) {

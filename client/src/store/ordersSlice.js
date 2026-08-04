@@ -10,17 +10,18 @@ export const placeOrder = createAsyncThunk('orders/place', async (body, { reject
   }
 })
 
-export const fetchMyOrders = createAsyncThunk('orders/listMine', async (_, { rejectWithValue }) => {
+export const fetchMyOrders = createAsyncThunk('orders/listMine', async (_, { getState, rejectWithValue }) => {
   try {
     const res = await ordersApi.listMine()
-    return res.data
+    return { items: res.data || [], userId: getState().auth.user?.id ?? null }
   } catch (err) {
     return rejectWithValue(err.message || 'Failed to fetch orders')
   }
 }, {
   condition: (_, { getState }) => {
-    const state = getState().orders
-    return !state.loading && !state.loaded
+    const state = getState()
+    const userId = state.auth.user?.id
+    return Boolean(userId) && !state.orders.loading && state.orders.loadedFor !== userId
   },
 })
 
@@ -35,12 +36,20 @@ export const quoteOrder = createAsyncThunk('orders/quote', async (body, { reject
 
 const ordersSlice = createSlice({
   name: 'orders',
-  initialState: { items: [], current: null, quote: null, loading: false, error: null, loaded: false },
+  initialState: { items: [], current: null, quote: null, loading: false, error: null, loadedFor: null },
   reducers: {
     clearCurrentOrder: (state) => {
       state.current = null
       state.quote = null
       state.error = null
+    },
+    resetOrdersState: (state) => {
+      state.items = []
+      state.current = null
+      state.quote = null
+      state.loading = false
+      state.error = null
+      state.loadedFor = null
     },
   },
   extraReducers: (builder) => {
@@ -52,6 +61,7 @@ const ordersSlice = createSlice({
       .addCase(placeOrder.fulfilled, (s, a) => {
         s.loading = false
         s.current = a.payload
+        s.loadedFor = null
       })
       .addCase(placeOrder.rejected, (s, a) => {
         s.loading = false
@@ -63,8 +73,8 @@ const ordersSlice = createSlice({
       })
       .addCase(fetchMyOrders.fulfilled, (s, a) => {
         s.loading = false
-        s.items = a.payload || []
-        s.loaded = true
+        s.items = a.payload.items
+        s.loadedFor = a.payload.userId
       })
       .addCase(fetchMyOrders.rejected, (s, a) => {
         s.loading = false
@@ -77,5 +87,5 @@ const ordersSlice = createSlice({
   },
 })
 
-export const { clearCurrentOrder } = ordersSlice.actions
+export const { clearCurrentOrder, resetOrdersState } = ordersSlice.actions
 export default ordersSlice.reducer

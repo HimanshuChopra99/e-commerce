@@ -18,7 +18,7 @@ const IMAGE_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace('/api', '')
   : '';
 
-export function getImageSrc(img) {
+function getImageSrc(img) {
   if (!img) return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
   if (img.startsWith('http')) return img;
   return `${IMAGE_BASE}${img}`;
@@ -43,13 +43,14 @@ export default function ProductListPage() {
 
   const [sortOpen, setSortOpen] = useState(false);
 
-  // Read filters from URL params supporting comma-separated multi-selects.
-  // We keep stable PRIMITIVE values (strings / numbers) so that useCallback
-  // deps don't change identity on every render the way inline .split() arrays do.
+  // Size and colour are intentionally single-select. If an old shared URL has
+  // comma-separated values, use only the first valid choice and normalize it.
   const categoryParam  = searchParams.get('category')  || '';
   const genderParam    = searchParams.get('gender')    || '';
-  const sizeParam      = searchParams.get('size')      || '';
-  const colorParam     = searchParams.get('color')     || '';
+  const rawSizeParam   = searchParams.get('size')      || '';
+  const rawColorParam  = searchParams.get('color')     || '';
+  const sizeParam      = rawSizeParam.split(',').find(Boolean) || '';
+  const colorParam     = rawColorParam.split(',').find(Boolean) || '';
   const currentSort    = searchParams.get('sort')      || 'trending';
   const currentPage    = parseInt(searchParams.get('page')     || '1',    10);
   const currentSearch  = searchParams.get('q')         || '';
@@ -58,18 +59,26 @@ export default function ProductListPage() {
   // Derived arrays — only used for rendering / passing to sidebar, NOT in deps.
   const currentCategories = categoryParam.split(',').filter(Boolean);
   const currentGenders    = genderParam.split(',').filter(Boolean);
-  const currentSizes      = sizeParam.split(',').filter(Boolean);
-  const currentColors     = colorParam.split(',').filter(Boolean);
+  const currentSizes      = sizeParam ? [sizeParam] : [];
+  const currentColors     = colorParam ? [colorParam] : [];
 
   const sidebarFilters = useMemo(() => ({
     refineBy: currentSearch ? [currentSearch] : [],
-    sizes: currentSizes.map(Number),
+    sizes: currentSizes,
     colors: currentColors,
     categories: currentCategories,
     gender: currentGenders,
     priceRange: currentPriceMax,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [categoryParam, genderParam, sizeParam, colorParam, currentSearch, currentPriceMax]);
+
+  useEffect(() => {
+    if (rawSizeParam === sizeParam && rawColorParam === colorParam) return;
+    const next = new URLSearchParams(searchParams);
+    if (sizeParam) next.set('size', sizeParam); else next.delete('size');
+    if (colorParam) next.set('color', colorParam); else next.delete('color');
+    setSearchParams(next, { replace: true });
+  }, [rawSizeParam, rawColorParam, sizeParam, colorParam, searchParams, setSearchParams]);
 
   const handleFilterChange = (newFilters) => {
     const next = new URLSearchParams(searchParams);
@@ -87,13 +96,13 @@ export default function ProductListPage() {
     }
 
     if (newFilters.sizes?.length > 0) {
-      next.set('size', newFilters.sizes.join(','));
+      next.set('size', String(newFilters.sizes[0]));
     } else {
       next.delete('size');
     }
 
     if (newFilters.colors?.length > 0) {
-      next.set('color', newFilters.colors.join(','));
+      next.set('color', newFilters.colors[0]);
     } else {
       next.delete('color');
     }
@@ -263,7 +272,6 @@ export default function ProductListPage() {
                 {meta.totalPages > 1 && (() => {
                   const WINDOW = 2;
                   const start = Math.max(1, currentPage - WINDOW);
-                  const end = Math.min(meta.totalPages, currentPage + WINDOW);
 
                   const adjustedStart = Math.max(1, Math.min(start, meta.totalPages - 4));
                   const adjustedEnd = Math.min(meta.totalPages, adjustedStart + 4);

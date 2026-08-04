@@ -67,8 +67,12 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
             <button
               key={size}
               onClick={() =>
-                onChange({ ...filters, sizes: toggle(filters.sizes, size) })
+                onChange({
+                  ...filters,
+                  sizes: (filters.sizes || [])[0] === String(size) ? [] : [String(size)],
+                })
               }
+              aria-pressed={(filters.sizes || [])[0] === String(size)}
               className={`py-1.5 rounded-[8px] text-[12px] font-semibold border transition-all duration-200 ${
                 (filters.sizes || []).includes(size)
                   ? "bg-[#1E1E1E] text-white border-[#1E1E1E]"
@@ -90,8 +94,12 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
               key={color}
               title={color}
               onClick={() =>
-                onChange({ ...filters, colors: toggle(filters.colors, color) })
+                onChange({
+                  ...filters,
+                  colors: (filters.colors || [])[0] === color ? [] : [color],
+                })
               }
+              aria-pressed={(filters.colors || [])[0] === color}
               className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
                 (filters.colors || []).includes(color)
                   ? "border-[#4C64F4] scale-110 shadow-md"

@@ -5,6 +5,7 @@ import { assertDatabaseConnection, closePool, isDatabaseConnected } from './src/
 import { startJobs, stopJobs } from './src/services/jobs.service.js'
 import { migrateDatabase } from './src/database/migrate.js'
 import { seedDatabase } from './src/database/seed.js'
+import { closeCache } from './src/services/cache.service.js'
 
 async function main() {
   // Fail fast in production if MySQL is unreachable; development may use the
@@ -60,7 +61,7 @@ async function main() {
 
     server.close(async () => {
       try {
-        await closePool()
+        await Promise.all([closePool(), closeCache()])
         logger.info('shutdown complete')
         process.exit(0)
       } catch (err) {

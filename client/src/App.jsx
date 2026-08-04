@@ -3,7 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMe } from './store/authSlice';
 import { fetchCategories } from './store/categoriesSlice';
-import { selectCartCount } from './store/cartSlice';
+import { hydrateCart, selectCartCount } from './store/cartSlice';
+import { fetchFavourites } from './store/wishlistSlice';
 
 import Navbar from './components/common/Navbar';
 import SearchOverlay from './components/common/SearchOverlay';
@@ -25,9 +26,9 @@ import Company from './pages/Company';
 function App() {
   const dispatch = useDispatch();
   const cartCount = useSelector(selectCartCount);
+  const userId = useSelector((state) => state.auth.user?.id);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [toastQueue, setToastQueue] = useState([]);
 
@@ -36,14 +37,22 @@ function App() {
     dispatch(fetchCategories());
   }, [dispatch]);
 
+  // Every authenticated account hydrates its own database-backed state. Guest
+  // cart lines are merged once, then removed from browser storage.
+  useEffect(() => {
+    if (!userId) return;
+    dispatch(hydrateCart());
+    dispatch(fetchFavourites());
+  }, [dispatch, userId]);
+
   // Lock body scroll when any overlay/drawer is open
   useEffect(() => {
-    if (isSearchOpen || isCartOpen || isMobileOpen) {
+    if (isSearchOpen || isMobileOpen) {
       document.body.classList.add("locked");
     } else {
       document.body.classList.remove("locked");
     }
-  }, [isSearchOpen, isCartOpen, isMobileOpen]);
+  }, [isSearchOpen, isMobileOpen]);
 
   // Listen for toast events
   useEffect(() => {
@@ -83,7 +92,6 @@ function App() {
         {/* ===== 1. Site Header & Navbar ===== */}
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
-          onOpenCart={() => setIsCartOpen(true)}
           onOpenMobile={() => setIsMobileOpen(true)}
           onSelectLink={handleLinkSelect}
           cartCount={cartCount}

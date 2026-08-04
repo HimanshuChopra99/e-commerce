@@ -9,7 +9,7 @@ export default function Login() {
   const [searchParams] = useSearchParams()
   const redirect = searchParams.get('redirect') || '/'
 
-  const { loading, error, user } = useSelector((state) => state.auth)
+  const { loading, error } = useSelector((state) => state.auth)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

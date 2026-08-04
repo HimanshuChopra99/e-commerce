@@ -30,6 +30,7 @@ export default function ProductView() {
   const navigate = useNavigate();
 
   const cartItems = useSelector(selectCartItems);
+  const user = useSelector((state) => state.auth.user);
 
   const [product, setProduct] = useState(null);
   const [relatedList, setRelatedList] = useState([]);
@@ -211,13 +212,17 @@ export default function ProductView() {
 
   const selectedVariant = product.variants?.find((v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name);
   const selectedVariantInCart = Boolean(selectedVariant?.id && cartItems.some((item) => item.variantId === selectedVariant.id));
-  const handleRemoveFromCart = () => {
+  const handleRemoveFromCart = async () => {
     if (!selectedVariant?.id) return;
-    dispatch(removeFromCart(selectedVariant.id));
-    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} removed from your cart.` }));
+    try {
+      await dispatch(removeFromCart(selectedVariant.id)).unwrap();
+      window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} removed from your cart.` }));
+    } catch (requestError) {
+      window.dispatchEvent(new CustomEvent('kick:toast', { detail: requestError || 'Unable to remove this item.' }));
+    }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     const variant = product.variants?.find(
       (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
     );
@@ -232,41 +237,55 @@ export default function ProductView() {
       return false;
     }
 
-    dispatch(
-      addToCart({
-        variantId: variant.id,
-        productId: product.id,
-        name: product.name,
-        image: selectedColor?.images?.[0] || product.image,
-        price: product.price,
-        size: selectedSize.value,
-        color: selectedColor.name,
-        slug: product.slug,
-        quantity: 1,
-      })
-    );
-    window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} added to your cart.` }));
-    return true;
+    try {
+      await dispatch(
+        addToCart({
+          variantId: variant.id,
+          productId: product.id,
+          name: product.name,
+          image: selectedColor?.images?.[0] || product.image,
+          price: product.price,
+          size: selectedSize.value,
+          color: selectedColor.name,
+          slug: product.slug,
+          quantity: 1,
+        })
+      ).unwrap();
+      window.dispatchEvent(new CustomEvent('kick:toast', { detail: `${product.name} added to your cart.` }));
+      return true;
+    } catch (requestError) {
+      window.dispatchEvent(new CustomEvent('kick:toast', { detail: requestError || 'Unable to add this item.' }));
+      return false;
+    }
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     const variant = product.variants?.find(
       (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
     );
     const alreadyInCart = variant && cartItems.some((i) => i.variantId === variant.id);
-    if (alreadyInCart || handleAddToCart()) {
+    if (alreadyInCart || await handleAddToCart()) {
       navigate("/cart");
     }
   };
 
-  const handleToggleWishlist = () => {
+  const handleToggleWishlist = async () => {
     if (!product?.id) return;
-    dispatch(toggleWishlist(product.id));
-    window.dispatchEvent(
-      new CustomEvent('kick:toast', {
-        detail: isWishlisted ? 'Removed from wishlist' : 'Saved to wishlist ❤️',
-      })
-    );
+    if (!user) {
+      window.dispatchEvent(new CustomEvent('kick:toast', { detail: 'Sign in to save favourites.' }));
+      navigate(`/login?redirect=${encodeURIComponent(`/product/${product.slug}`)}`);
+      return;
+    }
+    try {
+      const result = await dispatch(toggleWishlist(product.id)).unwrap();
+      window.dispatchEvent(
+        new CustomEvent('kick:toast', {
+          detail: result.saved ? 'Saved to favourites ❤️' : 'Removed from favourites',
+        })
+      );
+    } catch (requestError) {
+      window.dispatchEvent(new CustomEvent('kick:toast', { detail: requestError || 'Unable to update favourites.' }));
+    }
   };
 
   return (
