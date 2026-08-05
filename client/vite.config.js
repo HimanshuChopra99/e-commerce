@@ -13,9 +13,14 @@ export default defineConfig({
     allowedHosts: true,
     // In development the browser calls relative `/api/...` URLs and Vite
     // proxies them to the Express backend, so the storefront never needs to
-    // know (or reach) the API's internal address.
+    // know (or reach) the API's internal address. Product images served from
+    // `/uploads/...` are proxied too so admin-uploaded photos load in dev.
     proxy: {
       '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+      '/uploads': {
         target: 'http://localhost:4000',
         changeOrigin: true,
       },
