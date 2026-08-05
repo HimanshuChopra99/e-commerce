@@ -120,7 +120,7 @@ export default function Orders() {
                           src={item.image || item.productImage}
                           alt={item.name || item.productName}
                           className="w-16 h-16 object-contain rounded-lg bg-gray-50 p-1 border"
-                        />
+                         loading="lazy" decoding="async"/>
                       )}
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-bold text-gray-900 truncate">{item.name || item.productName}</h4>

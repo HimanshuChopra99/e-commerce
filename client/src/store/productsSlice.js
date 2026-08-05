@@ -40,6 +40,9 @@ export const fetchFilters = createAsyncThunk('products/filters', async (_, { rej
   } catch (err) {
     return rejectWithValue(err.message || 'Failed to fetch filters')
   }
+}, {
+  // Filter options are static per session — fetch them once, not per visit.
+  condition: (_, { getState }) => getState().products.filters.sizes.length === 0,
 })
 
 const productsSlice = createSlice({

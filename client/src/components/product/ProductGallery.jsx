@@ -33,7 +33,7 @@ export const ProductGallery = ({ images, productName }) => {
           src={img}
           alt={`${productName} view ${index + 1}`}
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
-        />
+         loading="lazy" decoding="async"/>
 
         {
           /* Quick Zoom Overlay */
@@ -63,6 +63,8 @@ export const ProductGallery = ({ images, productName }) => {
           alt={`${productName} mobile view`}
           className="w-full h-full object-cover object-center transition-all duration-300"
           onClick={() => openLightbox(activeMobileIndex)}
+          loading="lazy"
+          decoding="async"
         />
 
         <button
@@ -101,7 +103,7 @@ export const ProductGallery = ({ images, productName }) => {
           onClick={() => setActiveMobileIndex(idx)}
           className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition-all ${activeMobileIndex === idx ? "border-blue-600 scale-105 shadow-sm" : "border-transparent opacity-60"}`}
         >
-          <img src={img} alt="thumb" className="w-full h-full object-cover" />
+          <img src={img} alt="thumb" className="w-full h-full object-cover"  loading="lazy" decoding="async"/>
         </button>)}
       </div>
     </div>
@@ -134,7 +136,7 @@ export const ProductGallery = ({ images, productName }) => {
           src={images[selectedImageIndex]}
           alt="Zoomed view"
           className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl transition-all"
-        />
+         loading="lazy" decoding="async"/>
 
         <button
           onClick={prevImage}
@@ -160,7 +162,7 @@ export const ProductGallery = ({ images, productName }) => {
           onClick={() => setSelectedImageIndex(idx)}
           className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${selectedImageIndex === idx ? "border-white scale-105" : "border-transparent opacity-50 hover:opacity-80"}`}
         >
-          <img src={img} alt="thumb" className="w-full h-full object-cover" />
+          <img src={img} alt="thumb" className="w-full h-full object-cover"  loading="lazy" decoding="async"/>
         </button>)}
       </div>
     </div>}

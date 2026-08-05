@@ -256,7 +256,7 @@ export default function ShoppingCart() {
                           src={item.image}
                           alt={item.name}
                           className="w-full h-full object-cover"
-                        />
+                         loading="lazy" decoding="async"/>
                       </div>
 
                       <div className="flex-1 flex flex-col justify-between">

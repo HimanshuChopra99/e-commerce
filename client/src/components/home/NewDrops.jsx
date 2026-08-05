@@ -89,6 +89,8 @@ export default function NewDrops() {
                           onError={(e) => {
                             e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
                           }}
+                          loading="lazy"
+                          decoding="async"
                         />
                         <div className="absolute top-0 left-0 bg-[#4C64F4] text-white font-bold text-[11px] tracking-wider uppercase px-4 py-2 rounded-tl-[14px] rounded-br-[8px] z-10">
                           New

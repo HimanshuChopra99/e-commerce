@@ -58,6 +58,8 @@ function CategoryCard({ category, idx }) {
           onError={(e) => {
             e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
           }}
+          loading="lazy"
+          decoding="async"
         />
       </div>
 

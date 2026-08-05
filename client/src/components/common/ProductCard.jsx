@@ -40,6 +40,7 @@ export default function ProductCard({ product }) {
             alt={product.name}
             className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3"
             loading="lazy"
+            decoding="async"
             onError={(e) => {
               e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
             }}

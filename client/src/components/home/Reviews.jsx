@@ -77,6 +77,7 @@ const SafeImg = ({ src, fallback, alt, className }) => {
       src={current}
       alt={alt}
       loading="lazy"
+      decoding="async"
       onError={() => {
         if (current !== fallback) setCurrent(fallback);
       }}
@@ -107,7 +108,7 @@ const ReviewCard = ({ review }) => (
         src={review.avatar}
         alt={review.name}
         className="h-[52px] w-[52px] shrink-0 rounded-full object-cover ring-1 ring-black/5"
-      />
+       loading="lazy" decoding="async"/>
     </div>
 
     <div className="mt-auto aspect-[300/232] w-full overflow-hidden bg-neutral-200">

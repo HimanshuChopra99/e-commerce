@@ -215,6 +215,8 @@ export async function handlePaymentSucceeded(intent) {
       deleteCachedPattern(`customer:${customerId}:orders:*`),
     ])
   }
+  // Payment succeeded → stock was committed, so refresh the public catalogue.
+  await deleteCachedPattern('public:*')
 }
 
 /** Payment failed — release the hold so the stock goes back on sale. */
@@ -346,6 +348,7 @@ export async function refundOrder(orderPublicId, { amount, reason, restock = fal
       { orderNumber: order.orderNumber, amount: centsToNumber(refundCents), restock },
       'refund issued'
     )
+    if (restock) await deleteCachedPattern('public:*')
     return { refundId: refund.id, amount: centsToNumber(refundCents), status: refund.status }
   } catch (err) {
     if (err.type?.startsWith('Stripe')) {

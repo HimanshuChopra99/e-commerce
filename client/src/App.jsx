@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMe } from './store/authSlice';
-import { fetchCategories } from './store/categoriesSlice';
 import { hydrateCart, selectCartCount } from './store/cartSlice';
-import { fetchFavourites } from './store/wishlistSlice';
 import { showToast } from './lib/toast';
 
 import Navbar from './components/common/Navbar';
@@ -13,16 +11,31 @@ import MobileDrawer from './components/common/MobileDrawer';
 import Toast from './components/common/Toast';
 import Footer from './components/common/Footer';
 import AuthExpiredHandler from './components/AuthExpiredHandler';
-import Home from './pages/Home';
-import Product from './pages/Product';
-import ProductView from './pages/ProductView';
-import Cart from './pages/Cart';
-import Payment from './pages/Payment';
-import Signup from './pages/Signup';
-import Login from './pages/Login';
-import Orders from './pages/Orders';
-import Profile from './pages/Profile';
-import Company from './pages/Company';
+import ScrollToTop from './components/common/ScrollToTop';
+
+// Route-level code splitting: each page chunk is fetched lazily, so the first
+// paint only downloads the code for the page the visitor actually opens.
+const Home = lazy(() => import('./pages/Home'));
+const Product = lazy(() => import('./pages/Product'));
+const ProductView = lazy(() => import('./pages/ProductView'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Payment = lazy(() => import('./pages/Payment'));
+const Signup = lazy(() => import('./pages/Signup'));
+const Login = lazy(() => import('./pages/Login'));
+const Orders = lazy(() => import('./pages/Orders'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Company = lazy(() => import('./pages/Company'));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen bg-[#EAE9E5] flex items-center justify-center py-20">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-[#1E1E1E] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm font-bold text-gray-500">Loading…</p>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const dispatch = useDispatch();
@@ -33,17 +46,19 @@ function App() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [toastQueue, setToastQueue] = useState([]);
 
+  // Only the session identity and the guest/local cart are restored up-front.
+  // Everything else (categories, featured products, orders, favourites) is
+  // fetched lazily by the page that actually needs it — see Home, Product and
+  // Profile. This avoids firing every API call on the very first page load.
   useEffect(() => {
     dispatch(fetchMe());
-    dispatch(fetchCategories());
   }, [dispatch]);
 
-  // Every authenticated account hydrates its own database-backed state. Guest
-  // cart lines are merged once, then removed from browser storage.
+  // Every authenticated account hydrates its database-backed cart so the
+  // navbar count is correct everywhere. Favourites/orders are page-lazy.
   useEffect(() => {
     if (!userId) return;
     dispatch(hydrateCart());
-    dispatch(fetchFavourites());
   }, [dispatch, userId]);
 
   // Lock body scroll when any overlay/drawer is open
@@ -97,6 +112,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <AuthExpiredHandler />
       <div className="bg-[#EAE9E5] text-ink min-h-screen flex flex-col relative">
         {/* ===== 1. Site Header & Navbar ===== */}
@@ -133,20 +149,22 @@ function App() {
 
         {/* ===== Main Page Sections ===== */}
         <main className="flex-1 pt-20 md:pt-24 w-full">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/products" element={<Product />} />
-            <Route path="/product/:id" element={<ProductView />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout/payment" element={<Payment />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/about" element={<Company page="about" />} />
-            <Route path="/contact" element={<Company page="contact" />} />
-            <Route path="/blogs" element={<Company page="blogs" />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-          </Routes>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/products" element={<Product />} />
+              <Route path="/product/:id" element={<ProductView />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/checkout/payment" element={<Payment />} />
+              <Route path="/orders" element={<Orders />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/about" element={<Company page="about" />} />
+              <Route path="/contact" element={<Company page="contact" />} />
+              <Route path="/blogs" element={<Company page="blogs" />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+            </Routes>
+          </Suspense>
         </main>
 
         <Footer />

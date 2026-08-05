@@ -310,6 +310,8 @@ export async function createOrder({ user, input }) {
       if (result) {
         await invalidateOrderCache(user?.id)
         if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id)
+        // Stock availability changed, so drop the cached public catalogue.
+        await deleteCachedPattern('public:*')
         return result
       }
     } catch (err) {
@@ -400,6 +402,7 @@ export async function createOrder({ user, input }) {
   if (user?.id && input.paymentMethod === 'cod') memoryStore.clearCart(user.id)
   await invalidateOrderCache(user?.id)
   if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id)
+  await deleteCachedPattern('public:*')
 
   return { order, internalId: order.internalId || order.id, totalCents: totals.totalCents }
 }
@@ -495,6 +498,10 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
 
   logger.info({ orderNumber: order.orderNumber, from: order.status, to: nextStatus }, 'order status changed')
   await invalidateOrderCache(order.customerInternalId)
+  if (nextStatus === 'cancelled' || nextStatus === 'returned') {
+    // Restocked items change public availability.
+    await deleteCachedPattern('public:*')
+  }
   return orderModel.findByPublicId(orderPublicId).then((o) => ({
     ...o,
     internalId: undefined,

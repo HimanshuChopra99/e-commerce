@@ -423,7 +423,7 @@ function OrdersPanel({ orders, loading, error }) {
                     to={item.slug ? `/product/${item.slug}` : '/products'}
                     className='flex items-center gap-4 py-4 transition hover:bg-neutral-50'
                   >
-                    <img src={imageSrc(item.image || item.productImage)} alt={item.name || item.productName} className='size-16 rounded-2xl bg-[#EEEDE9] object-cover sm:size-20' />
+                    <img src={imageSrc(item.image || item.productImage)} alt={item.name || item.productName} className='size-16 rounded-2xl bg-[#EEEDE9] object-cover sm:size-20'  loading="lazy" decoding="async"/>
                     <div className='min-w-0 flex-1'>
                       <h3 className='truncate text-sm font-black uppercase'>{item.name || item.productName}</h3>
                       <p className='mt-1 text-xs text-neutral-500'>Size {item.size} · {item.color} · Qty {item.quantity}</p>
@@ -486,7 +486,7 @@ function FavouritesPanel({ products, loading, dispatch }) {
             return (
               <article key={productId} className='group overflow-hidden rounded-3xl border border-black/8 bg-[#F8F8F5] transition hover:-translate-y-1 hover:border-[#4A69E2]/30 hover:shadow-lg'>
                 <Link to={`/product/${product.slug || productId}`} className='block overflow-hidden bg-[#EDECE8]'>
-                  <img src={imageSrc(product.image || product.images?.[0])} alt={product.name} className='aspect-[16/10] w-full object-cover transition duration-500 group-hover:scale-105' />
+                  <img src={imageSrc(product.image || product.images?.[0])} alt={product.name} className='aspect-[16/10] w-full object-cover transition duration-500 group-hover:scale-105'  loading="lazy" decoding="async"/>
                 </Link>
                 <div className='p-5'>
                   <div className='flex items-start justify-between gap-4'>

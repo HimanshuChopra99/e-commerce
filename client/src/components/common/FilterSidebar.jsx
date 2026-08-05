@@ -1,6 +1,54 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronUp, ChevronDown, SlidersHorizontal, X } from "lucide-react";
 const REFINE_OPTIONS = [];
+
+// How long (ms) the user must stop dragging before a price-filter fetch fires.
+// While the slider is being dragged we only update the local label — no API
+// call — so a quick drag from 1000→300 doesn't fire dozens of requests.
+const PRICE_DEBOUNCE_MS = 500;
+
+/**
+ * Debounced price-range slider. The thumb + label update instantly for a
+ * smooth feel, but the actual filter change (which triggers a fetch) only
+ * happens after the user pauses for PRICE_DEBOUNCE_MS.
+ */
+function PriceRange({ value, onChange }) {
+  const [draft, setDraft] = useState(value ?? 1000);
+  const timerRef = useRef(null);
+
+  // Keep the local draft in sync when an applied filter arrives from the URL.
+  useEffect(() => {
+    setDraft(value ?? 1000);
+  }, [value]);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const handleDraftChange = (next) => {
+    setDraft(next);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      onChange(next);
+    }, PRICE_DEBOUNCE_MS);
+  };
+
+  return (
+    <div className="space-y-2">
+      <input
+        type="range"
+        min={0}
+        max={1000}
+        value={draft}
+        onChange={(e) => handleDraftChange(Number(e.target.value))}
+        className="w-full accent-[#4C64F4] h-1.5 rounded-full cursor-pointer"
+      />
+      <div className="flex justify-between text-[12px] text-[#888]" style={{ fontFamily: "'Rubik', sans-serif" }}>
+        <span>$0</span>
+        <span>${draft}</span>
+        <span>$1000</span>
+      </div>
+    </div>
+  );
+}
 
 function Section({
   title,
@@ -162,25 +210,12 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
         </div>
       </Section>
 
-      {/* Price Range */}
+      {/* Price Range — debounced so dragging doesn't spam the API */}
       <Section title="Price">
-        <div className="space-y-2">
-          <input
-            type="range"
-            min={0}
-            max={1000}
-            value={filters.priceRange || 1000}
-            onChange={(e) =>
-              onChange({ ...filters, priceRange: Number(e.target.value) })
-            }
-            className="w-full accent-[#4C64F4] h-1.5 rounded-full cursor-pointer"
-          />
-          <div className="flex justify-between text-[12px] text-[#888]" style={{ fontFamily: "'Rubik', sans-serif" }}>
-            <span>$0</span>
-            <span>${filters.priceRange || 1000}</span>
-            <span>$1000</span>
-          </div>
-        </div>
+        <PriceRange
+          value={filters.priceRange}
+          onChange={(priceRange) => onChange({ ...filters, priceRange })}
+        />
       </Section>
     </div>
   );

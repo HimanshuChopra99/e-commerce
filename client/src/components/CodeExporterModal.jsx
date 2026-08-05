@@ -26,16 +26,16 @@ export function ProductViewPage() {
         {/* Left: 2x2 Image Grid */}
         <div className="lg:col-span-7 grid grid-cols-2 gap-4">
           <div className="bg-[#EAEAE8] rounded-3xl aspect-square overflow-hidden shadow-xs">
-            <img src="/images/adidas-4dfwd-navy-profile.jpg" alt="Profile" className="w-full h-full object-cover" />
+            <img src="/images/adidas-4dfwd-navy-profile.jpg" alt="Profile" className="w-full h-full object-cover"  loading="lazy" decoding="async"/>
           </div>
           <div className="bg-[#EAEAE8] rounded-3xl aspect-square overflow-hidden shadow-xs">
-            <img src="/images/adidas-4dfwd-navy-onfoot.jpg" alt="On foot" className="w-full h-full object-cover" />
+            <img src="/images/adidas-4dfwd-navy-onfoot.jpg" alt="On foot" className="w-full h-full object-cover"  loading="lazy" decoding="async"/>
           </div>
           <div className="bg-[#EAEAE8] rounded-3xl aspect-square overflow-hidden shadow-xs">
-            <img src="/images/adidas-4dfwd-navy-laces.jpg" alt="Laces" className="w-full h-full object-cover" />
+            <img src="/images/adidas-4dfwd-navy-laces.jpg" alt="Laces" className="w-full h-full object-cover"  loading="lazy" decoding="async"/>
           </div>
           <div className="bg-[#EAEAE8] rounded-3xl aspect-square overflow-hidden shadow-xs">
-            <img src="/images/adidas-4dfwd-navy-sole.jpg" alt="3D Sole" className="w-full h-full object-cover" />
+            <img src="/images/adidas-4dfwd-navy-sole.jpg" alt="3D Sole" className="w-full h-full object-cover"  loading="lazy" decoding="async"/>
           </div>
         </div>
 
