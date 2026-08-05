@@ -5,6 +5,7 @@ import { logger } from '../config/logger.js'
 let client = null
 let unavailableUntil = 0
 let warned = false
+let loggedReady = false
 
 function createClient() {
   const redis = new Redis(env.redis.url, {
@@ -22,6 +23,10 @@ function createClient() {
   })
   redis.on('ready', () => {
     warned = false
+    if (!loggedReady) {
+      loggedReady = true
+      logger.info({ url: env.redis.url }, `Redis cache connected (public TTL ${env.redis.publicCacheTtlSeconds}s, user TTL ${env.redis.cacheTtlSeconds}s)`)
+    }
   })
   return redis
 }

@@ -24,7 +24,9 @@ async function cachedPublic(key, compute) {
   const cached = await getCachedJson(key)
   if (cached) return cached
   const value = await compute()
-  await setCachedJson(key, value)
+  // Public catalogue is invalidated on every mutation, so it can live in Redis
+  // for a long TTL (PUBLIC_CACHE_TTL_SECONDS) instead of expiring every 2 min.
+  await setCachedJson(key, value, env.redis.publicCacheTtlSeconds)
   return value
 }
 

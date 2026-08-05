@@ -3,6 +3,7 @@ import { ok, paginated } from '../utils/api-response.js'
 import { getPagination, buildMeta } from '../utils/helpers.js'
 import * as productService from '../services/product.service.js'
 import * as variantModel from '../models/variant.model.js'
+import { env } from '../config/env.js'
 import { getCachedJson, setCachedJson } from '../services/cache.service.js'
 
 /** GET /api/products — the storefront catalogue. */
@@ -48,7 +49,8 @@ export const filters = asyncHandler(async (_req, res) => {
     genders: [...GENDERS],
     colors: [...COLORS],
   }
-  await setCachedJson(cacheKey, result)
+  // Public catalogue → long TTL (see PUBLIC_CACHE_TTL_SECONDS).
+  await setCachedJson(cacheKey, result, env.redis.publicCacheTtlSeconds)
   ok(res, result)
 })
 
