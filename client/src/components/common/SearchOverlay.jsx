@@ -153,7 +153,7 @@ export default function SearchOverlay({
                         src={imgSrc}
                         alt={p.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                       loading="lazy" decoding="async"/>
                       <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 text-[10px] font-bold uppercase tracking-wider text-ink">
                         {p.gender || "Unisex"}
                       </span>

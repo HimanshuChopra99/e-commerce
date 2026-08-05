@@ -155,7 +155,7 @@ export default function Navbar({
                     src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80"
                     alt="Men featured"
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
+                   loading="lazy" decoding="async"/>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"></div>
                   <div className="absolute bottom-5 left-6 text-white">
                     <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">
@@ -252,7 +252,7 @@ export default function Navbar({
                     src="https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&w=900&q=80"
                     alt="Women featured"
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
+                   loading="lazy" decoding="async"/>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"></div>
                   <div className="absolute bottom-5 left-6 text-white">
                     <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">

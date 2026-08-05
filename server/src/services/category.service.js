@@ -4,10 +4,22 @@ import * as categoryModel from '../models/category.model.js'
 import * as productModel from '../models/product.model.js'
 import { pool, isDatabaseConnected } from '../config/database.js'
 import { memoryStore } from './memory-store.js'
+import { CACHE_TTL } from '../utils/constants.js'
+import { getCachedJson, setCachedJson, deleteCachedPattern } from './cache.service.js'
+
+async function invalidatePublicCatalogue() {
+  await deleteCachedPattern('public:*')
+}
 
 export async function listPublic() {
+  const cacheKey = 'public:categories'
+  const cached = await getCachedJson(cacheKey)
+  if (cached) return cached
   const categories = await categoryModel.findAll({ activeOnly: true })
-  return categories.map(categoryModel.toPublicCategory)
+  const result = categories.map(categoryModel.toPublicCategory)
+  // Categories change rarely → longest catalogue TTL.
+  await setCachedJson(cacheKey, result, CACHE_TTL.CATEGORIES)
+  return result
 }
 
 export async function listForAdmin() {
@@ -40,6 +52,7 @@ export async function create(input) {
     sortOrder: input.sortOrder ?? 0,
   })
 
+  await invalidatePublicCatalogue()
   return categoryModel.toPublicCategory(category)
 }
 
@@ -53,6 +66,7 @@ export async function update(categoryPublicId, input) {
   }
 
   const updated = await categoryModel.update(category.internalId, patch)
+  await invalidatePublicCatalogue()
   return categoryModel.toPublicCategory(updated)
 }
 
@@ -65,6 +79,7 @@ export async function remove(categoryPublicId) {
   if (!category) throw ApiError.notFound('Category not found.')
 
   await categoryModel.remove(category.internalId)
+  await invalidatePublicCatalogue()
   return { productsUncategorised: category.productCount ?? 0 }
 }
 
@@ -101,6 +116,7 @@ export async function assignProducts(categoryPublicId, productPublicIds) {
         rows.map((r) => r.id),
         category.internalId
       )
+      await invalidatePublicCatalogue()
       return { assigned }
     } catch (err) {
       if (err.statusCode) throw err
@@ -117,6 +133,7 @@ export async function assignProducts(categoryPublicId, productPublicIds) {
       count++
     }
   }
+  await invalidatePublicCatalogue()
   return { assigned: count }
 }
 
@@ -131,4 +148,5 @@ export async function removeProduct(categoryPublicId, productPublicId) {
   }
 
   await productModel.assignCategory([product.internalId], null)
+  await invalidatePublicCatalogue()
 }

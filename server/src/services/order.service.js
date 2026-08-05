@@ -4,7 +4,7 @@ import { logger } from '../config/logger.js'
 import { ApiError } from '../utils/api-error.js'
 import { publicId, parseJson, randomToken } from '../utils/helpers.js'
 import { toCents, fromCents, centsToNumber } from '../utils/money.js'
-import { ORDER_TRANSITIONS } from '../utils/constants.js'
+import { ORDER_TRANSITIONS, CACHE_TTL } from '../utils/constants.js'
 import * as orderModel from '../models/order.model.js'
 import * as variantModel from '../models/variant.model.js'
 import * as productModel from '../models/product.model.js'
@@ -310,6 +310,8 @@ export async function createOrder({ user, input }) {
       if (result) {
         await invalidateOrderCache(user?.id)
         if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id)
+        // Stock availability changed, so drop the cached public catalogue.
+        await deleteCachedPattern('public:*')
         return result
       }
     } catch (err) {
@@ -400,6 +402,7 @@ export async function createOrder({ user, input }) {
   if (user?.id && input.paymentMethod === 'cod') memoryStore.clearCart(user.id)
   await invalidateOrderCache(user?.id)
   if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id)
+  await deleteCachedPattern('public:*')
 
   return { order, internalId: order.internalId || order.id, totalCents: totals.totalCents }
 }
@@ -433,7 +436,8 @@ export async function listForUser(userId, { limit, offset }) {
     })
   )
   const result = { items: ordersWithItems.map(orderModel.toPublicOrder), total }
-  await setCachedJson(key, result)
+  // Customer order history → CART-tier TTL; invalidated on any order mutation.
+  await setCachedJson(key, result, CACHE_TTL.CART)
   return result
 }
 
@@ -495,6 +499,10 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
 
   logger.info({ orderNumber: order.orderNumber, from: order.status, to: nextStatus }, 'order status changed')
   await invalidateOrderCache(order.customerInternalId)
+  if (nextStatus === 'cancelled' || nextStatus === 'returned') {
+    // Restocked items change public availability.
+    await deleteCachedPattern('public:*')
+  }
   return orderModel.findByPublicId(orderPublicId).then((o) => ({
     ...o,
     internalId: undefined,

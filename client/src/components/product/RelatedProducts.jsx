@@ -37,7 +37,7 @@ export const RelatedProducts = ({
     src={item.image}
     alt={item.name}
     className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-  />
+   loading="lazy" decoding="async"/>
 
                 {item.tag && <span className="absolute top-2.5 left-2.5 bg-[#4A69E2] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
                     {item.tag}

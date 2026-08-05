@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, removeFromCart, selectCartItems } from "../store/cartSlice";
-import { toggleWishlist, selectIsWishlisted } from "../store/wishlistSlice";
+import { toggleWishlist, selectIsWishlisted, fetchFavourites } from "../store/wishlistSlice";
 import { showToast } from "../lib/toast";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { ProductDetails } from "../components/product/ProductDetails";
@@ -43,6 +43,12 @@ export default function ProductView() {
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
 
   const isWishlisted = useSelector(selectIsWishlisted(product?.id));
+
+  // Favourites are fetched lazily on the product page (not on every app load)
+  // so the heart reflects the logged-in user's saved items.
+  useEffect(() => {
+    if (user?.id) dispatch(fetchFavourites());
+  }, [user?.id, dispatch]);
 
   useEffect(() => {
     setLoading(true);

@@ -3,6 +3,8 @@ import { ok, paginated } from '../utils/api-response.js'
 import { getPagination, buildMeta } from '../utils/helpers.js'
 import * as productService from '../services/product.service.js'
 import * as variantModel from '../models/variant.model.js'
+import { CACHE_TTL } from '../utils/constants.js'
+import { getCachedJson, setCachedJson } from '../services/cache.service.js'
 
 /** GET /api/products — the storefront catalogue. */
 export const list = asyncHandler(async (req, res) => {
@@ -34,12 +36,22 @@ export const featured = asyncHandler(async (req, res) => {
 
 /** GET /api/products/filters — populates the storefront filter UI. */
 export const filters = asyncHandler(async (_req, res) => {
+  const cacheKey = 'public:filters'
+  const cached = await getCachedJson(cacheKey)
+  if (cached) {
+    ok(res, cached)
+    return
+  }
+
   const { GENDERS, COLORS } = await import('../utils/constants.js')
-  ok(res, {
+  const result = {
     sizes: await variantModel.availableSizes(),
     genders: [...GENDERS],
     colors: [...COLORS],
-  })
+  }
+  // Filter facets are static per deployment → long TTL.
+  await setCachedJson(cacheKey, result, CACHE_TTL.FILTERS)
+  ok(res, result)
 })
 
 /** GET /api/products/:slug */

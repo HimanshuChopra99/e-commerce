@@ -7,8 +7,30 @@ import * as categoryModel from '../models/category.model.js'
 import * as orderModel from '../models/order.model.js'
 import { env } from '../config/env.js'
 import { memoryStore } from './memory-store.js'
+import { getCachedJson, setCachedJson, deleteCachedPattern } from './cache.service.js'
+import { CACHE_TTL } from '../utils/constants.js'
 
 const MAX_COLOR_IMAGES = 48
+
+// Prefix shared by every storefront-facing cache key so a single pattern scan
+// can invalidate the whole public catalogue when anything that affects it
+// changes (product create/update/delete, stock changes, category changes).
+const PUBLIC_CACHE_PREFIX = 'public:'
+
+async function invalidatePublicCatalogue() {
+  await deleteCachedPattern(`${PUBLIC_CACHE_PREFIX}*`)
+}
+
+async function cachedPublic(key, ttlSeconds, compute) {
+  const cached = await getCachedJson(key)
+  if (cached) return cached
+  const value = await compute()
+  // Public catalogue is invalidated on every mutation, so the TTL is a safety
+  // net rather than the source of freshness. Per-type TTLs (CACHE_TTL) let
+  // slowly-changing data (categories) live longer than fast-changing lists.
+  await setCachedJson(key, value, ttlSeconds)
+  return value
+}
 
 /**
  * Keep media in one canonical shape. `colorImages` drives the product page;
@@ -40,43 +62,55 @@ function canonicalMedia(input) {
 /* ----------------------------- Storefront ------------------------------ */
 
 export async function listPublic(filters) {
-  const { items, total } = await productModel.findAll({ ...filters, storefront: true })
-  return { items: items.map(productModel.toPublicProduct), total }
+  return cachedPublic(
+    `${PUBLIC_CACHE_PREFIX}products:list:${JSON.stringify(filters)}`,
+    CACHE_TTL.PRODUCTS,
+    async () => {
+      const { items, total } = await productModel.findAll({ ...filters, storefront: true })
+      return { items: items.map(productModel.toPublicProduct), total }
+    }
+  )
 }
 
 export async function getPublicBySlug(slug) {
-  const product = await productModel.findBySlug(slug)
-  if (!product || product.status !== 'active') {
-    throw ApiError.notFound('Product not found.')
-  }
+  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:slug:${slug}`, CACHE_TTL.PRODUCT, async () => {
+    const product = await productModel.findBySlug(slug)
+    if (!product || product.status !== 'active') {
+      throw ApiError.notFound('Product not found.')
+    }
 
-  const variants = await variantModel.findByProduct(product.internalId || product.id, { activeOnly: true })
+    const variants = await variantModel.findByProduct(product.internalId || product.id, { activeOnly: true })
 
-  return {
-    ...productModel.toPublicProduct(product),
-    variants: variants.map(variantModel.toPublicVariant),
-    colors: [...new Set(variants.map((v) => v.color))],
-    sizes: [...new Set(variants.map((v) => v.size))].sort((a, b) => Number(a) - Number(b)),
-  }
+    return {
+      ...productModel.toPublicProduct(product),
+      variants: variants.map(variantModel.toPublicVariant),
+      colors: [...new Set(variants.map((v) => v.color))],
+      sizes: [...new Set(variants.map((v) => v.size))].sort((a, b) => Number(a) - Number(b)),
+    }
+  })
 }
 
 export async function getRelated(slug, limit = 4) {
-  const product = await productModel.findBySlug(slug)
-  if (!product) throw ApiError.notFound('Product not found.')
-  if (!product.category) return []
+  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:related:${slug}:${limit}`, CACHE_TTL.PRODUCT, async () => {
+    const product = await productModel.findBySlug(slug)
+    if (!product) throw ApiError.notFound('Product not found.')
+    if (!product.category) return []
 
-  const category = await categoryModel.findByPublicId(product.category.id)
-  if (!category) return []
+    const category = await categoryModel.findByPublicId(product.category.id)
+    if (!category) return []
 
-  const items = await productModel.findRelated(category.internalId, product.internalId, limit)
-  return items.map(productModel.toPublicProduct)
+    const items = await productModel.findRelated(category.internalId, product.internalId, limit)
+    return items.map(productModel.toPublicProduct)
+  })
 }
 
 export async function listFeatured(limit = 8) {
-  const { items } = await productModel.findAll({
-    storefront: true, featured: true, limit, offset: 0, sort: 'popular',
+  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:featured:${limit}`, CACHE_TTL.PRODUCTS, async () => {
+    const { items } = await productModel.findAll({
+      storefront: true, featured: true, limit, offset: 0, sort: 'popular',
+    })
+    return items.map(productModel.toPublicProduct)
   })
-  return items.map(productModel.toPublicProduct)
 }
 
 /* -------------------------------- Admin -------------------------------- */
@@ -174,7 +208,10 @@ export async function create(rawInput) {
         const created = await productModel.findByInternalId(productInternalId, conn)
         return { ...created, internalId: undefined }
       })
-      if (res) return res
+      if (res) {
+        await invalidatePublicCatalogue()
+        return res
+      }
     } catch (err) {
       if (err.statusCode) throw err
     }
@@ -216,6 +253,7 @@ export async function create(rawInput) {
     ),
   })
   newProduct.totalStock = totalStock
+  await invalidatePublicCatalogue()
   return newProduct
 }
 
@@ -305,7 +343,10 @@ export async function update(productPublicId, rawInput) {
         const updated = await productModel.findByInternalId(product.internalId, conn)
         return { ...updated, internalId: undefined }
       })
-      if (res) return res
+      if (res) {
+        await invalidatePublicCatalogue()
+        return res
+      }
     } catch (err) {
       if (err.statusCode) throw err
     }
@@ -348,7 +389,9 @@ export async function update(productPublicId, rawInput) {
     )
     patch.totalStock = patch.variants.reduce((sum, variant) => sum + Number(variant.stock), 0)
   }
-  return memoryStore.updateProduct(productPublicId, patch)
+  const result = memoryStore.updateProduct(productPublicId, patch)
+  await invalidatePublicCatalogue()
+  return result
 }
 
 /** Adjusts stock for individual sizes without rebuilding the variant set. */
@@ -390,9 +433,11 @@ export async function updateVariantStock(productPublicId, variants) {
         }
 
         await productModel.recalcStock(product.internalId, conn)
-        return variantModel.findByProduct(product.internalId).then((rows) =>
+        const updated = await variantModel.findByProduct(product.internalId).then((rows) =>
           rows.map(({ internalId: _i, productId: _p, ...v }) => v)
         )
+        await invalidatePublicCatalogue()
+        return updated
       })
     } catch (err) {
       if (err.statusCode) throw err
@@ -408,6 +453,7 @@ export async function updateVariantStock(productPublicId, variants) {
       }
     }
   }
+  await invalidatePublicCatalogue()
   return product.variants || []
 }
 
@@ -422,19 +468,23 @@ export async function remove(productPublicId) {
 
   await productModel.softDelete(product.internalId || product.id)
   memoryStore.deleteProduct(productPublicId)
+  await invalidatePublicCatalogue()
 }
 
 export async function bulkStatus(productPublicIds, status) {
   const ids = await resolveInternalIds(productPublicIds)
   if (isDatabaseConnected()) {
     try {
-      return await productModel.bulkSetStatus(ids, status)
+      const result = await productModel.bulkSetStatus(ids, status)
+      await invalidatePublicCatalogue()
+      return result
     } catch { }
   }
   let count = 0
   for (const id of productPublicIds) {
     if (memoryStore.updateProduct(id, { status })) count++
   }
+  await invalidatePublicCatalogue()
   return count
 }
 
@@ -442,13 +492,16 @@ export async function bulkRemove(productPublicIds) {
   const ids = await resolveInternalIds(productPublicIds)
   if (isDatabaseConnected()) {
     try {
-      return await productModel.bulkSoftDelete(ids)
+      const result = await productModel.bulkSoftDelete(ids)
+      await invalidatePublicCatalogue()
+      return result
     } catch { }
   }
   let count = 0
   for (const id of productPublicIds) {
     if (memoryStore.deleteProduct(id)) count++
   }
+  await invalidatePublicCatalogue()
   return count
 }
 
@@ -482,6 +535,7 @@ export async function addImages(productPublicId, urls, color = null) {
   const patch = color ? { images, colorImages } : { images }
   await productModel.update(product.internalId || product.id, patch)
   memoryStore.updateProduct(productPublicId, patch)
+  await invalidatePublicCatalogue()
   return { images, colorImages }
 }
 
@@ -508,6 +562,7 @@ export async function removeImage(productPublicId, url, color = null) {
   const patch = { images, colorImages }
   await productModel.update(product.internalId || product.id, patch)
   memoryStore.updateProduct(productPublicId, patch)
+  await invalidatePublicCatalogue()
   return patch
 }
 

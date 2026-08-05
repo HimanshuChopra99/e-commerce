@@ -29,7 +29,10 @@ const schema = z.object({
 
   // Optional shared cache. Database tables remain the source of truth.
   REDIS_URL: z.string().trim().optional().default(''),
-  REDIS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(120),
+  // General fallback TTL for cache writes that don't specify one. Per-type TTLs
+  // live in CACHE_TTL (utils/constants.js) and are passed explicitly by each
+  // cache site; this env is only a safety-net default.
+  REDIS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(86400).default(300),
 
   JWT_ACCESS_SECRET: z.string().min(32).default(DEFAULT_ACCESS_SECRET),
   JWT_REFRESH_SECRET: z.string().min(32).default(DEFAULT_REFRESH_SECRET),

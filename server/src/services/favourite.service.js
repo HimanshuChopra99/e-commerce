@@ -1,7 +1,7 @@
 import { ApiError } from '../utils/api-error.js'
-import { env } from '../config/env.js'
 import * as favouriteModel from '../models/favourite.model.js'
 import * as productModel from '../models/product.model.js'
+import { CACHE_TTL } from '../utils/constants.js'
 import { deleteCached, getCachedJson, setCachedJson } from './cache.service.js'
 
 const cacheKey = (userId) => `customer:${userId}:favourites`
@@ -13,7 +13,8 @@ async function currentFavourites(userId, { bypassCache = false } = {}) {
     if (cached) return cached
   }
   const products = await favouriteModel.findByUser(userId)
-  await setCachedJson(key, products, env.redis.cacheTtlSeconds)
+  // Customer-specific data → CART-tier TTL (30 min), invalidated on mutation.
+  await setCachedJson(key, products, CACHE_TTL.CART)
   return products
 }
 

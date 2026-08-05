@@ -15,10 +15,10 @@ Storefront, admin dashboard, and Express/MySQL API in one repository.
 
 The seed creates 210 shoes, 25 customers, 120 orders, seven categories, and an administrator.
 
-**Admin:** `admin@kick.com` / `AdminPassword123!`  
-**Customer:** `customer1@example.com` / `Password123`
+**Admin:** `admin@kick.com` / `ChangeMe123!`  
+**Customer:** `customer@example.com` / `Password123`
 
-Change these credentials and all JWT secrets before deploying.
+The seed passwords default to the values above (see `server/src/database/seed.js` and `server/src/services/memory-store.js`). Override them with `SEED_ADMIN_PASSWORD` / `SEED_CUSTOMER_PASSWORD` in `server/.env`. If you copy `.env.example`, note it ships placeholder values (`change_me_in_production`) — set them to `ChangeMe123!` / `Password123` for a working local demo. Change these credentials and all JWT secrets before deploying.
 
 ## Production build
 

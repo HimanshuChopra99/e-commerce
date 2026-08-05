@@ -83,7 +83,7 @@ export const SearchModal = ({ isOpen, onClose, onSelectProduct }) => {
     src={product.image}
     alt={product.name}
     className="w-12 h-12 object-cover rounded-xl bg-neutral-100 shrink-0"
-  />
+   loading="lazy" decoding="async"/>
                     <div>
                       <h4 className="font-extrabold text-xs text-neutral-900 uppercase group-hover:text-blue-600 transition-colors">
                         {product.name}
