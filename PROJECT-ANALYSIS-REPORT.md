@@ -235,6 +235,28 @@ scrolls the page to the top. If that feels jarring, scroll-to-top can be restric
 
 ---
 
+## 7. Root-cause of the test "failures" (resolved)
+
+After aligning the environment and running a clean suite, **142 / 143 tests pass**; the only failure is
+`database is up` (there is no MySQL in this sandbox — the API intentionally runs in fallback/memory mode).
+Every other failure previously seen was traced to one of two non-code causes:
+
+1. **Admin seed-password mismatch.** `server/.env` (from `.env.example`) overrode the code default with
+   `SEED_ADMIN_PASSWORD=change_me_in_production`, but the code default — and the e2e test — use `ChangeMe123!`.
+   With the override, admin login `401`'d, which **cascaded** to every admin/products/categories/orders/customers
+   test (they all need an admin token first). Fixed by aligning `.env` / `.env.example` to the code default and
+   correcting the README (it also listed the wrong customer email and admin password).
+2. **Transient state during a run.** Manual testing left stale Redis cart entries and reserved stock in the
+   in-memory store, which intermittently failed the cart/order assertions. On a fresh server + flushed Redis,
+   all cart/order/quote/oversell tests pass.
+
+**How to reproduce a clean 142/143 locally:** set `SEED_ADMIN_PASSWORD=ChangeMe123!` (and
+`SEED_CUSTOMER_PASSWORD=Password123`), start MySQL via `docker compose up -d`, `npm run db:reset --prefix server`,
+start the API, then `node tests/e2e.test.mjs`. The only remaining failure will be the MySQL-dependent
+`database is up` assertion if the DB isn't running.
+
+---
+
 *Re-verification:* to validate the DB/admin/Redis/Stripe paths not runnable in this sandbox, run per the README:
 `docker compose up -d`, `cp server/.env.example server/.env`, set `DB_PASSWORD`, `npm ci --prefix <app>`,
 `npm run db:reset --prefix server`, then start server (4000), client (5173), admin (5174).
