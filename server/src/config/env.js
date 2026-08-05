@@ -29,15 +29,10 @@ const schema = z.object({
 
   // Optional shared cache. Database tables remain the source of truth.
   REDIS_URL: z.string().trim().optional().default(''),
-  // Short-lived cache for customer-specific data (cart, favourites, orders).
-  // These are invalidated on every mutation, so a short TTL just bounds stale
-  // reads while the mutation is in flight.
-  REDIS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(86400).default(120),
-  // Public catalogue (product lists, featured, detail, related, categories,
-  // filters) changes rarely and is explicitly invalidated on any product,
-  // category, stock or payment change. A long TTL lets Redis actually hold
-  // these keys instead of expiring them every couple of minutes.
-  PUBLIC_CACHE_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(3600),
+  // General fallback TTL for cache writes that don't specify one. Per-type TTLs
+  // live in CACHE_TTL (utils/constants.js) and are passed explicitly by each
+  // cache site; this env is only a safety-net default.
+  REDIS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(86400).default(300),
 
   JWT_ACCESS_SECRET: z.string().min(32).default(DEFAULT_ACCESS_SECRET),
   JWT_REFRESH_SECRET: z.string().min(32).default(DEFAULT_REFRESH_SECRET),
@@ -124,7 +119,6 @@ export const env = {
   redis: {
     url: eFinal.REDIS_URL || null,
     cacheTtlSeconds: eFinal.REDIS_CACHE_TTL_SECONDS,
-    publicCacheTtlSeconds: eFinal.PUBLIC_CACHE_TTL_SECONDS,
   },
 
   jwt: {

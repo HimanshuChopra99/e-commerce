@@ -2,6 +2,26 @@
 
 export const ROLES = Object.freeze({ CUSTOMER: 'customer', ADMIN: 'admin' })
 
+/**
+ * Per-type Redis cache TTLs (seconds). Different data changes at different
+ * rates, so each cache category gets its own lifetime:
+ *   - PRODUCTS    300s  (5 min)   — catalogue list / featured grid
+ *   - PRODUCT     900s  (15 min)  — single product detail / related
+ *   - CATEGORIES 3600s  (1 hour)  — category list
+ *   - FILTERS    3600s  (1 hour)  — filter facets (sizes/colors/genders)
+ *   - CART       1800s  (30 min)  — customer cart / favourites / orders
+ *
+ * All public catalogue keys are additionally invalidated on any product,
+ * category, stock or payment change, so the TTL is just a safety net.
+ */
+export const CACHE_TTL = Object.freeze({
+  PRODUCTS: 300,
+  PRODUCT: 900,
+  CATEGORIES: 3600,
+  FILTERS: 3600,
+  CART: 1800,
+})
+
 export const USER_STATUS = Object.freeze(['active', 'blocked'])
 
 export const PRODUCT_STATUS = Object.freeze([

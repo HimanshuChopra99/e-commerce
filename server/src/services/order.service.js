@@ -4,7 +4,7 @@ import { logger } from '../config/logger.js'
 import { ApiError } from '../utils/api-error.js'
 import { publicId, parseJson, randomToken } from '../utils/helpers.js'
 import { toCents, fromCents, centsToNumber } from '../utils/money.js'
-import { ORDER_TRANSITIONS } from '../utils/constants.js'
+import { ORDER_TRANSITIONS, CACHE_TTL } from '../utils/constants.js'
 import * as orderModel from '../models/order.model.js'
 import * as variantModel from '../models/variant.model.js'
 import * as productModel from '../models/product.model.js'
@@ -436,7 +436,8 @@ export async function listForUser(userId, { limit, offset }) {
     })
   )
   const result = { items: ordersWithItems.map(orderModel.toPublicOrder), total }
-  await setCachedJson(key, result)
+  // Customer order history → CART-tier TTL; invalidated on any order mutation.
+  await setCachedJson(key, result, CACHE_TTL.CART)
   return result
 }
 

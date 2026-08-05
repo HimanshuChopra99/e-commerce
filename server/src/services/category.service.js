@@ -3,8 +3,8 @@ import { publicId, uniqueSlug } from '../utils/helpers.js'
 import * as categoryModel from '../models/category.model.js'
 import * as productModel from '../models/product.model.js'
 import { pool, isDatabaseConnected } from '../config/database.js'
-import { env } from '../config/env.js'
 import { memoryStore } from './memory-store.js'
+import { CACHE_TTL } from '../utils/constants.js'
 import { getCachedJson, setCachedJson, deleteCachedPattern } from './cache.service.js'
 
 async function invalidatePublicCatalogue() {
@@ -17,8 +17,8 @@ export async function listPublic() {
   if (cached) return cached
   const categories = await categoryModel.findAll({ activeOnly: true })
   const result = categories.map(categoryModel.toPublicCategory)
-  // Public catalogue → long TTL (see PUBLIC_CACHE_TTL_SECONDS).
-  await setCachedJson(cacheKey, result, env.redis.publicCacheTtlSeconds)
+  // Categories change rarely → longest catalogue TTL.
+  await setCachedJson(cacheKey, result, CACHE_TTL.CATEGORIES)
   return result
 }
 

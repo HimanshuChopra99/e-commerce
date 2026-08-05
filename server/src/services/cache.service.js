@@ -1,6 +1,7 @@
 import Redis from 'ioredis'
 import { env } from '../config/env.js'
 import { logger } from '../config/logger.js'
+import { CACHE_TTL } from '../utils/constants.js'
 
 let client = null
 let unavailableUntil = 0
@@ -25,7 +26,10 @@ function createClient() {
     warned = false
     if (!loggedReady) {
       loggedReady = true
-      logger.info({ url: env.redis.url }, `Redis cache connected (public TTL ${env.redis.publicCacheTtlSeconds}s, user TTL ${env.redis.cacheTtlSeconds}s)`)
+      logger.info(
+        { url: env.redis.url },
+        `Redis cache connected (TTLs — products ${CACHE_TTL.PRODUCTS}s, product ${CACHE_TTL.PRODUCT}s, categories ${CACHE_TTL.CATEGORIES}s, filters ${CACHE_TTL.FILTERS}s, cart ${CACHE_TTL.CART}s)`
+      )
     }
   })
   return redis
@@ -59,7 +63,7 @@ export async function getCachedJson(key) {
   }
 }
 
-export async function setCachedJson(key, value, ttlSeconds = env.redis.cacheTtlSeconds) {
+export async function setCachedJson(key, value, ttlSeconds = CACHE_TTL.PRODUCTS) {
   const redis = await readyClient()
   if (!redis) return false
   try {

@@ -8,6 +8,7 @@ import * as orderModel from '../models/order.model.js'
 import { env } from '../config/env.js'
 import { memoryStore } from './memory-store.js'
 import { getCachedJson, setCachedJson, deleteCachedPattern } from './cache.service.js'
+import { CACHE_TTL } from '../utils/constants.js'
 
 const MAX_COLOR_IMAGES = 48
 
@@ -20,13 +21,14 @@ async function invalidatePublicCatalogue() {
   await deleteCachedPattern(`${PUBLIC_CACHE_PREFIX}*`)
 }
 
-async function cachedPublic(key, compute) {
+async function cachedPublic(key, ttlSeconds, compute) {
   const cached = await getCachedJson(key)
   if (cached) return cached
   const value = await compute()
-  // Public catalogue is invalidated on every mutation, so it can live in Redis
-  // for a long TTL (PUBLIC_CACHE_TTL_SECONDS) instead of expiring every 2 min.
-  await setCachedJson(key, value, env.redis.publicCacheTtlSeconds)
+  // Public catalogue is invalidated on every mutation, so the TTL is a safety
+  // net rather than the source of freshness. Per-type TTLs (CACHE_TTL) let
+  // slowly-changing data (categories) live longer than fast-changing lists.
+  await setCachedJson(key, value, ttlSeconds)
   return value
 }
 
@@ -62,6 +64,7 @@ function canonicalMedia(input) {
 export async function listPublic(filters) {
   return cachedPublic(
     `${PUBLIC_CACHE_PREFIX}products:list:${JSON.stringify(filters)}`,
+    CACHE_TTL.PRODUCTS,
     async () => {
       const { items, total } = await productModel.findAll({ ...filters, storefront: true })
       return { items: items.map(productModel.toPublicProduct), total }
@@ -70,7 +73,7 @@ export async function listPublic(filters) {
 }
 
 export async function getPublicBySlug(slug) {
-  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:slug:${slug}`, async () => {
+  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:slug:${slug}`, CACHE_TTL.PRODUCT, async () => {
     const product = await productModel.findBySlug(slug)
     if (!product || product.status !== 'active') {
       throw ApiError.notFound('Product not found.')
@@ -88,7 +91,7 @@ export async function getPublicBySlug(slug) {
 }
 
 export async function getRelated(slug, limit = 4) {
-  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:related:${slug}:${limit}`, async () => {
+  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:related:${slug}:${limit}`, CACHE_TTL.PRODUCT, async () => {
     const product = await productModel.findBySlug(slug)
     if (!product) throw ApiError.notFound('Product not found.')
     if (!product.category) return []
@@ -102,7 +105,7 @@ export async function getRelated(slug, limit = 4) {
 }
 
 export async function listFeatured(limit = 8) {
-  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:featured:${limit}`, async () => {
+  return cachedPublic(`${PUBLIC_CACHE_PREFIX}products:featured:${limit}`, CACHE_TTL.PRODUCTS, async () => {
     const { items } = await productModel.findAll({
       storefront: true, featured: true, limit, offset: 0, sort: 'popular',
     })

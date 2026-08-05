@@ -3,6 +3,7 @@ import { env } from '../config/env.js'
 import * as cartModel from '../models/cart.model.js'
 import * as variantModel from '../models/variant.model.js'
 import * as productModel from '../models/product.model.js'
+import { CACHE_TTL } from '../utils/constants.js'
 import { deleteCached, getCachedJson, setCachedJson } from './cache.service.js'
 
 const cacheKey = (userId) => `customer:${userId}:cart`
@@ -14,7 +15,7 @@ async function currentCart(userId, { bypassCache = false } = {}) {
     if (cached) return cached
   }
   const items = await cartModel.findByUser(userId)
-  await setCachedJson(key, items, env.redis.cacheTtlSeconds)
+  await setCachedJson(key, items, CACHE_TTL.CART)
   return items
 }
 
