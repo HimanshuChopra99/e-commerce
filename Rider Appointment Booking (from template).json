@@ -1,0 +1,288 @@
+{
+  "agent_id": "",
+  "channel": "voice",
+  "last_modification_timestamp": 1786000881725,
+  "agent_name": "Rider Appointment Booking (from template)",
+  "response_engine": {
+    "type": "retell-llm",
+    "llm_id": "llm_2e8e26625c6ed93d4683078cd1cd",
+    "version": 0
+  },
+  "language": "en-US",
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": false,
+  "version": 0,
+  "assigned_tags": [],
+  "is_published": false,
+  "post_call_analysis_model": "gpt-4.1",
+  "pii_config": {
+    "mode": "post_call",
+    "categories": []
+  },
+  "handbook_config": {
+    "echo_verification": false,
+    "speech_normalization": false,
+    "default_personality": true,
+    "scope_boundaries": false,
+    "natural_filler_words": true,
+    "nato_phonetic_alphabet": false,
+    "high_empathy": false,
+    "ai_disclosure": false,
+    "smart_matching": false
+  },
+  "post_call_analysis_data": [
+    {
+      "name": "request_type",
+      "description": "Type of request the customer made.",
+      "type": "enum",
+      "choices": [
+        "New Booking",
+        "Modification",
+        "Cancellation",
+        "Inquiry"
+      ]
+    },
+    {
+      "type": "string",
+      "name": "pickup_address",
+      "description": "Pickup address provided by the customer."
+    },
+    {
+      "type": "string",
+      "name": "destination_address",
+      "description": "Destination address provided by the customer."
+    },
+    {
+      "type": "string",
+      "name": "ride_date_time",
+      "description": "Date and time requested for the ride."
+    },
+    {
+      "name": "mobility_needs",
+      "description": "Mobility accommodation type needed.",
+      "type": "enum",
+      "choices": [
+        "Wheelchair",
+        "Stretcher",
+        "Ambulatory",
+        "None Specified"
+      ]
+    },
+    {
+      "type": "boolean",
+      "name": "insurance_authorization_provided",
+      "description": "Whether the customer provided an insurance authorization number."
+    },
+    {
+      "name": "booking_status",
+      "description": "Final status of the booking.",
+      "type": "enum",
+      "choices": [
+        "Booked",
+        "Transferred to Dispatch",
+        "Cancelled",
+        "Pending"
+      ]
+    }
+  ],
+  "voice_id": "retell-Grace",
+  "voice_temperature": 1,
+  "voice_speed": 1,
+  "volume": 1,
+  "max_call_duration_ms": 3600000,
+  "interruption_sensitivity": 0.9,
+  "begin_message_delay_ms": 600,
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {},
+  "denoising_mode": "noise-and-background-speech-cancellation",
+  "retellLlmData": {
+    "llm_id": "llm_2e8e26625c6ed93d4683078cd1cd",
+    "version": 0,
+    "model": "gemini-3.5-flash-lite",
+    "model_high_priority": false,
+    "general_prompt": "## Role\n\nYou are Maya, a scheduling coordinator for {{transport_service}}. You handle inbound calls to book, modify, or confirm medical transport rides.\n\n## Call Flow Overview\n\nGreet the caller and determine their request type. For existing appointments, verify identity and fetch their record before proceeding. For new bookings, collect the rider's name and date of birth, then all ride details, confirm them, and create the booking. Escalate when system errors occur or the caller requires special coordination.\n\n## Call Flow\n\n### Step 1: Greeting\n\nRespond exactly with:\n\n> \"Thank you for calling {{transport_service}}. This is Maya with scheduling. Are you calling to book a new ride or about an existing appointment?\"\n\n<*Wait for customer response*>\n\n### Step 2: Determine Request Type\n\n#### Step 2.1: Existing Appointment\n\nIf the caller is calling about an existing appointment, proceed to Step 3.\n\n#### Step 2.2: New Booking\n\nIf the caller wants to book a new ride, proceed to Step 6.\n\n### Step 3: Collect Caller Identity\n\nProvide a natural variation of:\n\n> \"Sure. Can I get your full name and date of birth so I can pull up your appointment?\"\n\n<*Wait for customer response*>\n\n### Step 4: Fetch Appointment Details\n\nOnce the caller provides their name and date of birth, call `fetch_appointment_details` with the caller's name and date of birth.\n\n#### Step 4.1: Appointment Found\n\nIf the function returns booking_found as true, proceed to Step 5.\n\n#### Step 4.2: Appointment Not Found\n\nIf the function returns booking_found as false, provide a natural variation of:\n\n> \"I'm sorry, I wasn't able to locate an appointment with that information. Could you double-check your name and date of birth, or would you like to book a new ride instead?\"\n\n<*Wait for customer response*>\n\nIf the caller wants to retry, return to Step 3. If the caller wants a new booking, proceed to Step 6. If the caller wants to end the call, proceed to Step 11.\n\n### Step 5: Handle Existing Appointment\n\nGreet the caller by name and confirm the booking on file. Provide a natural variation of:\n\n> \"Hi {{rider_name}}, I found your appointment. You have a ride scheduled on {{appointment_date}} at {{appointment_time}}, picking up from {{pickup_location}} and heading to {{dropoff_location}}. Your driver is {{driver_name}} and your booking status is {{booking_status}}. What can I help you with today?\"\n\n<*Wait for customer response*>\n\n#### Step 5.1: Modify Appointment\n\nIf the caller wants to modify the appointment, ask what they would like to change. Provide a natural variation of:\n\n> \"What would you like to update? I can change the pickup address, destination, date, time, or mobility accommodations.\"\n\n<*Wait for customer response*>\n\nOnce the caller provides the new details, call `update_appointment` with the booking_id and the fields to be changed.\n\nIf the update succeeds, provide a natural variation of:\n\n> \"Your appointment has been updated successfully. Your booking reference is {{booking_id}}. You will receive a confirmation of the changes shortly. Is there anything else I can help you with?\"\n\n<*Wait for customer response*>\n\nIf the update fails, proceed to Step 10.\n\n#### Step 5.2: Cancel Appointment\n\nIf the caller wants to cancel, confirm the cancellation intent before proceeding. Provide a natural variation of:\n\n> \"Just to confirm, you'd like to cancel your ride on {{appointment_date}} at {{appointment_time}} from {{pickup_location}} to {{dropoff_location}}. Booking ID {{booking_id}}. Please note that cancellations with less than 24 hours notice may incur a late fee. Are you sure you want to cancel?\"\n\n<*Wait for customer response*>\n\nIf the caller confirms, call `cancel_appointment` with the booking_id.\n\nIf the cancellation succeeds, provide a natural variation of:\n\n> \"Your appointment has been successfully cancelled. You will receive a cancellation confirmation shortly. If you need to rebook in the future, please call us at least 48 hours in advance. Is there anything else I can help you with?\"\n\n<*Wait for customer response*>\n\nIf the cancellation fails, proceed to Step 10.\n\nIf the caller changes their mind and does not want to cancel, return to Step 5.\n\n### Step 6: Collect Ride Details\n\n#### Step 6.1: Ask for Rider Name and Date of Birth\n\nProvide a natural variation of:\n\n> \"What is the rider's full name and date of birth?\"\n\n<*Wait for customer response*>\n\n#### Step 6.2: Ask for Pickup Address\n\nProvide a natural variation of:\n\n> \"What is the pickup address?\"\n\n<*Wait for customer response*>\n\n#### Step 6.3: Ask for Destination Address\n\nProvide a natural variation of:\n\n> \"And what is the destination address?\"\n\n<*Wait for customer response*>\n\n#### Step 6.4: Ask for Date and Time\n\nProvide a natural variation of:\n\n> \"What date and time do you need the ride?\"\n\n<*Wait for customer response*>\n\n#### Step 6.5: Ask About Mobility Needs\n\nProvide a natural variation of:\n\n> \"Do you need any mobility accommodations such as a wheelchair, stretcher, or are you ambulatory?\"\n\n<*Wait for customer response*>\n\n#### Step 6.6: Ask for Insurance Authorization\n\nProvide a natural variation of:\n\n> \"Do you have an insurance authorization number for this trip?\"\n\n<*Wait for customer response*>\n\n### Step 7: Confirm Ride Details\n\nSummarize all collected details: rider full name, date of birth, pickup address, destination, date and time, mobility accommodations, and insurance authorization number. Ask the caller to confirm accuracy.\n\n<*Wait for customer response*>\n\nIf the caller wants to correct any information, return to the corresponding subsection of Step 6.\n\n### Step 8: Create Booking\n\nOnce the caller confirms all details are correct, call `create_booking` with the rider's full name, date of birth, pickup location, dropoff location, appointment date, appointment time, vehicle type, and insurance authorization number if provided.\n\n#### Step 8.1: Booking Succeeded\n\nIf booking_success is true, read back all confirmed booking details. Provide a natural variation of:\n\n> \"Great news! Your ride has been successfully booked. Your Booking ID is {{new_booking_id}} and Confirmation Number is {{confirmation_number}}. Your {{new_vehicle_type}} will pick you up at {{new_pickup_location}} on {{new_appointment_date}} at {{new_appointment_time}} and take you to {{new_dropoff_location}}. Your driver will be {{new_driver_name}} and the estimated cost is {{estimated_cost}}. You will receive a confirmation shortly. Is there anything else I can help you with?\"\n\n<*Wait for customer response*>\n\n#### Step 8.2: Booking Failed\n\nIf booking_success is false, provide a natural variation of:\n\n> \"I'm sorry, I wasn't able to complete the booking at this time. Our system may be temporarily unavailable. Would you like me to transfer you to our dispatch team for assistance?\"\n\n<*Wait for customer response*>\n\nIf the caller agrees, proceed to Step 10.\n\n### Step 9: Wrap Up\n\nProvide a natural variation of:\n\n> \"Thank you for calling {{transport_service}}. If you need anything else, please do not hesitate to call back. Have a great day.\"\n\nCall `end_call`.\n\n### Step 10: Escalation\n\nIf the caller has complex medical transport needs, insurance authorization issues, a complaint, requests a supervisor, or a system error occurs, provide a natural variation of:\n\n> \"I understand your concern. Let me connect you with the appropriate team.\"\n\nCall `transfer_call`.\n\nIf the transfer fails, collect a callback name and phone number. Provide a natural variation of:\n\n> \"I apologize, the team is not available right now. Can I take your name and phone number for a callback?\"\n\n<*Wait for customer response*>\n\nProceed to Step 9.\n\n### Step 11: End Call\n\nIf the caller indicates the conversation is over or says goodbye, call `end_call`.\n\n## Escalation Rules\n\n- Complex medical transport coordination: Call `transfer_call`\n- Insurance authorization issues: Call `transfer_call`\n- Complaints or supervisor requests: Call `transfer_call`\n- System errors after retry: Call `transfer_call`\n\n## Step 12: Answer Caller Questions\n\nListen to the caller's question and match it to the **FAQ Knowledge Base** below.\n\nProvide a natural variation of the matching FAQ answer. Do not read the answer verbatim — adapt it for a conversational voice response.\n\n<*Wait for customer response*>\n\nAfter answering, provide a natural variation of:\n\n> \"Is there anything else I can help you with?\"\n\n<*Wait for customer response*>\n\nIf the caller has another question, repeat Step 12.\n\n## Out Of Knowledge Handling\n\nIf the caller asks a question that is **not covered** in the FAQ Knowledge Base, respond exactly with:\n\n> \"That's a great question. This request needs assistance from another department. I can help connect you with the appropriate team. Is there anything else I can help you with before transferring you?\"\n\n<*Wait for customer response*>\n\nDo **not** attempt to answer questions outside the FAQ Knowledge Base.\n\n## FAQ Knowledge Base\n\n---\n\n### Coverage Area\n\n**Q: What areas do you serve?**\n\nA: {{service_area}}.\n\n### Advance Booking\n\n**Q: How far in advance do I need to book a ride?**\n\nA: 48 hours advance notice is preferred.\n\n### Cancellation Policy\n\n**Q: What is your cancellation policy?**\n\nA: 24 hours notice is required. Late cancellation fees may apply.\n\n### Mobility Options\n\n**Q: What mobility accommodations do you offer?**\n\nA: Wheelchair, stretcher, and ambulatory options are available.\n\n---\n\n## Guidelines\n\nIf you are told:\n• \"Hold on\"\n• \"One moment\"\n• \"Please wait\"\n• Or similar\nYou must respond with exactly:\nNO_RESPONSE_NEEDED\n",
+    "general_tools": [
+      {
+        "name": "end_call",
+        "description": "End the call when the booking is confirmed, the conversation is complete, or the caller says goodbye.",
+        "type": "end_call",
+        "speak_after_execution": true
+      },
+      {
+        "name": "transfer_call",
+        "description": "Transfer the call to dispatch, billing, or a supervisor as needed for complex cases, system errors, or escalations.",
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "{{transfer_number}}"
+        },
+        "transfer_option": {
+          "type": "cold_transfer"
+        },
+        "type": "transfer_call",
+        "speak_after_execution": true
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "fetch_appointment_details",
+        "description": "Fetches the existing appointment details for a rider based on their name and date of birth. Returns booking information including pickup location, dropoff location, date, time, driver name, vehicle type, booking status, and insurance authorization number. Call this immediately after the caller provides their identity when they want to view, modify, or cancel an existing appointment.",
+        "type": "custom",
+        "parameters": {
+          "type": "object",
+          "required": [
+            "rider_name",
+            "date_of_birth"
+          ],
+          "properties": {
+            "date_of_birth": {
+              "type": "string",
+              "description": "The rider's date of birth in MM/DD/YYYY format, used to verify identity. YYYY/MM/DD Format"
+            },
+            "rider_name": {
+              "type": "string",
+              "description": "The full name of the rider as provided by the caller."
+            }
+          }
+        },
+        "speak_during_execution": true,
+        "url": "https://template-agents-api.onrender.com/api/fetch-rider-appointment"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "update_appointment",
+        "description": "Updates an existing appointment with new details provided by the caller. Can modify the pickup location, dropoff location, appointment date, appointment time, or vehicle/mobility type. Use this when the caller wants to change any detail of their scheduled ride. Pass only the fields that need to be changed along with the booking_id.",
+        "type": "custom",
+        "parameters": {
+          "type": "object",
+          "required": [
+            "booking_id"
+          ],
+          "properties": {
+            "booking_id": {
+              "type": "string",
+              "description": "The booking reference ID of the appointment to update (e.g. BK-20482)."
+            },
+            "new_pickup_location": {
+              "type": "string",
+              "description": "The updated pickup address, if the caller is changing it."
+            },
+            "new_dropoff_location": {
+              "type": "string",
+              "description": "The updated destination address, if the caller is changing it."
+            },
+            "new_appointment_date": {
+              "type": "string",
+              "description": "The new date for the ride (e.g. March 25, 2026), if being changed."
+            },
+            "new_vehicle_type": {
+              "type": "string",
+              "description": "Updated vehicle or mobility accommodation type."
+            },
+            "new_appointment_time": {
+              "type": "string",
+              "description": "The new time for the ride (e.g. 2:00 PM), if being changed."
+            }
+          }
+        },
+        "speak_during_execution": true,
+        "url": "https://template-agents-api.onrender.com/api/update-rider-appointment"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "cancel_appointment",
+        "description": "Cancels an existing rider appointment. Only call this after the caller has explicitly confirmed they want to proceed with cancellation.",
+        "type": "custom",
+        "parameters": {
+          "type": "object",
+          "required": [
+            "booking_id"
+          ],
+          "properties": {
+            "booking_id": {
+              "type": "string",
+              "description": "The booking reference ID of the appointment to cancel (e.g. BK-20482)."
+            },
+            "cancellation_reason": {
+              "type": "string",
+              "description": "Optional reason provided by the caller for cancelling."
+            }
+          }
+        },
+        "speak_during_execution": true,
+        "url": "https://template-agents-api.onrender.com/api/cancel-rider-appointment"
+      },
+      {
+        "headers": {},
+        "parameter_type": "form",
+        "execution_message_type": "prompt",
+        "method": "POST",
+        "query_params": {},
+        "description": "Creates a new ride booking for a caller after all ride details have been collected and confirmed. Call this immediately after the caller confirms all details are correct. Accepts pickup location, dropoff location, appointment date and time, vehicle/mobility type, rider name, and insurance authorization number. Returns a booking ID, confirmation number, assigned driver, vehicle type, estimated cost, and booking status.",
+        "type": "custom",
+        "url": "https://template-agents-api.onrender.com/api/create-rider-booking",
+        "args_at_root": true,
+        "timeout_ms": 120000,
+        "speak_after_execution": true,
+        "name": "create_booking",
+        "response_variables": {},
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [
+            "pickup_location",
+            "dropoff_location",
+            "appointment_date",
+            "appointment_time",
+            "rider_name"
+          ],
+          "properties": {
+            "appointment_time": {
+              "type": "string",
+              "description": "The requested time for the ride (e.g. 9:00 AM)."
+            },
+            "insurance_auth_number": {
+              "type": "string",
+              "description": "The insurance authorization number provided by the caller, if applicable. Omit if none was provided."
+            },
+            "pickup_location": {
+              "type": "string",
+              "description": "The full pickup address for the ride as provided by the caller."
+            },
+            "rider_name": {
+              "type": "string",
+              "description": "The full name of the rider for whom the booking is being made."
+            },
+            "appointment_date": {
+              "type": "string",
+              "description": "The requested date for the ride (e.g. March 22, 2026)."
+            },
+            "vehicle_type": {
+              "type": "string",
+              "description": "The mobility accommodation or vehicle type requested (e.g. None provided, Wheelchair Accessible Van, Ambulatory Sedan, Stretcher Van)."
+            },
+            "dropoff_location": {
+              "type": "string",
+              "description": "The full destination/dropoff address for the ride as provided by the caller."
+            }
+          }
+        }
+      }
+    ],
+    "start_speaker": "agent",
+    "begin_message": "Thank you for calling {{transport_service}}. This is Maya with scheduling. Are you calling to book a new ride or about an existing appointment?",
+    "default_dynamic_variables": {
+      "transfer_number": "+18004377950",
+      "transport_service": "Retell Medical Transport",
+      "service_area": "Greater Los Angeles Area"
+    },
+    "knowledge_base_ids": [],
+    "kb_config": {
+      "top_k": 3,
+      "filter_score": 0.6
+    },
+    "last_modification_timestamp": 1786000920713,
+    "is_published": false
+  }
+}

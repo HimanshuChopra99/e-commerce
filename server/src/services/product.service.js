@@ -9,6 +9,7 @@ import { env } from '../config/env.js'
 import { memoryStore } from './memory-store.js'
 import { getCachedJson, setCachedJson, deleteCachedPattern } from './cache.service.js'
 import { CACHE_TTL } from '../utils/constants.js'
+import { rebuildIndex } from './voice-search.service.js'
 
 const MAX_COLOR_IMAGES = 48
 
@@ -19,6 +20,8 @@ const PUBLIC_CACHE_PREFIX = 'public:'
 
 async function invalidatePublicCatalogue() {
   await deleteCachedPattern(`${PUBLIC_CACHE_PREFIX}*`)
+  // Rebuild voice search index when products change (non-blocking)
+  rebuildIndex().catch(() => {})
 }
 
 async function cachedPublic(key, ttlSeconds, compute) {

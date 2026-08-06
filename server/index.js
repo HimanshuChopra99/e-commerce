@@ -7,6 +7,7 @@ import { migrateDatabase } from './src/database/migrate.js'
 import { seedDatabase } from './src/database/seed.js'
 import { closeCache } from './src/services/cache.service.js'
 import { initSocket } from './src/config/socket.js'
+import { buildIndex } from './src/services/voice-search.service.js'
 
 async function main() {
   // Fail fast in production if MySQL is unreachable; development may use the
@@ -35,6 +36,9 @@ async function main() {
   })
 
   initSocket(server)
+
+  // Warm up voice search Fuse index in background (non-blocking)
+  buildIndex().catch(err => logger.warn({ err: err.message }, 'voice index warm-up failed'))
 
   // Slightly above a typical 60s load-balancer idle timeout, so the LB closes
   // connections first and clients never see a truncated response.
