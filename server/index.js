@@ -6,6 +6,7 @@ import { startJobs, stopJobs } from './src/services/jobs.service.js'
 import { migrateDatabase } from './src/database/migrate.js'
 import { seedDatabase } from './src/database/seed.js'
 import { closeCache } from './src/services/cache.service.js'
+import { initSocket } from './src/config/socket.js'
 
 async function main() {
   // Fail fast in production if MySQL is unreachable; development may use the
@@ -32,6 +33,8 @@ async function main() {
       `Kick API listening on http://localhost:${env.port}`
     )
   })
+
+  initSocket(server)
 
   // Slightly above a typical 60s load-balancer idle timeout, so the LB closes
   // connections first and clients never see a truncated response.

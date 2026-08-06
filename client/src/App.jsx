@@ -12,6 +12,7 @@ import Toast from './components/common/Toast';
 import Footer from './components/common/Footer';
 import AuthExpiredHandler from './components/AuthExpiredHandler';
 import ScrollToTop from './components/common/ScrollToTop';
+import AiAgentIcon from './components/common/AiAgentIcon';
 
 // Route-level code splitting: each page chunk is fetched lazily, so the first
 // paint only downloads the code for the page the visitor actually opens.
@@ -168,6 +169,7 @@ function App() {
         </main>
 
         <Footer />
+        <AiAgentIcon />
       </div>
     </Router>
   );

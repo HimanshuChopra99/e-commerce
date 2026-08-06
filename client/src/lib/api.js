@@ -1,3 +1,5 @@
+
+
 const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 // Access tokens live in memory only — never in localStorage or cookies.
@@ -151,4 +153,26 @@ export const ordersApi = {
   paymentStatus: (id) => get(`/orders/${id}/payment-status`),
   pay: (id) => post(`/orders/${id}/pay`),
   cancel: (id) => post(`/orders/${id}/cancel`),
+}
+
+
+export const createCall = async ({ userId, userName }) => {
+  const response = await fetch("/api/retell/create-call", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+      userName
+    })
+  })
+
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || 'Failed to create call session');
+  }
+
+  return data;
 }
