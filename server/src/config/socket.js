@@ -1,5 +1,6 @@
 import { Server } from 'socket.io'
 import { logger } from '../config/logger.js'
+import { setPageState } from '../services/session-state.service.js'
 
 let io
 
@@ -26,6 +27,12 @@ export function initSocket(httpServer) {
 
     socket.on('retell-call-ended', (data) => {
       logger.info({ socketId: socket.id, userId, data }, '[Socket] retell call ended')
+    })
+
+    // The client reports which page is open (path, type, product slug and the
+    // currently selected color/size) so voice handlers know where the user is.
+    socket.on('page:update', (data) => {
+      setPageState(userId, typeof data === 'object' && data !== null ? data : {})
     })
 
     socket.on('disconnect', (reason) => {
