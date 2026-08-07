@@ -9,9 +9,12 @@ import { logger }            from '../config/logger.js'
 
 function emit(userId, type, payload = {}) {
   try {
+    console.log(`\n🖥️ [BACKEND -> FRONTEND] Task: "${type}"`)
+    if (payload.path) console.log(`   Navigate Path: ${payload.path}`)
+    if (payload.message) console.log(`   Toast Notification: "${payload.message}"`)
     emitToUser(userId, 'ui:command', { type, payload, timestamp: Date.now() })
   } catch (err) {
-    logger.warn({ err: err.message, userId, type }, 'socket emit failed')
+    // socket emit error handled silently
   }
 }
 
