@@ -26,6 +26,56 @@ function fail(message) {
   return { success: false, message }
 }
 
+// ─── Variant Selection Helpers ───────────────────────────────────────────────
+//
+// These normalise free-form voice values ("red", "grey", "10", "ten") into the
+// canonical strings stored on the product's variants ("Red", "10"). Validation
+// happens HERE, server-side, so the UI never renders an invalid selection.
+
+function normalizeColor(product, rawColor) {
+  if (!product?.variants?.length || rawColor === undefined || rawColor === null || rawColor === '') return null
+  const target = String(rawColor).trim().toLowerCase()
+  const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean))]
+
+  // Exact match wins
+  const exact = colors.find((c) => c.toLowerCase() === target)
+  if (exact) return exact
+
+  // Common spelling variants (grey/gray, etc.)
+  const synonyms = { gray: 'grey', grey: 'gray', 'off-white': 'white', cream: 'beige' }
+  const swapped = synonyms[target]
+  if (swapped) {
+    const match = colors.find((c) => c.toLowerCase() === swapped)
+    if (match) return match
+  }
+
+  // Partial match — "navy" matches "Shadow Navy", "red" matches "Dark Red"
+  const partial = colors.find((c) => c.toLowerCase().includes(target) || target.includes(c.toLowerCase()))
+  return partial || null
+}
+
+function normalizeSize(product, rawSize) {
+  if (!product?.variants?.length || rawSize === undefined || rawSize === null || rawSize === '') return null
+  const target = String(rawSize).trim()
+  const sizes = [...new Set(product.variants.map((v) => String(v.size)).filter(Boolean))]
+
+  // Exact match wins ("10", "10.5")
+  const exact = sizes.find((s) => s === target)
+  if (exact) return exact
+
+  // Numeric match tolerates formatting ("10.0" → "10")
+  const num = parseFloat(target)
+  if (!Number.isNaN(num)) {
+    const numeric = sizes.find((s) => parseFloat(s) === num)
+    if (numeric) return numeric
+  }
+  return null
+}
+
+function isVariantInStock(variant) {
+  return Boolean(variant?.inStock ?? Number(variant?.available ?? 0) > 0)
+}
+
 // ─── Function Handlers ───────────────────────────────────────────────────────
 
 async function handleSearchProduct(args = {}, userId) {
@@ -199,6 +249,102 @@ async function handleToggleFavourite({ product_slug, action }, userId) {
   }
 }
 
+// ─── Retell agent tool schema (paste into your Retell agent's tool list) ─────
+// name: select_variant
+// description: >
+//   Selects a color and/or size on the product detail page the user is
+//   currently viewing. Call this when the user says things like "select red
+//   and size 10", "pick the blue one", "make it size 9", "I want the black
+//   colour in a 10". Pass the slug of the product that is currently open on
+//   the user's screen (from the earlier search_product call).
+// parameters:
+//   type: object
+//   properties:
+//     product_slug:
+//       type: string
+//       description: Slug of the product currently displayed on the user's screen.
+//     color:
+//       type: string
+//       description: The color the user asked for (e.g. "red", "navy", "grey").
+//     size:
+//       type: string
+//       description: The size the user asked for (e.g. "10", "9.5").
+//   required: []
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function handleSelectVariant({ product_slug, product_id, product_name, color, size }, userId) {
+  try {
+    let product
+    if (product_slug) {
+      product = await getPublicBySlug(product_slug)
+    } else if (product_name) {
+      const result = await voiceSearch.search(product_name)
+      product = result.type === 'exact' ? result.product : null
+    } else if (product_id) {
+      const result = await voiceSearch.search(product_id)
+      product = result.product || null
+    }
+
+    if (!product) {
+      return fail('Which product would you like to customize? Please open a product first or tell me its name.')
+    }
+
+    const availableColors = [...new Set(product.variants?.filter(isVariantInStock).map((v) => v.color).filter(Boolean))]
+    const availableSizes = [...new Set(product.variants?.filter(isVariantInStock).map((v) => String(v.size)).filter(Boolean))]
+      .sort((a, b) => Number(a) - Number(b))
+
+    // Nothing requested at all → tell the agent what this product offers
+    if ((color === undefined || color === null || color === '') && (size === undefined || size === null || size === '')) {
+      return ok(`${product.name} is on your screen. Available colors: ${availableColors.join(', ') || 'none'}. Available sizes: ${availableSizes.join(', ') || 'none'}.`, {
+        product: { slug: product.slug, name: product.name },
+        colors: availableColors,
+        sizes: availableSizes,
+      })
+    }
+
+    const canonicalColor = normalizeColor(product, color)
+    const canonicalSize = normalizeSize(product, size)
+
+    if (!canonicalColor) {
+      return fail(`${product.name} is available in: ${availableColors.join(', ') || 'no colors right now'}. Which color would you like?`)
+    }
+
+    if (!canonicalSize) {
+      return fail(`${product.name} is available in sizes: ${availableSizes.join(', ') || 'none right now'}. Which size would you like?`)
+    }
+
+    // Both names exist on the product — now confirm the exact combo is in stock
+    const variant = product.variants.find((v) =>
+      String(v.color).toLowerCase() === canonicalColor.toLowerCase() &&
+      String(v.size) === canonicalSize &&
+      isVariantInStock(v)
+    )
+
+    if (!variant) {
+      const sizesForColor = [...new Set(product.variants
+        .filter((v) => String(v.color).toLowerCase() === canonicalColor.toLowerCase() && isVariantInStock(v))
+        .map((v) => String(v.size)))].sort((a, b) => Number(a) - Number(b))
+      return fail(`${canonicalColor} is out of stock in size ${canonicalSize}. Available sizes in ${canonicalColor}: ${sizesForColor.join(', ') || 'none'}.`)
+    }
+
+    // Validated — flip the selection on the user's screen through the socket.
+    emit(userId, 'variant:select', {
+      slug: product.slug,
+      color: canonicalColor,
+      size: canonicalSize,
+    })
+
+    return ok(`Selected ${product.name} in ${canonicalColor}, size ${canonicalSize}.`, {
+      product: { slug: product.slug, name: product.name },
+      color: canonicalColor,
+      size: canonicalSize,
+    })
+  } catch (err) {
+    logger.error({ err: err.message, userId }, 'handleSelectVariant error')
+    return fail('Could not select that color and size. Please try again.')
+  }
+}
+
 async function handleNavigateTo({ page }, userId) {
   const PAGES = {
     home: '/',
@@ -209,6 +355,9 @@ async function handleNavigateTo({ page }, userId) {
     favourites: '/profile',
     wishlist: '/profile',
     checkout: '/checkout/payment',
+    about: '/about',
+    contact: '/contact',
+    blogs: '/blogs',
     login: '/login',
     signup: '/signup',
   }
@@ -373,6 +522,23 @@ const FUNCTION_MAP = {
   toggleFavourite:      handleToggleFavourite,
   add_to_wishlist:      handleToggleFavourite,
   toggleWishlist:       handleToggleFavourite,
+
+  // Product variant selection (color/size) on the product detail page
+  select_variant:       handleSelectVariant,
+  selectVariant:        handleSelectVariant,
+  select_color_size:    handleSelectVariant,
+  selectColorSize:      handleSelectVariant,
+  select_color:         handleSelectVariant,
+  selectColor:          handleSelectVariant,
+  select_size:          handleSelectVariant,
+  selectSize:           handleSelectVariant,
+  choose_variant:       handleSelectVariant,
+  chooseVariant:        handleSelectVariant,
+  pick_variant:         handleSelectVariant,
+  pickVariant:          handleSelectVariant,
+  customize_product:    handleSelectVariant,
+  customizeProduct:     handleSelectVariant,
+
   navigate_to:          handleNavigateTo,
   navigateTo:           handleNavigateTo,
   go_to_page:           handleNavigateTo,

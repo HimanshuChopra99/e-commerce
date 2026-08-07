@@ -275,29 +275,6 @@ export function extractMaterial(rawText) {
     }
   }
 }
-export function extractPriceIntent(query) {
-  const between = query.match(/between\s+\$?(\d+)\s+and\s+\$?(\d+)/i)
-  const under = query.match(/under\s+\$?(\d+)/i)
-  const above = query.match(/(?:above|over)\s+\$?(\d+)/i)
-  const cheapest = /cheap|cheapest|lowest\s+price|most\s+affordable/i.test(query)
-  const priciest = /expensive|premium|highest\s+price|most\s+expensive/i.test(query)
-
-  if (between) return { minPrice: Number(between[1]), maxPrice: Number(between[2]) }
-  if (under) return { maxPrice: Number(under[1]) }
-  if (above) return { minPrice: Number(above[1]) }
-  if (cheapest) return { sort: 'price_asc' }
-  if (priciest) return { sort: 'price_desc' }
-  return {}
-}
-
-export function extractGender(query) {
-  if (/\b(women|woman|female|ladies)\b/i.test(query)) return 'women'
-  if (/\b(men|male|guys)\b/i.test(query)) return 'men'
-  if (/\b(kids|children|child)\b/i.test(query)) return 'kids'
-  if (/\bunisex\b/i.test(query)) return 'unisex'
-  return null
-}
-
 export function extractSize(rawText) {
   if (!rawText) return null
   const match = String(rawText).match(/\b(?:size|eu|us)\s*:?\s*(\d+(?:\.\d+)?)\b/i) ||
@@ -354,14 +331,7 @@ export function isSuggestionIntent(rawText) {
     /\b(looking\s+for|find\s+me|find|search|give\s+me|list|options|any|some)\b/i,
     /\b(best\s+shoes|good\s+shoes|help\s+me\s+choose|what\s+should\s+i\s+buy)\b/i,
     /\b(shoes\s+for|sneakers\s+for|kicks\s+for|boots\s+for)\b/i,
-  ]}
-    
-export function extractColor(query) {
-  const COLORS = [
-    'black', 'white', 'grey', 'gray', 'navy', 'red', 'blue',
-    'green', 'brown', 'tan', 'beige', 'pink', 'yellow', 'orange', 'purple',
   ]
-  return patterns.some(p => p.test(text))
 }
 
 export function isExplicitOpenIntent(rawText) {
@@ -502,21 +472,6 @@ async function loadProducts() {
     logger.warn({ err: err.message }, 'voice-search: failed to load products')
     return []
   }
-}
-
-const FUSE_OPTIONS = {
-  keys: [
-    { name: 'name',          weight: 0.45 },
-    { name: 'brand',         weight: 0.20 },
-    { name: 'category.name', weight: 0.12 },
-    { name: 'tags',          weight: 0.10 },
-    { name: 'material',      weight: 0.08 },
-    { name: 'description',   weight: 0.05 },
-  ],
-  threshold: 0.42,
-  includeScore: true,
-  ignoreLocation: true,
-  minMatchCharLength: 2,
 }
 
 export async function buildIndex() {

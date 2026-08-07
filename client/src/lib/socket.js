@@ -5,8 +5,10 @@ let socket = null
 export function connectSocket(userId) {
     if (socket?.connected) return socket
 
-    // Use window.location.hostname to construct socket server URL if running in local dev or production
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000"
+    // Same-origin by default so the socket works behind the dev-server proxy
+    // and in any deployment where the API shares the site's origin. Override
+    // with VITE_SOCKET_URL when the socket server lives elsewhere.
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin
 
     socket = io(socketUrl, {
         transports: ['websocket'],
