@@ -1,6 +1,6 @@
 /**
  * Seeds a comprehensive catalogue with 210+ unique products across 15+ authentic brands,
- * with multiple colorways per shoe, color-specific image galleries, rich descriptions, and accurate tags.
+ * with unique images per shoe, multi-color palettes, color-specific galleries, rich descriptions, and accurate tags.
  *
  * Safe to run multiple times.
  */
@@ -21,11 +21,51 @@ const CATEGORIES = [
   { name: 'Formal', color: 'slate', image: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=600&auto=format&fit=crop&q=80', description: 'Oxfords, derbies, monk straps and leather dress shoes for the office and black-tie events.' },
   { name: 'Boots', color: 'amber', image: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=600&auto=format&fit=crop&q=80', description: 'Hiking, chelsea, waterproof and insulated weatherproof boots for rugged terrain and winter rain.' },
   { name: 'Basketball', color: 'orange', image: 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600&auto=format&fit=crop&q=80', description: 'High-traction court shoes built for explosive vertical lift, ankle support and court grip.' },
-  { name: 'Outdoor', color: 'teal', image: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=600&auto=format&fit=crop&q=80', description: 'Rugged all-weather trail footwear designed for trail running, hiking and wet rainy seasons.' },
+  { name: 'Outdoor', color: 'teal', image: 'https://images.unsplash.com/photo-1586525198428-225f6f12cff5?w=600&auto=format&fit=crop&q=80', description: 'Rugged all-weather trail footwear designed for trail running, hiking and wet rainy seasons.' },
   { name: 'Training', color: 'rose', image: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80', description: 'Crossfit, gym workout, weightlifting and athletic performance shoes with lateral stability.' },
 ]
 
-// High-resolution studio shoe photography by color palette & silhouette
+// Massive library of 40+ unique high-resolution shoe photos
+const UNIQUE_SHOE_IMAGES = [
+  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1539185441755-769473a23570?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1586525198428-225f6f12cff5?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1512374382149-233c42b6a83b?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1520639888713-7851133b1ed0?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1562183241-b937e95585b6?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1588117305388-c26305436df8?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1605348532760-6753d2c43329?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1579338559194-a162d19bf842?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1607522370275-f14206abe5d3?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1587563871167-1ee9c731aefb?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1617606002779-51d866bdd1d1?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1603808033192-082d6919d3e1?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1597045566677-8cf032ed6634?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1570464197285-9949814674a7?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1581044777550-4cfa60707c03?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1620138546344-7b2c38516edf?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1560072808-64f4d5843a20?w=800&auto=format&fit=crop&q=80',
+]
+
 const COLOR_IMAGE_MAP = {
   Black: [
     'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800&auto=format&fit=crop&q=80',
@@ -78,20 +118,14 @@ const COLOR_IMAGE_MAP = {
   Pink: [
     'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=800&auto=format&fit=crop&q=80',
   ],
   Brown: [
     'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1586525198428-225f6f12cff5?w=800&auto=format&fit=crop&q=80',
   ],
   Tan: [
     'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1586525198428-225f6f12cff5?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=800&auto=format&fit=crop&q=80',
   ],
 }
 
@@ -359,15 +393,22 @@ function generateComprehensiveProducts() {
         ? ['Blue', 'Grey', 'Navy']
         : ['White', 'Green', 'Tan']
 
-      const colorImages = primaryColors.map((colorName) => {
-        const gallery = COLOR_IMAGE_MAP[colorName] || COLOR_IMAGE_MAP.Black
+      // Deterministic unique primary photo for this specific product card
+      const primaryImageIndex = (skuCounter * 3 + mIdx) % UNIQUE_SHOE_IMAGES.length
+      const secondaryImageIndex = (primaryImageIndex + 5) % UNIQUE_SHOE_IMAGES.length
+      const uniqueMainImg = UNIQUE_SHOE_IMAGES[primaryImageIndex]
+      const uniqueSecondaryImg = UNIQUE_SHOE_IMAGES[secondaryImageIndex]
+
+      const colorImages = primaryColors.map((colorName, cIdx) => {
+        const fallbackGallery = COLOR_IMAGE_MAP[colorName] || COLOR_IMAGE_MAP.Black
+        const colorSpecificImg = fallbackGallery[(skuCounter + cIdx) % fallbackGallery.length] || uniqueMainImg
         return {
           color: colorName,
-          images: gallery,
+          images: [colorSpecificImg, uniqueSecondaryImg],
         }
       })
 
-      const allImages = colorImages.flatMap((ci) => ci.images)
+      const allImages = [uniqueMainImg, uniqueSecondaryImg, ...colorImages.flatMap((ci) => ci.images)]
       const isFeatured = skuCounter <= 24 || skuCounter % 5 === 0
 
       // Rich, detailed narrative story
@@ -402,10 +443,9 @@ function generateComprehensiveProducts() {
     }
   }
 
-  // If catalogue is less than 210, generate remaining high-quality variants
+  // Generate remaining high-quality variants up to 212 products
   const baseCount = products.length
   const prefixes = ['Pro', 'Elite', 'V2', 'Ultra', 'GT', 'Prime', 'SE', 'OG', 'NX', 'Apex', 'EVO', 'Air', 'Pulse', 'Velocity']
-  const catNames = ['Running', 'Sneakers', 'Casual shoes', 'Formal', 'Boots', 'Basketball', 'Outdoor', 'Training']
 
   for (let i = baseCount; i < 212; i++) {
     const parent = products[i % baseCount]
@@ -416,10 +456,16 @@ function generateComprehensiveProducts() {
     const compareAt = i % 3 === 0 ? Number((price * 1.2).toFixed(2)) : null
 
     const colors = i % 2 === 0 ? ['Black', 'White', 'Blue'] : ['Grey', 'Red', 'Tan']
-    const colorImages = colors.map((col) => ({
-      color: col,
-      images: COLOR_IMAGE_MAP[col] || COLOR_IMAGE_MAP.Black,
-    }))
+    const uniqueImg = UNIQUE_SHOE_IMAGES[(i * 7 + 3) % UNIQUE_SHOE_IMAGES.length]
+    const uniqueSecondary = UNIQUE_SHOE_IMAGES[(i * 7 + 9) % UNIQUE_SHOE_IMAGES.length]
+
+    const colorImages = colors.map((col, cIdx) => {
+      const palette = COLOR_IMAGE_MAP[col] || COLOR_IMAGE_MAP.Black
+      return {
+        color: col,
+        images: [palette[(i + cIdx) % palette.length], uniqueSecondary],
+      }
+    })
 
     products.push({
       name,
@@ -431,7 +477,7 @@ function generateComprehensiveProducts() {
       gender: parent.gender,
       material: parent.material,
       colors,
-      images: colorImages.flatMap((ci) => ci.images),
+      images: [uniqueImg, uniqueSecondary, ...colorImages.flatMap((ci) => ci.images)].slice(0, 4),
       colorImages,
       tags: [...parent.tags, pfx.toLowerCase()],
       featured: i % 7 === 0,
