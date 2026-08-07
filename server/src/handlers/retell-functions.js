@@ -77,10 +77,52 @@ function isVariantInStock(variant) {
   return Boolean(variant?.inStock ?? Number(variant?.available ?? 0) > 0)
 }
 
+// If the customer is on a product detail page and an incoming search/filter
+// request is really a color/size selection ("select red", "grey size 42",
+// "pick the blue one"), return the selection args to apply to the OPEN
+// product instead of navigating to the catalog. This makes the feature work
+// even when the LLM agent chooses the search/filter tools, because the
+// server knows which page the customer is on.
+function selectionRedirectArgs(args, userId) {
+  const tracked = getPageState(userId)
+  if (tracked?.type !== 'product' || !tracked.slug) return null
+  if (args.product_name || args.product_id) return null
+
+  const text = String(args.query || args.q || '').toLowerCase()
+  const extractedColor = args.color || voiceSearch.extractColor(text)
+  const extractedSize = args.size || voiceSearch.extractSize(text)
+  if (!extractedColor && !extractedSize) return null
+
+  // Other browse signals (category, brand, material, gender, price) mean the
+  // customer wants the catalog, not a selection on the open product.
+  const hasOtherFilter = Boolean(args.category || args.brand || args.material || args.gender) ||
+    Boolean(voiceSearch.extractCategory(text) || voiceSearch.extractBrand(text) || voiceSearch.extractMaterial(text) || voiceSearch.extractGender(text))
+  const hasPrice = [args.min_price, args.max_price, args.price_min, args.price_max]
+    .some((v) => v !== undefined && v !== null)
+  if (hasOtherFilter || hasPrice) return null
+
+  // Selection verbs win even if the phrase also contains "shoes".
+  const selectionVerb = /\b(select|pick|choose|switch|change|make it|go with|i want|i'll take|put me in|swap|try|grab)\b/i.test(text)
+  // Explicit browse intent means a real search ("show me red shoes").
+  const browseWord = /\b(show|find|browse|search|looking|list|suggest|recommend|any|some|best|cheap|under|over|need)\b/i.test(text)
+
+  if (selectionVerb || !browseWord) {
+    return { color: extractedColor, size: extractedSize }
+  }
+  return null
+}
+
 // ─── Function Handlers ───────────────────────────────────────────────────────
 
 async function handleSearchProduct(args = {}, userId) {
   logger.info({ args, userId }, '[RetellHandler] handleSearchProduct invoked')
+
+  // If the customer is already on a product detail page and the request is
+  // really a color/size selection, apply it there instead of searching.
+  const selectionArgs = selectionRedirectArgs(args, userId)
+  if (selectionArgs) {
+    return handleSelectVariant(selectionArgs, userId)
+  }
 
   const result = await voiceSearch.search(args)
 
@@ -483,6 +525,13 @@ async function handleNavigateTo({ page }, userId) {
 }
 
 async function handleFilterProducts(args = {}, userId) {
+  // Same interception as search: a color/size-only filter while a product
+  // detail page is open is a selection request, not a catalog filter.
+  const selectionArgs = selectionRedirectArgs(args, userId)
+  if (selectionArgs) {
+    return handleSelectVariant(selectionArgs, userId)
+  }
+
   let { color, size, gender, min_price, max_price, price_min, price_max, sort, category, brand, material, query, q } = args
   const rawText = [query, q, brand, category, material].filter(Boolean).join(' ')
 

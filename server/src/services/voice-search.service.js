@@ -252,6 +252,20 @@ export function extractColor(rawText) {
       }
     }
   }
+
+  // Fallback to common colour names so words absent from the catalogue are
+  // still detected ("select green") — the availability check then rejects
+  // them with the real options instead of silently ignoring the colour.
+  const COMMON_COLORS = [
+    'black', 'white', 'grey', 'gray', 'navy', 'red', 'blue', 'green',
+    'brown', 'tan', 'beige', 'pink', 'yellow', 'orange', 'purple',
+    'teal', 'olive', 'maroon', 'gold', 'silver', 'cream', 'coral',
+  ]
+  for (const c of COMMON_COLORS) {
+    if (new RegExp(`\\b${c}\\b`, 'i').test(text)) {
+      return c
+    }
+  }
   return null
 }
 

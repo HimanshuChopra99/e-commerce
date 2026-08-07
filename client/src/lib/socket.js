@@ -3,7 +3,13 @@ import { io } from "socket.io-client"
 let socket = null
 
 export function connectSocket(userId) {
-    if (socket?.connected) return socket
+    if (socket?.connected) {
+        // Reuse only when it is the same user; otherwise reconnect so the
+        // server stores page:update under the correct user id.
+        if (socket.auth?.userId === userId) return socket
+        socket.disconnect()
+        socket = null
+    }
 
     // Same-origin by default so the socket works behind the dev-server proxy
     // and in any deployment where the API shares the site's origin. Override
