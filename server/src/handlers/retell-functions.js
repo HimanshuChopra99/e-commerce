@@ -1,9 +1,9 @@
-import * as cartService      from '../services/cart.service.js'
+import * as cartService from '../services/cart.service.js'
 import * as favouriteService from '../services/favourite.service.js'
-import * as voiceSearch      from '../services/voice-search.service.js'
-import { getPublicBySlug }   from '../services/product.service.js'
-import { emitToUser }        from '../config/socket.js'
-import { logger }            from '../config/logger.js'
+import * as voiceSearch from '../services/voice-search.service.js'
+import { getPublicBySlug } from '../services/product.service.js'
+import { emitToUser } from '../config/socket.js'
+import { logger } from '../config/logger.js'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -49,14 +49,14 @@ async function handleSearchProduct({ query, size, color, gender, min_price, max_
     emit(userId, 'toast', { message: `Opening ${result.product.name}`, kind: 'info' })
     return ok(result.message, {
       product: {
-        id:    result.product.id,
-        name:  result.product.name,
+        id: result.product.id,
+        name: result.product.name,
         brand: result.product.brand,
         price: result.product.price,
-        slug:  result.product.slug,
+        slug: result.product.slug,
         inStock: result.product.inStock,
-        sizes:   result.product.sizes || [],
-        colors:  result.product.colors || [],
+        sizes: result.product.sizes || [],
+        colors: result.product.colors || [],
       },
     })
   }
@@ -65,7 +65,7 @@ async function handleSearchProduct({ query, size, color, gender, min_price, max_
   emit(userId, 'navigate', { path: result.navigateTo })
   emit(userId, 'toast', { message: result.message, kind: 'info' })
   return ok(result.message, {
-    total:    result.total,
+    total: result.total,
     products: result.products.slice(0, 5).map(p => ({
       name: p.name, brand: p.brand, price: p.price, slug: p.slug,
     })),
@@ -97,10 +97,10 @@ async function handleAddToCart({ product_id, product_slug, size, color, quantity
     const variant = voiceSearch.findVariant(product, size, color)
 
     if (!variant) {
-      const availableSizes  = [...new Set(product.variants?.filter(v => v.inStock).map(v => v.size))].join(', ')
+      const availableSizes = [...new Set(product.variants?.filter(v => v.inStock).map(v => v.size))].join(', ')
       const availableColors = [...new Set(product.variants?.filter(v => v.inStock).map(v => v.color))].join(', ')
       let msg = `I couldn't find ${product.name}`
-      if (size)  msg += ` in size ${size}`
+      if (size) msg += ` in size ${size}`
       if (color) msg += ` in ${color}`
       msg += `. Available sizes: ${availableSizes}. Available colors: ${availableColors}.`
       return fail(msg)
@@ -161,7 +161,7 @@ async function handleToggleFavourite({ product_slug, action }, userId) {
     if (!product) return fail('Could not find that product.')
 
     const favourites = await favouriteService.get(userId)
-    const isSaved    = favourites.some(f => f.id === product.id || f.slug === product.slug)
+    const isSaved = favourites.some(f => f.id === product.id || f.slug === product.slug)
 
     if (action === 'add' || (!action && !isSaved)) {
       await favouriteService.add(userId, product.id)
@@ -182,16 +182,16 @@ async function handleToggleFavourite({ product_slug, action }, userId) {
 
 async function handleNavigateTo({ page }, userId) {
   const PAGES = {
-    home:       '/',
-    products:   '/products',
-    cart:       '/cart',
-    profile:    '/profile',
-    orders:     '/orders',
+    home: '/',
+    products: '/products',
+    cart: '/cart',
+    profile: '/profile',
+    orders: '/orders',
     favourites: '/profile',
-    wishlist:   '/profile',
-    checkout:   '/checkout/payment',
-    login:      '/login',
-    signup:     '/signup',
+    wishlist: '/profile',
+    checkout: '/checkout/payment',
+    login: '/login',
+    signup: '/signup',
   }
 
   const path = PAGES[page?.toLowerCase()]
@@ -203,21 +203,21 @@ async function handleNavigateTo({ page }, userId) {
 
 async function handleFilterProducts({ color, size, gender, min_price, max_price, sort, category }, userId) {
   const params = new URLSearchParams()
-  if (color)     params.set('color', color)
-  if (size)      params.set('size', String(size))
-  if (gender)    params.set('gender', gender)
+  if (color) params.set('color', color)
+  if (size) params.set('size', String(size))
+  if (gender) params.set('gender', gender)
   if (min_price) params.set('priceMin', String(min_price))
   if (max_price) params.set('priceMax', String(max_price))
-  if (category)  params.set('category', category)
+  if (category) params.set('category', category)
 
   const SORT_MAP = {
-    'price_asc':   'price_asc',
-    'price_desc':  'price_desc',
-    'lowest':      'price_asc',
-    'highest':     'price_desc',
-    'newest':      'newest',
-    'popular':     'popular',
-    'rating':      'rating',
+    'price_asc': 'price_asc',
+    'price_desc': 'price_desc',
+    'lowest': 'price_asc',
+    'highest': 'price_desc',
+    'newest': 'newest',
+    'popular': 'popular',
+    'rating': 'rating',
   }
   if (sort) params.set('sort', SORT_MAP[sort] || sort)
 
@@ -226,12 +226,12 @@ async function handleFilterProducts({ color, size, gender, min_price, max_price,
   emit(userId, 'toast', { message: 'Filters applied.', kind: 'info' })
 
   const description = [
-    color    && `Color: ${color}`,
-    size     && `Size: ${size}`,
-    gender   && `Gender: ${gender}`,
+    color && `Color: ${color}`,
+    size && `Size: ${size}`,
+    gender && `Gender: ${gender}`,
     min_price && `Min price: $${min_price}`,
     max_price && `Max price: $${max_price}`,
-    sort     && `Sort: ${sort}`,
+    sort && `Sort: ${sort}`,
     category && `Category: ${category}`,
   ].filter(Boolean).join(', ')
 
@@ -264,16 +264,16 @@ async function handleGetCartSummary(_, userId) {
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 const FUNCTION_MAP = {
-  search_product:      handleSearchProduct,
-  add_to_cart:         handleAddToCart,
-  remove_from_cart:    handleRemoveFromCart,
-  clear_cart:          handleClearCart,
-  toggle_favourite:    handleToggleFavourite,
-  navigate_to:         handleNavigateTo,
-  filter_products:     handleFilterProducts,
-  clear_filters:       handleClearFilters,
-  open_cart:           handleOpenCart,
-  get_cart_summary:    handleGetCartSummary,
+  search_product: handleSearchProduct,
+  add_to_cart: handleAddToCart,
+  remove_from_cart: handleRemoveFromCart,
+  clear_cart: handleClearCart,
+  toggle_favourite: handleToggleFavourite,
+  navigate_to: handleNavigateTo,
+  filter_products: handleFilterProducts,
+  clear_filters: handleClearFilters,
+  open_cart: handleOpenCart,
+  get_cart_summary: handleGetCartSummary,
 }
 
 export async function dispatch(functionName, args, userId) {

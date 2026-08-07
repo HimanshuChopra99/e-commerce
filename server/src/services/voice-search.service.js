@@ -10,12 +10,12 @@ const REBUILD_INTERVAL = 5 * 60 * 1000
 
 const FUSE_OPTIONS = {
   keys: [
-    { name: 'name',          weight: 0.50 },
-    { name: 'brand',         weight: 0.25 },
-    { name: 'tags',          weight: 0.12 },
+    { name: 'name', weight: 0.50 },
+    { name: 'brand', weight: 0.25 },
+    { name: 'tags', weight: 0.12 },
     { name: 'category.name', weight: 0.08 },
-    { name: 'description',   weight: 0.03 },
-    { name: 'material',      weight: 0.02 },
+    { name: 'description', weight: 0.03 },
+    { name: 'material', weight: 0.02 },
   ],
   threshold: 0.40,
   includeScore: true,
@@ -24,47 +24,47 @@ const FUSE_OPTIONS = {
 }
 
 const SYNONYMS = {
-  'kicks':      'shoes',
-  'sneakers':   'shoes',
-  'trainers':   'shoes',
-  'joggers':    'running shoes',
-  'jorder':     'jordan',
-  'jordon':     'jordan',
-  'nikey':      'nike',
-  'addidas':    'adidas',
-  'adiddas':    'adidas',
-  'rebook':     'reebok',
-  'cheap':      'low price',
+  'kicks': 'shoes',
+  'sneakers': 'shoes',
+  'trainers': 'shoes',
+  'joggers': 'running shoes',
+  'jorder': 'jordan',
+  'jordon': 'jordan',
+  'nikey': 'nike',
+  'addidas': 'adidas',
+  'adiddas': 'adidas',
+  'rebook': 'reebok',
+  'cheap': 'low price',
   'affordable': 'low price',
-  'expensive':  'premium',
-  'rain':       'waterproof outdoor',
-  'raining':    'waterproof outdoor',
-  'rainy':      'waterproof outdoor',
-  'winter':     'boots insulated warm',
-  'summer':     'breathable lightweight',
-  'gym':        'training athletic sport',
-  'casual':     'lifestyle casual',
-  'formal':     'leather dress',
-  'retro':      'classic vintage',
-  'comfy':      'comfortable cushion',
+  'expensive': 'premium',
+  'rain': 'waterproof outdoor',
+  'raining': 'waterproof outdoor',
+  'rainy': 'waterproof outdoor',
+  'winter': 'boots insulated warm',
+  'summer': 'breathable lightweight',
+  'gym': 'training athletic sport',
+  'casual': 'lifestyle casual',
+  'formal': 'leather dress',
+  'retro': 'classic vintage',
+  'comfy': 'comfortable cushion',
 }
 
 const CATEGORY_EXPANSION = {
-  'outdoor':    'waterproof trail grip durable',
-  'running':    'sport athletic performance cushion',
+  'outdoor': 'waterproof trail grip durable',
+  'running': 'sport athletic performance cushion',
   'basketball': 'court grip ankle support',
-  'casual':     'everyday lifestyle comfort',
-  'training':   'gym workout cross-training',
+  'casual': 'everyday lifestyle comfort',
+  'training': 'gym workout cross-training',
 }
 
 const MATERIAL_EXPANSION = {
-  'Genuine Leather':   'premium durable formal classic',
+  'Genuine Leather': 'premium durable formal classic',
   'Synthetic Leather': 'lightweight durable sport',
-  'Canvas':            'casual breathable lightweight',
-  'Mesh':              'breathable sport lightweight',
-  'Suede':             'soft premium casual',
-  'Nubuck':            'premium outdoor durable',
-  'Knit':              'flexible breathable running',
+  'Canvas': 'casual breathable lightweight',
+  'Mesh': 'breathable sport lightweight',
+  'Suede': 'soft premium casual',
+  'Nubuck': 'premium outdoor durable',
+  'Knit': 'flexible breathable running',
 }
 
 function buildSearchDocument(product) {
@@ -96,14 +96,14 @@ function normalizeQuery(query) {
 
 export function extractPriceIntent(query) {
   const between = query.match(/between\s+\$?(\d+)\s+and\s+\$?(\d+)/i)
-  const under   = query.match(/under\s+\$?(\d+)/i)
-  const above   = query.match(/(?:above|over)\s+\$?(\d+)/i)
+  const under = query.match(/under\s+\$?(\d+)/i)
+  const above = query.match(/(?:above|over)\s+\$?(\d+)/i)
   const cheapest = /cheap|cheapest|lowest\s+price|most\s+affordable/i.test(query)
   const priciest = /expensive|premium|highest\s+price|most\s+expensive/i.test(query)
 
   if (between) return { minPrice: Number(between[1]), maxPrice: Number(between[2]) }
-  if (under)   return { maxPrice: Number(under[1]) }
-  if (above)   return { minPrice: Number(above[1]) }
+  if (under) return { maxPrice: Number(under[1]) }
+  if (above) return { minPrice: Number(above[1]) }
   if (cheapest) return { sort: 'price_asc' }
   if (priciest) return { sort: 'price_desc' }
   return {}
@@ -111,9 +111,9 @@ export function extractPriceIntent(query) {
 
 export function extractGender(query) {
   if (/\b(women|woman|female|ladies)\b/i.test(query)) return 'women'
-  if (/\b(men|male|guys)\b/i.test(query))             return 'men'
-  if (/\b(kids|children|child)\b/i.test(query))       return 'kids'
-  if (/\bunisex\b/i.test(query))                      return 'unisex'
+  if (/\b(men|male|guys)\b/i.test(query)) return 'men'
+  if (/\b(kids|children|child)\b/i.test(query)) return 'kids'
+  if (/\bunisex\b/i.test(query)) return 'unisex'
   return null
 }
 
@@ -124,8 +124,8 @@ export function extractSize(query) {
 
 export function extractColor(query) {
   const COLORS = [
-    'black','white','grey','gray','navy','red','blue',
-    'green','brown','tan','beige','pink','yellow','orange','purple',
+    'black', 'white', 'grey', 'gray', 'navy', 'red', 'blue',
+    'green', 'brown', 'tan', 'beige', 'pink', 'yellow', 'orange', 'purple',
   ]
   for (const color of COLORS) {
     if (new RegExp(`\\b${color}\\b`, 'i').test(query)) {
@@ -138,7 +138,7 @@ export function extractColor(query) {
 export function findVariant(product, size, color) {
   if (!product.variants?.length) return null
   return product.variants.find(v =>
-    (!size  || String(v.size)  === String(size)) &&
+    (!size || String(v.size) === String(size)) &&
     (!color || v.color.toLowerCase() === color.toLowerCase()) &&
     v.inStock
   ) || null
@@ -146,13 +146,13 @@ export function findVariant(product, size, color) {
 
 export function buildProductsUrl(query, { gender, color, size, minPrice, maxPrice, sort } = {}) {
   const params = new URLSearchParams()
-  if (query)    params.set('q', query)
-  if (gender)   params.set('gender', gender)
-  if (color)    params.set('color', color)
-  if (size)     params.set('size', size)
+  if (query) params.set('q', query)
+  if (gender) params.set('gender', gender)
+  if (color) params.set('color', color)
+  if (size) params.set('size', size)
   if (minPrice) params.set('priceMin', String(minPrice))
   if (maxPrice) params.set('priceMax', String(maxPrice))
-  if (sort)     params.set('sort', sort)
+  if (sort) params.set('sort', sort)
   const qs = params.toString()
   return qs ? `/products?${qs}` : '/products'
 }
@@ -180,9 +180,9 @@ export async function buildIndex() {
       return
     }
     const documents = products.map(buildSearchDocument)
-    fuseIndex    = new Fuse(documents, FUSE_OPTIONS)
+    fuseIndex = new Fuse(documents, FUSE_OPTIONS)
     productCache = documents
-    lastBuilt    = Date.now()
+    lastBuilt = Date.now()
     logger.info({ count: products.length }, 'voice-search: Fuse index built successfully')
   } catch (err) {
     logger.error({ err: err.message }, 'voice-search: failed to build index')
@@ -204,10 +204,10 @@ export async function search(rawQuery) {
   }
 
   const normalizedQuery = normalizeQuery(rawQuery)
-  const priceIntent     = extractPriceIntent(rawQuery)
-  const gender          = extractGender(rawQuery)
-  const size            = extractSize(rawQuery)
-  const color           = extractColor(rawQuery)
+  const priceIntent = extractPriceIntent(rawQuery)
+  const gender = extractGender(rawQuery)
+  const size = extractSize(rawQuery)
+  const color = extractColor(rawQuery)
 
   let fuseQuery = normalizedQuery
     .replace(/between\s+\$?\d+\s+and\s+\$?\d+/gi, '')
