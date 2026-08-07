@@ -607,36 +607,26 @@ export async function search(input) {
   const isSuggestion = isSuggestionIntent(rawQuery)
   const isExplicitOpen = isExplicitOpenIntent(rawQuery)
 
-  // Clean text query of recognized patterns
-  let cleanedTextQuery = (rawQuery || '')
-    .replace(/(?:between|from)\s+\$?\d+\s*(?:and|to|-)\s*\$?\d+/gi, '')
-    .replace(/(?:under|below|less\s+than|above|over|more\s+than|max|min|starting\s+from|around|about)\s+\$?\d+/gi, '')
-    .replace(/\b(cheap|cheapest|expensive|premium|affordable|newest|popular|top\s+rated)\b/gi, '')
-    .replace(/\b(?:size|eu|us)\s*:?\s*\d+(?:\.\d+)?\b/gi, '')
-    .replace(/\b(suggest|suggestion|suggestions|recommend|recommendation|recommendations|show\s+me|show|browse|looking\s+for|find\s+me|find|open|view|details\s+of)\b/gi, '')
-    .replace(/\b(women|woman|female|ladies|men|male|guys|kids|children|unisex|unisexual)\b/gi, '')
-    .replace(/\b(for|in|the|a|an|i|want|need|get|me|some|any|with|at|under|above)\b/gi, '')
+  // Clean text query of recognized filter values, stop words, and filler patterns
+  const rawWords = (rawQuery || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
+  const residualWords = []
 
-  // Remove recognized brand and category from free text if present
-  if (brandName) {
-    cleanedTextQuery = cleanedTextQuery.replace(new RegExp(`\\b${brandName}\\b`, 'gi'), '')
-  }
-  if (categoryDef?.name) {
-    cleanedTextQuery = cleanedTextQuery.replace(new RegExp(`\\b${categoryDef.name}\\b`, 'gi'), '')
-  }
-  if (categoryDef?.slug) {
-    cleanedTextQuery = cleanedTextQuery.replace(new RegExp(`\\b${categoryDef.slug}\\b`, 'gi'), '')
-  }
-  if (color) {
-    cleanedTextQuery = cleanedTextQuery.replace(new RegExp(`\\b${color}\\b`, 'gi'), '')
-  }
-  if (material) {
-    cleanedTextQuery = cleanedTextQuery.replace(new RegExp(`\\b${material}\\b`, 'gi'), '')
+  for (const w of rawWords) {
+    if (STOP_WORDS.has(w)) continue
+    if (w === 'best' || w === 'top' || w === 'cheap' || w === 'cheapest' || w === 'expensive' || w === 'newest') continue
+    if (gender && (w === gender || w === `${gender}s` || (gender === 'men' && (w === 'man' || w === 'male' || w === 'guys')) || (gender === 'women' && (w === 'woman' || w === 'female' || w === 'ladies')) || (gender === 'unisex' && (w === 'unisexual' || w === 'universal')))) continue
+    if (categoryDef && (w === categoryDef.slug || w === categoryDef.name.toLowerCase() || (categoryDef.slug === 'running' && (w === 'running' || w === 'runing' || w === 'runner')) || (categoryDef.slug === 'sneakers' && (w === 'sneakers' || w === 'sneaker' || w === 'snickers' || w === 'kicks')) || (categoryDef.slug === 'formal' && (w === 'formal' || w === 'formel' || w === 'dress')) || (categoryDef.slug === 'boots' && (w === 'boots' || w === 'boot')) || (categoryDef.slug === 'basketball' && (w === 'basketball' || w === 'basktball' || w === 'bball')))) continue
+    if (color && (w === color.toLowerCase() || (color === 'Black' && (w === 'black' || w === 'blak')) || (color === 'White' && (w === 'white' || w === 'wite')))) continue
+    if (material && (w === material.toLowerCase() || (material === 'Genuine Leather' && (w === 'leather' || w === 'lether')) || (material === 'Suede' && (w === 'suede' || w === 'swede')) || (material === 'Canvas' && (w === 'canvas' || w === 'canvs')) || (material === 'Knit Upper' && (w === 'knit' || w === 'knitted')))) continue
+    if (brandName && stringSimilarity(w, brandName.toLowerCase()) >= 0.80) {
+      residualWords.push(brandName)
+      continue
+    }
+    residualWords.push(w)
   }
 
-  cleanedTextQuery = cleanedTextQuery.replace(/\s+/g, ' ').trim()
-
-  const modelKeywords = cleanedTextQuery.split(/\s+/).filter(t => t.length > 1 && !STOP_WORDS.has(t))
+  const cleanedTextQuery = residualWords.join(' ').trim()
+  const modelKeywords = residualWords.filter(t => t.length > 1 && !STOP_WORDS.has(t))
 
   const criteria = {
     rawQuery,
@@ -759,11 +749,11 @@ export async function search(input) {
   // Rule:
   // 1. Suggestions or browse requests -> ALWAYS show product list on screen.
   // 2. Specific product name match >= 80% (0.80) -> Direct product page.
-  // 3. Exact comprehensive details >= 90% (0.90) across multiple specified attributes -> Direct product page.
+  // 3. Exact comprehensive details >= 90% (0.90) across multiple specified attributes + distinct model -> Direct product page.
   // 4. Otherwise -> Product list on screen with applied filters.
   const hasDistinctModelName = modelKeywords.length > 0 && cleanedTextQuery.length >= 3
   const isNameMatch80        = hasDistinctModelName && top.nameMatchScore >= 0.80
-  const isOverallMatch90     = top.specifiedCount >= 3 && top.overallMatchScore >= 0.90
+  const isOverallMatch90     = hasDistinctModelName && top.specifiedCount >= 3 && top.overallMatchScore >= 0.90
   const shouldOpenDirectly   = !isSuggestion && (isNameMatch80 || isOverallMatch90 || isExplicitOpen)
 
   if (shouldOpenDirectly) {
@@ -782,8 +772,12 @@ export async function search(input) {
 
   // ── Step 4: Product List on Screen (Suggestions & Filtered results) ──
   const topResults = scoredItems.slice(0, 12).map(r => r.item)
+  const residualSearch = (cleanedTextQuery && cleanedTextQuery.length >= 2)
+    ? cleanedTextQuery
+    : (brandName || null)
+
   const navigateTo = buildProductsUrl(
-    cleanedTextQuery && !categoryDef && !brandName ? cleanedTextQuery : (brandName ? brandName : null),
+    residualSearch,
     {
       category: categoryDef?.slug,
       gender,
