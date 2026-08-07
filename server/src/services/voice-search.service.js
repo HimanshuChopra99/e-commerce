@@ -620,7 +620,7 @@ export async function search(input) {
     const friendlyGender = gender ? (gender === 'unisex' ? 'unisex' : `${gender}'s`) : ''
     return {
       type: 'not_found',
-      message: `I couldn't find any ${friendlyGender} ${friendlyCategory} matching your exact search. Showing our full collection on screen now.`,
+      message: `I couldn't find any ${friendlyGender} ${friendlyCategory} matching your search. I've updated your screen with our full collection so you can browse.`,
       navigateTo: buildProductsUrl(brandName || null, { category: categoryDef?.slug, gender, color, sort }),
       query: rawQuery,
     }
@@ -635,14 +635,14 @@ export async function search(input) {
 
   if (shouldOpenDirectly) {
     const product = top.item
-    const stockMsg = product.inStock ? 'It is currently in stock.' : 'Currently out of stock.'
+    const stockMsg = product.inStock ? 'It is currently in stock.' : 'Note: currently out of stock.'
     return {
       type: 'exact',
       product,
       size,
       color,
       nameMatchScore: Math.round(top.nameMatchScore * 100),
-      message: `Found ${product.name} by ${product.brand} for $${Number(product.price).toFixed(2)}. ${stockMsg}`,
+      message: `I've opened the ${product.name} by ${product.brand} for $${Number(product.price).toFixed(2)} on your screen. ${stockMsg} Would you like to select a size or add it to your cart?`,
     }
   }
 
@@ -673,8 +673,7 @@ export async function search(input) {
   const colorLabel = color ? `${color} ` : ''
   const priceLabel = maxPrice ? ` under $${maxPrice}` : (minPrice ? ` over $${minPrice}` : '')
 
-  const sampleNames = topResults.slice(0, 2).map(p => `${p.name} ($${Number(p.price).toFixed(2)})`).join(' and ')
-  const message = `I found ${resultCount} ${colorLabel}${genderLabel}${brandLabel}${catLabel}${priceLabel}. Showing the best matches on your screen now, including ${sampleNames}.`
+  const message = `I found some ${colorLabel}${genderLabel}${brandLabel}${catLabel}${priceLabel} matching your request. You can see all of them on your screen right now. Let me know if you'd like to filter further or choose a specific pair!`
   const toastMessage = `Showing ${resultCount} ${colorLabel}${genderLabel}${brandLabel}${catLabel} on screen`
 
   return {

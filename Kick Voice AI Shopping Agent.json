@@ -1,0 +1,181 @@
+{
+  "agent_name": "Kick Voice AI Shopping Agent",
+  "voice_id": "11labs-Adrian",
+  "voice_temperature": 0.7,
+  "voice_speed": 1.0,
+  "responsiveness": 0.9,
+  "interruption_sensitivity": 0.8,
+  "enable_backchannel": true,
+  "ambient_sound": "coffee-shop",
+  "ambient_sound_volume": 0.1,
+  "language": "en-US",
+  "opt_out_sensitive_data_storage": false,
+  "general_prompt": "You are the smart, helpful, and energetic AI Voice Shopping Assistant for the store.\n\n### YOUR CORE OBJECTIVE\nHelp shoppers find, filter, browse, and purchase products. Listen carefully to user speech, fix any pronunciation or spelling errors on the fly, and call the search and cart tools with clean structured parameters to control their screen.\n\n### HOW TO RESPOND BASED ON TOOL RESULTS\n1. MULTIPLE PRODUCTS FOUND (CATALOGUE / LIST VIEW):\n   - When multiple products are returned, DO NOT read out individual product details, names, or prices.\n   - Instead, inform the shopper that matching products have been placed on their screen so they can see and browse them:\n     e.g., \"I found some great options matching your request! I've displayed them on your screen so you can browse through them. Let me know if you'd like to filter by size, color, or price!\"\n\n2. SINGLE PRODUCT DETAIL PAGE OPENED:\n   - When a specific product details page opens on screen, ALWAYS tell the shopper the product's NAME and PRICE clearly:\n     e.g., \"I've opened the [Product Name] for $[Price] on your screen! It's currently in stock. Would you like to choose a size or color?\"\n\n3. NO PRODUCTS FOUND:\n   - Clearly inform the shopper that no exact match was found and that you have reset the view on their screen to the full collection so they can browse freely or refine with different filters.\n\n### ATTRIBUTE EXTRACTION\nExtract whatever the shopper mentions without relying on hardcoded lists:\n- Brand name\n- Category or style\n- Demographic / gender (men, women, unisex, kids)\n- Color name or shade\n- Material (e.g. Leather, Suede, Canvas, Mesh)\n- Shoe size (US/EU)\n- Price intent ('under $X', 'between $X and $Y', 'cheap' -> sort: price_asc, 'premium' -> sort: price_desc, 'best' -> sort: popular).",
+  "begin_message": "Hey {{customer_name}}, welcome! What kind of shoes or styles are you looking for today?",
+  "general_tools": [
+    {
+      "type": "custom",
+      "name": "search_product",
+      "description": "Search and filter products across the store by brand, category, gender, color, size, material, price range, or keywords. Automatically updates the shopper's screen.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search text, keywords, or specific product model name."
+          },
+          "brand": {
+            "type": "string",
+            "description": "Brand name identified from user input."
+          },
+          "category": {
+            "type": "string",
+            "description": "Category or style identified from user input."
+          },
+          "gender": {
+            "type": "string",
+            "description": "Demographic or gender identified from user input."
+          },
+          "color": {
+            "type": "string",
+            "description": "Color name identified from user input."
+          },
+          "size": {
+            "type": "string",
+            "description": "Shoe size identified from user input."
+          },
+          "material": {
+            "type": "string",
+            "description": "Material identified from user input."
+          },
+          "min_price": {
+            "type": "number",
+            "description": "Minimum price in currency units."
+          },
+          "max_price": {
+            "type": "number",
+            "description": "Maximum budget or price ceiling in currency units."
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort order ('price_asc', 'price_desc', 'newest', 'popular', 'rating')."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "type": "custom",
+      "name": "filter_products",
+      "description": "Apply structured filters to the catalogue view on the customer's screen.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brand": { "type": "string", "description": "Brand filter." },
+          "category": { "type": "string", "description": "Category filter." },
+          "gender": { "type": "string", "description": "Gender filter." },
+          "color": { "type": "string", "description": "Color filter." },
+          "size": { "type": "string", "description": "Size filter." },
+          "material": { "type": "string", "description": "Material filter." },
+          "min_price": { "type": "number", "description": "Minimum price." },
+          "max_price": { "type": "number", "description": "Maximum price." },
+          "sort": { "type": "string", "description": "Sort order." }
+        },
+        "required": []
+      }
+    },
+    {
+      "type": "custom",
+      "name": "clear_filters",
+      "description": "Reset all active filters and display all products in the catalogue.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "type": "custom",
+      "name": "add_to_cart",
+      "description": "Add a specific product variant to the customer's shopping cart.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_slug": { "type": "string", "description": "Slug of the product to add." },
+          "product_id": { "type": "string", "description": "ID of the product." },
+          "size": { "type": "string", "description": "Selected size." },
+          "color": { "type": "string", "description": "Selected color." },
+          "quantity": { "type": "number", "description": "Quantity to add (default 1)." }
+        },
+        "required": []
+      }
+    },
+    {
+      "type": "custom",
+      "name": "remove_from_cart",
+      "description": "Remove an item from the customer's cart.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "variant_id": { "type": "string", "description": "Variant ID to remove." },
+          "product_name": { "type": "string", "description": "Product name to remove." }
+        },
+        "required": []
+      }
+    },
+    {
+      "type": "custom",
+      "name": "clear_cart",
+      "description": "Clear all items from the customer's shopping cart.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "type": "custom",
+      "name": "open_cart",
+      "description": "Open the shopping cart page on the customer's screen.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "type": "custom",
+      "name": "get_cart_summary",
+      "description": "Get a summary of all items, quantities, and total amount currently in the cart.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "type": "custom",
+      "name": "toggle_favourite",
+      "description": "Save or remove a product from the customer's favourites/wishlist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_slug": { "type": "string", "description": "Slug of the product." },
+          "action": { "type": "string", "description": "Action: 'add' or 'remove'." }
+        },
+        "required": ["product_slug"]
+      }
+    },
+    {
+      "type": "custom",
+      "name": "navigate_to",
+      "description": "Navigate to a specific section on the store website.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "string",
+            "description": "Page to navigate to (e.g. 'home', 'products', 'cart', 'profile', 'orders', 'checkout', 'login', 'signup')."
+          }
+        },
+        "required": ["page"]
+      }
+    }
+  ]
+}
