@@ -109,7 +109,7 @@ export function getCatalogueMaterials() {
     }
   }
   return materials
-  
+}
 const FUSE_OPTIONS = {
   keys: [
     { name: 'name', weight: 0.50 },
@@ -274,7 +274,7 @@ export function extractMaterial(rawText) {
       }
     }
   }
-
+}
 export function extractPriceIntent(query) {
   const between = query.match(/between\s+\$?(\d+)\s+and\s+\$?(\d+)/i)
   const under = query.match(/under\s+\$?(\d+)/i)
@@ -354,7 +354,8 @@ export function isSuggestionIntent(rawText) {
     /\b(looking\s+for|find\s+me|find|search|give\s+me|list|options|any|some)\b/i,
     /\b(best\s+shoes|good\s+shoes|help\s+me\s+choose|what\s+should\s+i\s+buy)\b/i,
     /\b(shoes\s+for|sneakers\s+for|kicks\s+for|boots\s+for)\b/i,
-
+  ]}
+    
 export function extractColor(query) {
   const COLORS = [
     'black', 'white', 'grey', 'gray', 'navy', 'red', 'blue',
@@ -622,11 +623,7 @@ export async function search(input) {
     }
     residualWords.push(w)
   }
-  const normalizedQuery = normalizeQuery(rawQuery)
-  const priceIntent = extractPriceIntent(rawQuery)
-  const gender = extractGender(rawQuery)
-  const size = extractSize(rawQuery)
-  const color = extractColor(rawQuery)
+
   const cleanedTextQuery = residualWords.join(' ').trim()
   const modelKeywords = residualWords.filter(t => t.length > 1 && !STOP_WORDS.has(t))
 

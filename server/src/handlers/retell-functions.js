@@ -52,21 +52,16 @@ async function handleSearchProduct(args = {}, userId) {
     emit(userId, 'toast', { message: `Opening ${result.product.name}`, kind: 'info' })
     return ok(result.message, {
       product: {
-        id:      result.product.id,
-        name:    result.product.name,
-        brand:   result.product.brand,
-        price:   result.product.price,
-        slug:    result.product.slug,
-        material:result.product.material,
-        gender:  result.product.gender,
-        id: result.product.id,
-        name: result.product.name,
-        brand: result.product.brand,
-        price: result.product.price,
-        slug: result.product.slug,
-        inStock: result.product.inStock,
-        sizes: result.product.sizes || [],
-        colors: result.product.colors || [],
+        id:       result.product.id,
+        name:     result.product.name,
+        brand:    result.product.brand,
+        price:    result.product.price,
+        slug:     result.product.slug,
+        material: result.product.material,
+        gender:   result.product.gender,
+        inStock:  result.product.inStock,
+        sizes:    result.product.sizes || [],
+        colors:   result.product.colors || [],
       },
     })
   }
@@ -85,13 +80,10 @@ async function handleSearchProduct(args = {}, userId) {
       slug:     p.slug,
       material: p.material,
       gender:   p.gender,
-    total: result.total,
-    products: result.products.slice(0, 5).map(p => ({
-      name: p.name, brand: p.brand, price: p.price, slug: p.slug,
     })),
   })
 }
-
+  
 async function handleSuggestProducts(args = {}, userId) {
   // Explicit suggestion intent handler
   const suggestionArgs = typeof args === 'string'
