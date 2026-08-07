@@ -388,20 +388,53 @@ class MemoryStore {
       const genders = Array.isArray(filters.gender) ? filters.gender : [filters.gender]
       list = list.filter((p) => genders.includes(p.gender))
     }
-    if (filters.minPrice) {
-      list = list.filter((p) => p.price >= Number(filters.minPrice))
+    const effectiveMin = filters.minPrice ?? filters.priceMin
+    const effectiveMax = filters.maxPrice ?? filters.priceMax
+    if (effectiveMin !== undefined && effectiveMin !== null) {
+      list = list.filter((p) => p.price >= Number(effectiveMin))
     }
-    if (filters.maxPrice) {
-      list = list.filter((p) => p.price <= Number(filters.maxPrice))
+    if (effectiveMax !== undefined && effectiveMax !== null) {
+      list = list.filter((p) => p.price <= Number(effectiveMax))
+    }
+    if (filters.color) {
+      const col = String(filters.color).toLowerCase()
+      list = list.filter((p) =>
+        p.colors?.some((c) => c.toLowerCase() === col) ||
+        p.colorImages?.some((ci) => ci.color?.toLowerCase() === col) ||
+        p.variants?.some((v) => v.color?.toLowerCase() === col)
+      )
+    }
+    if (filters.size) {
+      const sz = String(filters.size)
+      list = list.filter((p) =>
+        p.variants?.some((v) => String(v.size) === sz && (v.inStock || (v.stock - (v.reserved || 0)) > 0))
+      )
     }
     if (filters.search) {
-      const q = filters.search.toLowerCase()
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q)
-      )
+      const q = filters.search.toLowerCase().trim()
+      const searchTokens = q.split(/\s+/).filter(Boolean)
+      list = list.filter((p) => {
+        const fullDoc = [
+          p.name,
+          p.brand,
+          p.description,
+          p.material,
+          p.category?.name,
+          p.category?.slug,
+          p.gender,
+          p.sku,
+          ...(p.tags || []),
+          ...(p.colors || []),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+
+        // Match if all search tokens are found, or any token is found
+        return searchTokens.length > 1
+          ? searchTokens.some((tok) => fullDoc.includes(tok))
+          : fullDoc.includes(q)
+      })
     }
     if (filters.featured) {
       list = list.filter((p) => p.featured)

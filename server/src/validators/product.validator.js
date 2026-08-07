@@ -31,6 +31,8 @@ export const productQuerySchema = z.object({
   gender: csvArray(GENDERS),
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
+  priceMin: z.coerce.number().min(0).optional(),
+  priceMax: z.coerce.number().min(0).optional(),
   size: z.enum(SIZES).optional(),
   color: colorValue.optional(),
   q: z.string().trim().max(120).optional(),
