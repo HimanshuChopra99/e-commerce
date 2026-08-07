@@ -109,6 +109,64 @@ export function getCatalogueMaterials() {
     }
   }
   return materials
+  
+const FUSE_OPTIONS = {
+  keys: [
+    { name: 'name', weight: 0.50 },
+    { name: 'brand', weight: 0.25 },
+    { name: 'tags', weight: 0.12 },
+    { name: 'category.name', weight: 0.08 },
+    { name: 'description', weight: 0.03 },
+    { name: 'material', weight: 0.02 },
+  ],
+  threshold: 0.40,
+  includeScore: true,
+  ignoreLocation: true,
+  minMatchCharLength: 2,
+}
+
+const SYNONYMS = {
+  'kicks': 'shoes',
+  'sneakers': 'shoes',
+  'trainers': 'shoes',
+  'joggers': 'running shoes',
+  'jorder': 'jordan',
+  'jordon': 'jordan',
+  'nikey': 'nike',
+  'addidas': 'adidas',
+  'adiddas': 'adidas',
+  'rebook': 'reebok',
+  'cheap': 'low price',
+  'affordable': 'low price',
+  'expensive': 'premium',
+  'rain': 'waterproof outdoor',
+  'raining': 'waterproof outdoor',
+  'rainy': 'waterproof outdoor',
+  'winter': 'boots insulated warm',
+  'summer': 'breathable lightweight',
+  'gym': 'training athletic sport',
+  'casual': 'lifestyle casual',
+  'formal': 'leather dress',
+  'retro': 'classic vintage',
+  'comfy': 'comfortable cushion',
+}
+
+const CATEGORY_EXPANSION = {
+  'outdoor': 'waterproof trail grip durable',
+  'running': 'sport athletic performance cushion',
+  'basketball': 'court grip ankle support',
+  'casual': 'everyday lifestyle comfort',
+  'training': 'gym workout cross-training',
+}
+
+const MATERIAL_EXPANSION = {
+  'Genuine Leather': 'premium durable formal classic',
+  'Synthetic Leather': 'lightweight durable sport',
+  'Canvas': 'casual breathable lightweight',
+  'Mesh': 'breathable sport lightweight',
+  'Suede': 'soft premium casual',
+  'Nubuck': 'premium outdoor durable',
+  'Knit': 'flexible breathable running',
 }
 
 // ─── Dynamic Entity Extractors ───────────────────────────────────────────────
@@ -216,6 +274,27 @@ export function extractMaterial(rawText) {
       }
     }
   }
+
+export function extractPriceIntent(query) {
+  const between = query.match(/between\s+\$?(\d+)\s+and\s+\$?(\d+)/i)
+  const under = query.match(/under\s+\$?(\d+)/i)
+  const above = query.match(/(?:above|over)\s+\$?(\d+)/i)
+  const cheapest = /cheap|cheapest|lowest\s+price|most\s+affordable/i.test(query)
+  const priciest = /expensive|premium|highest\s+price|most\s+expensive/i.test(query)
+
+  if (between) return { minPrice: Number(between[1]), maxPrice: Number(between[2]) }
+  if (under) return { maxPrice: Number(under[1]) }
+  if (above) return { minPrice: Number(above[1]) }
+  if (cheapest) return { sort: 'price_asc' }
+  if (priciest) return { sort: 'price_desc' }
+  return {}
+}
+
+export function extractGender(query) {
+  if (/\b(women|woman|female|ladies)\b/i.test(query)) return 'women'
+  if (/\b(men|male|guys)\b/i.test(query)) return 'men'
+  if (/\b(kids|children|child)\b/i.test(query)) return 'kids'
+  if (/\bunisex\b/i.test(query)) return 'unisex'
   return null
 }
 
@@ -225,6 +304,7 @@ export function extractSize(rawText) {
                 String(rawText).match(/\b(\d{2}(?:\.5)?)\s*(?:eu|size)\b/i)
   return match ? match[1] : null
 }
+
 
 export function extractPriceIntent(rawText) {
   if (!rawText) return {}
@@ -274,6 +354,11 @@ export function isSuggestionIntent(rawText) {
     /\b(looking\s+for|find\s+me|find|search|give\s+me|list|options|any|some)\b/i,
     /\b(best\s+shoes|good\s+shoes|help\s+me\s+choose|what\s+should\s+i\s+buy)\b/i,
     /\b(shoes\s+for|sneakers\s+for|kicks\s+for|boots\s+for)\b/i,
+
+export function extractColor(query) {
+  const COLORS = [
+    'black', 'white', 'grey', 'gray', 'navy', 'red', 'blue',
+    'green', 'brown', 'tan', 'beige', 'pink', 'yellow', 'orange', 'purple',
   ]
   return patterns.some(p => p.test(text))
 }
@@ -376,6 +461,7 @@ export function findVariant(product, size, color) {
   if (!product?.variants?.length) return null
   return product.variants.find(v =>
     (!size  || String(v.size) === String(size)) &&
+    (!size || String(v.size) === String(size)) &&
     (!color || v.color.toLowerCase() === color.toLowerCase()) &&
     v.inStock
   ) || null
@@ -391,7 +477,13 @@ export function buildProductsUrl(query, { gender, color, size, category, minPric
   if (maxPrice !== undefined && maxPrice !== null) params.set('priceMax', String(maxPrice))
   if (sort && sort !== 'trending') params.set('sort', sort)
   if (query && query.trim()) params.set('q', query.trim())
-
+  if (query) params.set('q', query)
+  if (gender) params.set('gender', gender)
+  if (color) params.set('color', color)
+  if (size) params.set('size', size)
+  if (minPrice) params.set('priceMin', String(minPrice))
+  if (maxPrice) params.set('priceMax', String(maxPrice))
+  if (sort) params.set('sort', sort)
   const qs = params.toString()
   return qs ? `/products?${qs}` : '/products'
 }
@@ -434,10 +526,12 @@ export async function buildIndex() {
       return
     }
     const documents = products.map(buildSearchDocument)
-    fuseIndex    = new Fuse(documents, FUSE_OPTIONS)
+    fuseIndex = new Fuse(documents, FUSE_OPTIONS)
     productCache = documents
     lastBuilt    = Date.now()
     logger.info({ count: products.length }, 'voice-search: dynamic index built successfully')
+    lastBuilt = Date.now()
+    logger.info({ count: products.length }, 'voice-search: Fuse index built successfully')
   } catch (err) {
     logger.error({ err: err.message }, 'voice-search: failed to build index')
   }
@@ -458,7 +552,6 @@ export async function search(input) {
   if (!fuseIndex || !productCache.length) {
     return { type: 'error', message: 'Search is temporarily unavailable. Please try again.' }
   }
-
   let rawQuery = ''
   let explicitBrand = null
   let explicitCategory = null
@@ -529,7 +622,11 @@ export async function search(input) {
     }
     residualWords.push(w)
   }
-
+  const normalizedQuery = normalizeQuery(rawQuery)
+  const priceIntent = extractPriceIntent(rawQuery)
+  const gender = extractGender(rawQuery)
+  const size = extractSize(rawQuery)
+  const color = extractColor(rawQuery)
   const cleanedTextQuery = residualWords.join(' ').trim()
   const modelKeywords = residualWords.filter(t => t.length > 1 && !STOP_WORDS.has(t))
 
