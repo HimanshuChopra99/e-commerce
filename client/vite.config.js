@@ -15,6 +15,8 @@ export default defineConfig({
     // proxies them to the Express backend, so the storefront never needs to
     // know (or reach) the API's internal address. Product images served from
     // `/uploads/...` are proxied too so admin-uploaded photos load in dev.
+    // `/socket.io` (the voice-agent UI command channel) is proxied with
+    // websocket upgrade support for the same reason.
     proxy: {
       '/api': {
         target: 'http://localhost:4000',
@@ -23,6 +25,11 @@ export default defineConfig({
       '/uploads': {
         target: 'http://localhost:4000',
         changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        ws: true,
       },
     },
   },

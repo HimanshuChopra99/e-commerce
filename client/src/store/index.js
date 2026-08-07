@@ -5,6 +5,7 @@ import categoriesReducer from './categoriesSlice'
 import cartReducer from './cartSlice'
 import ordersReducer from './ordersSlice'
 import wishlistReducer from './wishlistSlice'
+import productViewReducer from './productViewSlice'
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     cart: cartReducer,
     orders: ordersReducer,
     wishlist: wishlistReducer,
+    productView: productViewReducer,
   },
 })
 

@@ -3,6 +3,7 @@ import { DotLottieReact }  from '@lottiefiles/dotlottie-react'
 import { createCall }      from '../../lib/api'
 import { retellClient }    from '../../lib/retell'
 import { connectSocket, disconnectSocket, getSocket } from '../../lib/socket'
+import { emitCurrentPage } from '../../lib/pageTracker'
 import { useSelector }     from 'react-redux'
 import { useVoiceCommands } from '../../hooks/useVoiceCommands'
 import {
@@ -69,6 +70,9 @@ const AiAgentIcon = () => {
           timestamp: new Date().toISOString(),
         })
       }
+      // Make sure the server knows where the customer is right now — the
+      // socket may have connected after the last page change.
+      emitCurrentPage()
     }
 
     const onCallEnded          = () => handleCleanup()

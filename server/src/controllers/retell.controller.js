@@ -3,30 +3,6 @@ import { dispatch } from '../handlers/retell-functions.js'
 
 export const createCall = async (req, res) => {
   try {
-    const { userId, userName } = req.body
-    if (!userId || !userName) {
-      return res.status(400).json({
-        success: false,
-        message: 'UserId or userName is missing',
-      })
-    }
-
-    const session = await retellService.createCall(userId, userName)
-
-    return res.status(200).json({
-      success: true,
-      session,
-    })
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to create call session',
-      error: error.message,
-      
-import { logger } from '../config/logger.js'
-
-export const createCall = async (req, res) => {
-  try {
     const { userId, userName } = req.body;
     console.log(userId, userName)
     if (!userId || !userName) {
