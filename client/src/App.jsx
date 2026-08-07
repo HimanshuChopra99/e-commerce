@@ -13,6 +13,14 @@ import Footer from './components/common/Footer';
 import AuthExpiredHandler from './components/AuthExpiredHandler';
 import ScrollToTop from './components/common/ScrollToTop';
 import AiAgentIcon from './components/common/AiAgentIcon';
+import { usePageTracker } from './hooks/usePageTracker';
+
+// Reports the current page to the server over the socket so the voice agent
+// knows which page the customer is on (see hooks/usePageTracker.js).
+function PageTracker() {
+  usePageTracker();
+  return null;
+}
 
 // Route-level code splitting: each page chunk is fetched lazily, so the first
 // paint only downloads the code for the page the visitor actually opens.
@@ -114,6 +122,7 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      <PageTracker />
       <AuthExpiredHandler />
       <div className="bg-[#EAE9E5] text-ink min-h-screen flex flex-col relative">
         {/* ===== 1. Site Header & Navbar ===== */}

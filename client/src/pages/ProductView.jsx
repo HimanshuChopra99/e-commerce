@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, removeFromCart, selectCartItems } from "../store/cartSlice";
 import { toggleWishlist, selectIsWishlisted, fetchFavourites } from "../store/wishlistSlice";
+import { selectVariant, selectProductView } from "../store/productViewSlice";
 import { showToast } from "../lib/toast";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { ProductDetails } from "../components/product/ProductDetails";
@@ -29,20 +30,47 @@ export default function ProductView() {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const cartItems = useSelector(selectCartItems);
   const user = useSelector((state) => state.auth.user);
+  const { slug: selectionSlug, color: selectionColor, size: selectionSize } = useSelector(selectProductView);
 
   const [product, setProduct] = useState(null);
   const [relatedList, setRelatedList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedColor, setSelectedColor] = useState(null);
-  const [selectedSize, setSelectedSize] = useState(null);
   const [quantity] = useState(1);
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
 
   const isWishlisted = useSelector(selectIsWishlisted(product?.id));
+
+  // Selected color/size are derived from the Redux store (single source of
+  // truth shared with the voice agent via `variant:select`). The rich display
+  // objects (hex swatch, gallery images, US/UK sizes) are rebuilt from the
+  // product's data here — the store only holds canonical values.
+  const selectedColor = useMemo(() => {
+    if (!product) return null;
+    if (selectionSlug !== product.slug) return product.colors[0] || null;
+    return product.colors.find(
+      (c) => c.name.toLowerCase() === String(selectionColor || '').toLowerCase()
+    ) || product.colors[0] || null;
+  }, [product, selectionSlug, selectionColor]);
+
+  const selectedSize = useMemo(() => {
+    if (!product) return null;
+    const availableForColor = (size) => product.variants.some(
+      (v) => v.color === selectedColor?.name && String(v.size) === String(size.value) &&
+        Boolean(v.inStock ?? Number(v.available ?? 0) > 0)
+    );
+    // A voice/URL request wins when its size is in stock for the chosen color
+    if (selectionSlug === product.slug && selectionSize != null) {
+      const requested = product.sizes.find((s) => String(s.value) === String(selectionSize));
+      if (requested && availableForColor(requested)) return requested;
+    }
+    // Otherwise fall back to the first available size in the selected color
+    return product.sizes.find((s) => availableForColor(s)) || null;
+  }, [product, selectionSlug, selectionSize, selectedColor]);
 
   // Favourites are fetched lazily on the product page (not on every app load)
   // so the heart reflects the logged-in user's saved items.
@@ -144,8 +172,24 @@ export default function ProductView() {
         };
 
         setProduct(mapped);
-        setSelectedColor(initialColor);
-        setSelectedSize(sizes.find((size) => size.available) || sizes[0] || null);
+
+        // Seed the selection from URL params (?color=red&size=10) — used when
+        // the voice agent navigates here mid-command or a deep link is opened.
+        // Falls back to the first color / first available size via the
+        // derived selectors above when params are absent or invalid.
+        const urlColor = searchParams.get('color');
+        const urlSize = searchParams.get('size');
+        const initialColorName = urlColor
+          ? colors.find((c) => c.name.toLowerCase() === urlColor.toLowerCase())?.name ?? null
+          : null;
+        const initialSizeValue = urlSize
+          ? sizeVals.find((v) => String(v) === String(urlSize)) ?? null
+          : null;
+        dispatch(selectVariant({
+          slug: item.slug || id,
+          color: initialColorName,
+          size: initialSizeValue,
+        }));
 
         // Fetch related products dynamically
         fetch(`${API_BASE}/products/${item.slug || id}/related`)
@@ -172,7 +216,7 @@ export default function ProductView() {
       .finally(() => setLoading(false));
 
     window.scrollTo(0, 0);
-  }, [id]);
+  }, [id, dispatch, searchParams]);
 
   if (loading) {
     return (
@@ -204,13 +248,15 @@ export default function ProductView() {
   }
 
   const handleColorSelect = (color) => {
-    setSelectedColor(color);
-    const matchingSize = product.sizes.find((size) => product.variants.some(
-      (variant) => variant.color === color.name && String(variant.size) === String(size.value) && Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)
-    ));
-    setSelectedSize(
-      matchingSize ? { ...matchingSize, available: true, inStock: true } : null
-    );
+    // Same action the voice agent dispatches — click and voice can never
+    // disagree. The size auto-resnap for the new color is handled by the
+    // derived `selectedSize` selector (keeps current size if still available).
+    dispatch(selectVariant({ slug: product.slug, color: color.name }));
+  };
+
+  const handleSizeSelect = (size) => {
+    if (!isSizeAvailable(size)) return;
+    dispatch(selectVariant({ slug: product.slug, size: String(size.value) }));
   };
 
   const isSizeAvailable = (size) => product.variants.some((variant) =>
@@ -324,7 +370,7 @@ export default function ProductView() {
               quantity={quantity}
               isWishlisted={isWishlisted}
               onSelectColor={handleColorSelect}
-              onSelectSize={(size) => isSizeAvailable(size) && setSelectedSize({ ...size, available: true, inStock: true })}
+              onSelectSize={handleSizeSelect}
               isSizeAvailable={isSizeAvailable}
               onAddToCart={handleAddToCart}
               isInCart={selectedVariantInCart}
@@ -356,7 +402,7 @@ export default function ProductView() {
         onClose={() => setSizeChartOpen(false)}
         sizes={product.sizes}
         currentSize={selectedSize}
-        onSelectSize={setSelectedSize}
+        onSelectSize={handleSizeSelect}
       />
     </div>
   );

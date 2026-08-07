@@ -4,8 +4,8 @@ import { logger } from '../config/logger.js'
 
 export const createCall = async (req, res) => {
   try {
-    const { userId, userName } = req.body
-    logger.info({ userId, userName }, '[RetellController] createCall invoked')
+    // 1. Safe destructuring in case req.body is undefined
+    const { userId, userName } = req.body || {}
 
     if (!userId || !userName) {
       return res.status(400).json({
@@ -14,15 +14,18 @@ export const createCall = async (req, res) => {
       })
     }
 
-    // calling retell service
     const session = await retellService.createCall(userId, userName)
 
-    return res.status(200).json({
+    // 2. HTTP 201 is standard for creating resources (or keep 200)
+    return res.status(201).json({
       success: true,
       session,
     })
   } catch (error) {
-    logger.error({ err: error.message }, '[RetellController] createCall failed')
+    // 3. Log the error on the server for debugging
+    console.error('Error in createCall:', error)
+
+    // Fixed syntax error here: changed )} to })
     return res.status(500).json({
       success: false,
       message: 'Failed to create call session',

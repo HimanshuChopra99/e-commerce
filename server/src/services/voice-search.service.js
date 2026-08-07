@@ -31,6 +31,11 @@ const FUSE_OPTIONS = {
   minMatchCharLength: 2,
 }
 
+// Helper function to safely escape strings used inside Dynamic Regular Expressions
+function escapeRegExp(string) {
+  return String(string || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 // ─── Distance & Similarity Algorithms ────────────────────────────────────────
 
 export function levenshteinDistance(s1, s2) {
@@ -134,7 +139,7 @@ export function extractBrand(rawText) {
   const brands = getCatalogueBrands()
 
   for (const [lowerBrand, origBrand] of brands.entries()) {
-    if (new RegExp(`\\b${lowerBrand.replace(/[^a-z0-9]/g, '[-\\s]?')}\\b`, 'i').test(text)) {
+    if (new RegExp(`\\b${escapeRegExp(lowerBrand).replace(/[^a-z0-9]/g, '[-\\s]?')}\\b`, 'i').test(text)) {
       return origBrand
     }
   }
@@ -156,7 +161,7 @@ export function extractCategory(rawText) {
   const categories = getCatalogueCategories()
 
   for (const [key, def] of categories.entries()) {
-    if (new RegExp(`\\b${key.replace(/[^a-z0-9]/g, '[-\\s]?')}\\b`, 'i').test(text)) {
+    if (new RegExp(`\\b${escapeRegExp(key).replace(/[^a-z0-9]/g, '[-\\s]?')}\\b`, 'i').test(text)) {
       return def
     }
   }
@@ -196,7 +201,7 @@ export function extractColor(rawText) {
   const colors = getCatalogueColors()
 
   for (const [lowerCol, origCol] of colors.entries()) {
-    if (new RegExp(`\\b${lowerCol.replace(/[^a-z0-9]/g, '[-\\s]?')}\\b`, 'i').test(text)) {
+    if (new RegExp(`\\b${escapeRegExp(lowerCol).replace(/[^a-z0-9]/g, '[-\\s]?')}\\b`, 'i').test(text)) {
       return origCol
     }
   }
@@ -209,6 +214,17 @@ export function extractColor(rawText) {
       }
     }
   }
+
+  const COMMON_COLORS = [
+    'black', 'white', 'grey', 'gray', 'navy', 'red', 'blue', 'green',
+    'brown', 'tan', 'beige', 'pink', 'yellow', 'orange', 'purple',
+    'teal', 'olive', 'maroon', 'gold', 'silver', 'cream', 'coral',
+  ]
+  for (const c of COMMON_COLORS) {
+    if (new RegExp(`\\b${c}\\b`, 'i').test(text)) {
+      return c
+    }
+  }
   return null
 }
 
@@ -218,7 +234,7 @@ export function extractMaterial(rawText) {
   const materials = getCatalogueMaterials()
 
   for (const [lowerMat, origMat] of materials.entries()) {
-    if (new RegExp(`\\b${lowerMat.replace(/[^a-z0-9]/g, '[-\\s]?')}\\b`, 'i').test(text)) {
+    if (new RegExp(`\\b${escapeRegExp(lowerMat).replace(/[^a-z0-9]/g, '[-\\s]?')}\\b`, 'i').test(text)) {
       return origMat
     }
   }
@@ -319,7 +335,7 @@ export function calculateNameSimilarity(queryText, product) {
   const modelSim = stringSimilarity(cleanQ, modelName)
 
   const qWithoutBrand = brand && cleanQ.includes(brand)
-    ? cleanQ.replace(new RegExp(`\\b${brand}\\b`, 'gi'), '').replace(/\s+/g, ' ').trim()
+    ? cleanQ.replace(new RegExp(`\\b${escapeRegExp(brand)}\\b`, 'gi'), '').replace(/\s+/g, ' ').trim()
     : cleanQ
   const strippedSim = qWithoutBrand.length >= 3 ? stringSimilarity(qWithoutBrand, modelName) : 0
 
@@ -383,7 +399,7 @@ export function findVariant(product, size, color) {
   if (!product?.variants?.length) return null
   return product.variants.find(v =>
     (!size  || String(v.size) === String(size)) &&
-    (!color || v.color.toLowerCase() === color.toLowerCase()) &&
+    (!color || v.color?.toLowerCase() === color.toLowerCase()) &&
     v.inStock
   ) || null
 }
@@ -450,6 +466,7 @@ export async function search(input) {
   if (!fuseIndex || !productCache.length) {
     return { type: 'error', message: 'Search is temporarily unavailable. Please try again.' }
   }
+
   let rawQuery = ''
   let explicitBrand = null
   let explicitCategory = null
@@ -504,17 +521,17 @@ export async function search(input) {
   const isSuggestion = isSuggestionIntent(rawQuery)
   const isExplicitOpen = isExplicitOpenIntent(rawQuery)
 
-  // 2. Clean query of consumed filter tokens and stop words to find residual search keywords
+  // 2. Clean query of consumed filter tokens and stop words
   const rawWords = (rawQuery || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
   const residualWords = []
 
   for (const w of rawWords) {
     if (STOP_WORDS.has(w)) continue
-    if (w === 'best' || w === 'top' || w === 'cheap' || w === 'cheapest' || w === 'expensive' || w === 'newest') continue
-    if (gender && (w === gender || w === `${gender}s` || (gender === 'men' && (w === 'man' || w === 'male' || w === 'guys')) || (gender === 'women' && (w === 'woman' || w === 'female' || w === 'ladies')) || (gender === 'unisex' && (w === 'unisexual' || w === 'universal')))) continue
-    if (categoryDef && (w === categoryDef.slug || w === categoryDef.name.toLowerCase() || (categoryDef.slug === 'running' && (w === 'running' || w === 'runing' || w === 'runner')) || (categoryDef.slug === 'sneakers' && (w === 'sneakers' || w === 'sneaker' || w === 'snickers' || w === 'kicks')) || (categoryDef.slug === 'formal' && (w === 'formal' || w === 'formel' || w === 'dress')) || (categoryDef.slug === 'boots' && (w === 'boots' || w === 'boot')) || (categoryDef.slug === 'basketball' && (w === 'basketball' || w === 'basktball' || w === 'bball')))) continue
-    if (color && (w === color.toLowerCase() || (color === 'Black' && (w === 'black' || w === 'blak')) || (color === 'White' && (w === 'white' || w === 'wite')))) continue
-    if (material && (w === material.toLowerCase() || (material === 'Genuine Leather' && (w === 'leather' || w === 'lether')) || (material === 'Suede' && (w === 'suede' || w === 'swede')) || (material === 'Canvas' && (w === 'canvas' || w === 'canvs')) || (material === 'Knit Upper' && (w === 'knit' || w === 'knitted')))) continue
+    if (['best', 'top', 'cheap', 'cheapest', 'expensive', 'newest'].includes(w)) continue
+    if (gender && (w === gender || w === `${gender}s` || (gender === 'men' && ['man', 'male', 'guys'].includes(w)) || (gender === 'women' && ['woman', 'female', 'ladies'].includes(w)) || (gender === 'unisex' && ['unisexual', 'universal'].includes(w)))) continue
+    if (categoryDef && (w === categoryDef.slug || w === (categoryDef.name || '').toLowerCase() || (categoryDef.slug === 'running' && ['running', 'runing', 'runner'].includes(w)) || (categoryDef.slug === 'sneakers' && ['sneakers', 'sneaker', 'snickers', 'kicks'].includes(w)) || (categoryDef.slug === 'formal' && ['formal', 'formel', 'dress'].includes(w)) || (categoryDef.slug === 'boots' && ['boots', 'boot'].includes(w)) || (categoryDef.slug === 'basketball' && ['basketball', 'basktball', 'bball'].includes(w)))) continue
+    if (color && (w === color.toLowerCase() || (color === 'Black' && ['black', 'blak'].includes(w)) || (color === 'White' && ['white', 'wite'].includes(w)))) continue
+    if (material && (w === material.toLowerCase() || (material === 'Genuine Leather' && ['leather', 'lether'].includes(w)) || (material === 'Suede' && ['suede', 'swede'].includes(w)) || (material === 'Canvas' && ['canvas', 'canvs'].includes(w)) || (material === 'Knit Upper' && ['knit', 'knitted'].includes(w)))) continue
     if (brandName && stringSimilarity(w, brandName.toLowerCase()) >= 0.75) {
       continue
     }
@@ -553,9 +570,9 @@ export async function search(input) {
   }
   if (color) {
     const colorMatches = candidatePool.filter(p =>
-      p.colors?.some(c => stringSimilarity(c, color) >= 0.80) ||
-      p.colorImages?.some(ci => stringSimilarity(ci.color, color) >= 0.80) ||
-      p.variants?.some(v => stringSimilarity(v.color, color) >= 0.80)
+      p.colors?.some(c => typeof c === 'string' && stringSimilarity(c, color) >= 0.80) ||
+      p.colorImages?.some(ci => ci?.color && stringSimilarity(ci.color, color) >= 0.80) ||
+      p.variants?.some(v => v?.color && stringSimilarity(v.color, color) >= 0.80)
     )
     if (colorMatches.length) candidatePool = colorMatches
   }
@@ -580,7 +597,7 @@ export async function search(input) {
     scoredResults = candidatePool.map(item => ({ item, fuseScore: 0.5 }))
   }
 
-  // 5. Scoring & Rank
+  // 5. Scoring & Ranking
   const scoredItems = scoredResults.map(({ item, fuseScore }) => {
     const nameMatchScore = calculateNameSimilarity(cleanedTextQuery || rawQuery, item)
     const relevanceScore = (nameMatchScore * 0.60) + ((1 - (fuseScore ?? 0.5)) * 0.40)

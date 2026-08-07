@@ -2,6 +2,7 @@ import * as cartService from '../services/cart.service.js'
 import * as favouriteService from '../services/favourite.service.js'
 import * as voiceSearch from '../services/voice-search.service.js'
 import { getPublicBySlug } from '../services/product.service.js'
+import { getPageState } from '../services/session-state.service.js'
 import { emitToUser } from '../config/socket.js'
 import { logger } from '../config/logger.js'
 
@@ -22,14 +23,106 @@ function ok(message, data = {}) {
   return { success: true, message, ...data }
 }
 
-function fail(message) {
-  return { success: false, message }
+function fail(message, extra = {}) {
+  return { success: false, message, ...extra }
+}
+
+// ─── Variant Selection Helpers ───────────────────────────────────────────────
+//
+// These normalise free-form voice values ("red", "grey", "10", "ten") into the
+// canonical strings stored on the product's variants ("Red", "10"). Validation
+// happens HERE, server-side, so the UI never renders an invalid selection.
+
+function normalizeColor(product, rawColor) {
+  if (!product?.variants?.length || rawColor === undefined || rawColor === null || rawColor === '') return null
+  const target = String(rawColor).trim().toLowerCase()
+  const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean))]
+
+  // Exact match wins
+  const exact = colors.find((c) => c.toLowerCase() === target)
+  if (exact) return exact
+
+  // Common spelling variants (grey/gray, etc.)
+  const synonyms = { gray: 'grey', grey: 'gray', 'off-white': 'white', cream: 'beige' }
+  const swapped = synonyms[target]
+  if (swapped) {
+    const match = colors.find((c) => c.toLowerCase() === swapped)
+    if (match) return match
+  }
+
+  // Partial match — "navy" matches "Shadow Navy", "red" matches "Dark Red"
+  const partial = colors.find((c) => c.toLowerCase().includes(target) || target.includes(c.toLowerCase()))
+  return partial || null
+}
+
+function normalizeSize(product, rawSize) {
+  if (!product?.variants?.length || rawSize === undefined || rawSize === null || rawSize === '') return null
+  const target = String(rawSize).trim()
+  const sizes = [...new Set(product.variants.map((v) => String(v.size)).filter(Boolean))]
+
+  // Exact match wins ("10", "10.5")
+  const exact = sizes.find((s) => s === target)
+  if (exact) return exact
+
+  // Numeric match tolerates formatting ("10.0" → "10")
+  const num = parseFloat(target)
+  if (!Number.isNaN(num)) {
+    const numeric = sizes.find((s) => parseFloat(s) === num)
+    if (numeric) return numeric
+  }
+  return null
+}
+
+function isVariantInStock(variant) {
+  return Boolean(variant?.inStock ?? Number(variant?.available ?? 0) > 0)
+}
+
+// If the customer is on a product detail page and an incoming search/filter
+// request is really a color/size selection ("select red", "grey size 42",
+// "pick the blue one"), return the selection args to apply to the OPEN
+// product instead of navigating to the catalog. This makes the feature work
+// even when the LLM agent chooses the search/filter tools, because the
+// server knows which page the customer is on.
+function selectionRedirectArgs(args, userId) {
+  const tracked = getPageState(userId)
+  if (tracked?.type !== 'product' || !tracked.slug) return null
+  if (args.product_name || args.product_id) return null
+
+  const text = String(args.query || args.q || '').toLowerCase()
+  const extractedColor = args.color || voiceSearch.extractColor(text)
+  const extractedSize = args.size || voiceSearch.extractSize(text)
+  if (!extractedColor && !extractedSize) return null
+
+  // Other browse signals (category, brand, material, gender, price) mean the
+  // customer wants the catalog, not a selection on the open product.
+  const hasOtherFilter = Boolean(args.category || args.brand || args.material || args.gender) ||
+    Boolean(voiceSearch.extractCategory(text) || voiceSearch.extractBrand(text) || voiceSearch.extractMaterial(text) || voiceSearch.extractGender(text))
+  const hasPrice = [args.min_price, args.max_price, args.price_min, args.price_max]
+    .some((v) => v !== undefined && v !== null)
+  if (hasOtherFilter || hasPrice) return null
+
+  // Selection verbs win even if the phrase also contains "shoes".
+  const selectionVerb = /\b(select|pick|choose|switch|change|make it|go with|i want|i'll take|put me in|swap|try|grab)\b/i.test(text)
+  // Explicit browse intent means a real search ("show me red shoes").
+  const browseWord = /\b(show|find|browse|search|looking|list|suggest|recommend|any|some|best|cheap|under|over|need)\b/i.test(text)
+
+  if (selectionVerb || !browseWord) {
+    return { color: extractedColor, size: extractedSize }
+  }
+  return null
 }
 
 // ─── Function Handlers ───────────────────────────────────────────────────────
 
 async function handleSearchProduct(args = {}, userId) {
   logger.info({ args, userId }, '[RetellHandler] handleSearchProduct invoked')
+
+  // If the customer is already on a product detail page and the request is
+  // really a color/size selection, apply it there instead of searching.
+  const selectionArgs = selectionRedirectArgs(args, userId)
+  if (selectionArgs) {
+    return handleSelectVariant(selectionArgs, userId)
+  }
 
   const result = await voiceSearch.search(args)
 
@@ -199,6 +292,214 @@ async function handleToggleFavourite({ product_slug, action }, userId) {
   }
 }
 
+// ─── Retell agent tool schema (paste into your Retell agent's tool list) ─────
+// name: select_variant
+// description: >
+//   Selects a color and/or size on the product detail page the user is
+//   currently viewing. Call this when the user says things like "select red
+//   and size 10", "pick the blue one", "make it size 9", "I want the black
+//   colour in a 10", "go with grey". You may pass ONLY the fields the user
+//   mentioned (color, size, or both). product_slug is optional: if omitted,
+//   the server uses the product page the user currently has open. If the tool
+//   returns success:false, the requested color/size is NOT available — read
+//   the available options from the message to the user.
+// parameters:
+//   type: object
+//   properties:
+//     product_slug:
+//       type: string
+//       description: Optional. Slug of the product currently displayed on the user's screen.
+//     color:
+//       type: string
+//       description: The color the user asked for (e.g. "red", "navy", "grey").
+//     size:
+//       type: string
+//       description: The size the user asked for (e.g. "10", "9.5").
+//   required: []
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function handleSelectVariant({ product_slug, product_id, product_name, color, size }, userId) {
+  try {
+    const tracked = getPageState(userId)
+
+    // 1. Resolve the product: explicit agent args win, otherwise use the page
+    //    the user actually has open (reported by the client via page:update),
+    //    so manually-opened product pages work exactly like agent-opened ones.
+    let product
+    let source = 'agent'
+    if (product_slug) {
+      product = await getPublicBySlug(product_slug)
+    } else if (product_name) {
+      const result = await voiceSearch.search(product_name)
+      product = result.type === 'exact' ? result.product : null
+    } else if (product_id) {
+      const result = await voiceSearch.search(product_id)
+      product = result.product || null
+    } else if (tracked?.type === 'product' && tracked.slug) {
+      product = await getPublicBySlug(tracked.slug)
+      source = 'tracked'
+    }
+
+    const pageInfo = tracked
+      ? { type: tracked.type, path: tracked.path, slug: tracked.slug, color: tracked.color, size: tracked.size }
+      : null
+
+    if (!product) {
+      // No product context — tell the agent where the user IS so it can
+      // choose the right tool (open a product vs filter the catalog).
+      const where = tracked?.type && tracked.type !== 'unknown'
+        ? `The customer is on the ${tracked.type === 'product' ? 'product' : tracked.path || tracked.type} page`
+        : 'I cannot see a product page on the customer\'s screen right now'
+      return fail(
+        `${where}. To select a color or size, open a product first (or ask which shoe they want), or use filter_products to narrow the catalog.`,
+        { page: pageInfo }
+      )
+    }
+
+    const availableColors = [...new Set(product.variants?.filter(isVariantInStock).map((v) => v.color).filter(Boolean))]
+    const availableSizes = [...new Set(product.variants?.filter(isVariantInStock).map((v) => String(v.size)).filter(Boolean))]
+      .sort((a, b) => Number(a) - Number(b))
+
+    const wantsColor = color !== undefined && color !== null && String(color).trim() !== ''
+    const wantsSize = size !== undefined && size !== null && String(size).trim() !== ''
+
+    // Nothing requested at all → tell the agent what this product offers
+    if (!wantsColor && !wantsSize) {
+      return ok(`${product.name} is on your screen. Available colors: ${availableColors.join(', ') || 'none'}. Available sizes: ${availableSizes.join(', ') || 'none'}.`, {
+        product: { slug: product.slug, name: product.name },
+        colors: availableColors,
+        sizes: availableSizes,
+        source,
+      })
+    }
+
+    // The currently selected color (from the tracked page) is used as context
+    // when the user only asks for a size.
+    const trackedColor = tracked?.type === 'product' && tracked.slug === product.slug ? tracked.color : null
+
+    // 2. Validate the requested color (exists + in stock anywhere on product)
+    let canonicalColor = null
+    if (wantsColor) {
+      canonicalColor = normalizeColor(product, color)
+      if (!canonicalColor) {
+        return fail(`${product.name} does not come in that color. Available colors: ${availableColors.join(', ') || 'none right now'}.`, {
+          availableColors,
+          availableSizes,
+          page: pageInfo,
+        })
+      }
+      if (!availableColors.some((c) => c.toLowerCase() === canonicalColor.toLowerCase())) {
+        return fail(`${canonicalColor} is currently out of stock for ${product.name}. Available colors: ${availableColors.join(', ') || 'none right now'}.`, {
+          availableColors,
+          availableSizes,
+          page: pageInfo,
+        })
+      }
+    }
+
+    // 3. Validate the requested size (exists + in stock for the effective color)
+    let canonicalSize = null
+    if (wantsSize) {
+      canonicalSize = normalizeSize(product, size)
+      if (!canonicalSize) {
+        return fail(`${product.name} does not come in size ${String(size).trim()}. Available sizes: ${availableSizes.join(', ') || 'none right now'}.`, {
+          availableColors,
+          availableSizes,
+          page: pageInfo,
+        })
+      }
+
+      const effectiveColor = canonicalColor || trackedColor
+      if (effectiveColor) {
+        const variant = product.variants.find((v) =>
+          String(v.color).toLowerCase() === effectiveColor.toLowerCase() && String(v.size) === canonicalSize
+        )
+        if (!variant || !isVariantInStock(variant)) {
+          const sizesForColor = [...new Set(product.variants
+            .filter((v) => String(v.color).toLowerCase() === effectiveColor.toLowerCase() && isVariantInStock(v))
+            .map((v) => String(v.size)))].sort((a, b) => Number(a) - Number(b))
+          return fail(`Size ${canonicalSize} is not available in ${effectiveColor}. Available sizes in ${effectiveColor}: ${sizesForColor.join(', ') || 'none right now'}.`, {
+            availableColors,
+            availableSizes,
+            page: pageInfo,
+          })
+        }
+      } else {
+        const inStockAnywhere = product.variants.some((v) => String(v.size) === canonicalSize && isVariantInStock(v))
+        if (!inStockAnywhere) {
+          return fail(`Size ${canonicalSize} is currently out of stock for ${product.name}. Available sizes: ${availableSizes.join(', ') || 'none right now'}.`, {
+            availableColors,
+            availableSizes,
+            page: pageInfo,
+          })
+        }
+      }
+    }
+
+    // 4. Validated — flip the selection on the user's screen through the socket.
+    const payload = { slug: product.slug }
+    if (canonicalColor) payload.color = canonicalColor
+    if (canonicalSize) payload.size = canonicalSize
+    emit(userId, 'variant:select', payload)
+
+    const chosenParts = [canonicalColor, canonicalSize && `size ${canonicalSize}`].filter(Boolean)
+    return ok(`Selected ${product.name}${chosenParts.length ? ` in ${chosenParts.join(', ')}` : ''}.`, {
+      product: { slug: product.slug, name: product.name },
+      color: canonicalColor || null,
+      size: canonicalSize || null,
+      source,
+    })
+  } catch (err) {
+    logger.error({ err: err.message, userId }, 'handleSelectVariant error')
+    return fail('Could not select that color and size. Please try again.')
+  }
+}
+
+// ─── Retell agent tool schema (paste into your Retell agent's tool list) ─────
+// name: get_current_page
+// description: >
+//   Returns which page the customer is currently viewing (product detail page
+//   with its slug, the catalog, cart, etc.) and the color/size currently
+//   selected on a product page. Call this when a command could apply to
+//   different pages and you are unsure where the customer is.
+// parameters:
+//   type: object
+//   properties: {}
+//   required: []
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function handleGetCurrentPage(_, userId) {
+  const tracked = getPageState(userId)
+  if (!tracked || tracked.type === 'unknown') {
+    return ok('I do not have a live reading of which page the customer is viewing right now.', { page: null })
+  }
+
+  let description
+  if (tracked.type === 'product') {
+    let name = tracked.slug
+    try {
+      const product = await getPublicBySlug(tracked.slug)
+      if (product) name = product.name
+    } catch { /* keep slug as fallback name */ }
+    const selection = [tracked.color, tracked.size && `size ${tracked.size}`].filter(Boolean).join(', ')
+    description = `the product page for ${name}${selection ? ` with ${selection} selected` : ''}`
+  } else if (tracked.type === 'catalog') {
+    description = 'the product catalog page'
+  } else {
+    description = `the ${tracked.path || tracked.type} page`
+  }
+
+  return ok(`The customer is on ${description}.`, {
+    page: {
+      type: tracked.type,
+      path: tracked.path,
+      slug: tracked.slug,
+      color: tracked.color || null,
+      size: tracked.size || null,
+    },
+  })
+}
+
 async function handleNavigateTo({ page }, userId) {
   const PAGES = {
     home: '/',
@@ -209,6 +510,9 @@ async function handleNavigateTo({ page }, userId) {
     favourites: '/profile',
     wishlist: '/profile',
     checkout: '/checkout/payment',
+    about: '/about',
+    contact: '/contact',
+    blogs: '/blogs',
     login: '/login',
     signup: '/signup',
   }
@@ -221,6 +525,13 @@ async function handleNavigateTo({ page }, userId) {
 }
 
 async function handleFilterProducts(args = {}, userId) {
+  // Same interception as search: a color/size-only filter while a product
+  // detail page is open is a selection request, not a catalog filter.
+  const selectionArgs = selectionRedirectArgs(args, userId)
+  if (selectionArgs) {
+    return handleSelectVariant(selectionArgs, userId)
+  }
+
   let { color, size, gender, min_price, max_price, price_min, price_max, sort, category, brand, material, query, q } = args
   const rawText = [query, q, brand, category, material].filter(Boolean).join(' ')
 
@@ -373,6 +684,31 @@ const FUNCTION_MAP = {
   toggleFavourite:      handleToggleFavourite,
   add_to_wishlist:      handleToggleFavourite,
   toggleWishlist:       handleToggleFavourite,
+
+  // Product variant selection (color/size) on the product detail page
+  select_variant:       handleSelectVariant,
+  selectVariant:        handleSelectVariant,
+  select_color_size:    handleSelectVariant,
+  selectColorSize:      handleSelectVariant,
+  select_color:         handleSelectVariant,
+  selectColor:          handleSelectVariant,
+  select_size:          handleSelectVariant,
+  selectSize:           handleSelectVariant,
+  choose_variant:       handleSelectVariant,
+  chooseVariant:        handleSelectVariant,
+  pick_variant:         handleSelectVariant,
+  pickVariant:          handleSelectVariant,
+  customize_product:    handleSelectVariant,
+  customizeProduct:     handleSelectVariant,
+
+  // Current page awareness
+  get_current_page:     handleGetCurrentPage,
+  getCurrentPage:       handleGetCurrentPage,
+  current_page:         handleGetCurrentPage,
+  currentPage:          handleGetCurrentPage,
+  where_is_user:        handleGetCurrentPage,
+  whereIsUser:          handleGetCurrentPage,
+
   navigate_to:          handleNavigateTo,
   navigateTo:           handleNavigateTo,
   go_to_page:           handleNavigateTo,
