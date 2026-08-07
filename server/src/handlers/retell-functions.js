@@ -220,7 +220,27 @@ async function handleNavigateTo({ page }, userId) {
   return ok(`Navigating to ${page}.`)
 }
 
-async function handleFilterProducts({ color, size, gender, min_price, max_price, price_min, price_max, sort, category, brand, material }, userId) {
+async function handleFilterProducts(args = {}, userId) {
+  let { color, size, gender, min_price, max_price, price_min, price_max, sort, category, brand, material, query, q } = args
+  const rawText = [query, q, brand, category, material].filter(Boolean).join(' ')
+
+  if (!brand) {
+    brand = voiceSearch.extractBrand(rawText)
+  }
+  if (!category) {
+    const extractedCat = voiceSearch.extractCategory(rawText)
+    if (extractedCat) category = extractedCat.slug
+  }
+  if (!gender) {
+    gender = voiceSearch.extractGender(rawText)
+  }
+  if (!color) {
+    color = voiceSearch.extractColor(rawText)
+  }
+  if (!material) {
+    material = voiceSearch.extractMaterial(rawText)
+  }
+
   const actualMinPrice = min_price ?? price_min
   const actualMaxPrice = max_price ?? price_max
 
@@ -231,7 +251,17 @@ async function handleFilterProducts({ color, size, gender, min_price, max_price,
   if (size)      params.set('size', String(size))
   if (actualMinPrice !== undefined && actualMinPrice !== null) params.set('priceMin', String(actualMinPrice))
   if (actualMaxPrice !== undefined && actualMaxPrice !== null) params.set('priceMax', String(actualMaxPrice))
-  if (brand)     params.set('q', brand)
+  if (brand) {
+    params.set('q', brand)
+  } else if (query && query.trim()) {
+    const cleanQ = query.toLowerCase()
+      .replace(/\b(running|sneakers|casual|formal|boots|basketball|outdoor|training|shoes|shoe|for|in|men|women|unisex|kids)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (cleanQ) {
+      params.set('q', cleanQ)
+    }
+  }
 
   const SORT_MAP = {
     'price_asc':   'price_asc',
