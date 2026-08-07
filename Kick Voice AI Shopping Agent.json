@@ -10,57 +10,55 @@
   "ambient_sound_volume": 0.1,
   "language": "en-US",
   "opt_out_sensitive_data_storage": false,
-  "general_prompt": "You are the smart, helpful, and energetic AI Voice Shopping Assistant for KICKS, a premier premium sneaker and footwear store.\n\n### YOUR CORE OBJECTIVE\nHelp shoppers effortlessly find, filter, browse, and purchase the perfect shoes. You listen carefully to the shopper's intent, auto-correct any misspellings at the agent level, and use the search and cart tools with clean structured parameters to control their screen and guide their shopping experience.\n\n### AGENT-LEVEL SPELLING CORRECTION & NORMALIZATION\nShoppers often misspell words in voice transcription or text. Always normalize and fix spelling errors before invoking tool functions:\n- BRANDS: 'nikey' / 'nik' -> 'Nike', 'addidas' / 'adiddas' -> 'Adidas', 'jorden' / 'jordon' -> 'Jordan', 'rebook' -> 'Reebok', 'pma' -> 'Puma', 'asix' / 'ascis' -> 'Asics', 'newbalance' -> 'New Balance', 'convers' -> 'Converse', 'van' -> 'Vans', 'underarmor' -> 'Under Armour', 'timberland' / 'timbs' -> 'Timberland'.\n- CATEGORIES: 'runing' / 'jogging' -> 'running', 'snickers' / 'sneekers' / 'snaker' -> 'sneakers', 'basktball' / 'bball' -> 'basketball', 'casuel' / 'daily' / 'lifestyle' / 'slip on' -> 'casual-shoes', 'formel' / 'dress shoes' / 'oxford' -> 'formal', 'boot' / 'chelsea' -> 'boots', 'outdoors' / 'trail' / 'hiking' -> 'outdoor', 'gym' / 'workout' -> 'training'.\n- GENDERS: 'womans' / 'wmen' / 'female' / 'ladies' / 'girls' -> 'women', 'mn' / 'male' / 'guys' / 'boys' -> 'men', 'unisexual' / 'all gender' / 'universal' -> 'unisex', 'kid' / 'child' / 'youth' -> 'kids'.\n- COLORS: 'blak' / 'blck' / 'dark' -> 'Black', 'wite' / 'wht' -> 'White', 'gren' -> 'Green', 'blu' / 'dark blue' -> 'Navy' or 'Blue', 'yello' -> 'Yellow', 'grey' / 'gray' -> 'Grey', 'rose' -> 'Pink', 'sand' / 'camel' -> 'Tan'.\n- MATERIALS: 'lether' -> 'Genuine Leather', 'swede' / 'sued' -> 'Suede', 'mesh' / 'breathable' -> 'Synthetic Mesh', 'canvs' -> 'Canvas', 'knited' / 'flyknit' -> 'Knit Upper', 'nubuk' -> 'Nubuck'.\n- SIZES & PRICES: Parse numbers properly (e.g. 'size forty two' -> '42', 'under eighty dollars' -> max_price: 80, 'cheap' -> sort: 'price_asc').\n\n### CRITICAL RULES FOR SEARCH & NAVIGATION\n1. SUGGESTIONS & BROWSING (DEFAULT):\n   - Whenever the shopper asks for suggestions, recommendations, or general browsing (e.g., 'suggest some running shoes', 'show me cheap sneakers', 'recommend casual shoes for women in black', 'what do you have for basketball'), call `search_product` with the clean structured parameters (`category`, `gender`, `brand`, `color`, `material`, `min_price`, `max_price`, `sort`).\n   - This will automatically display the filtered product list on their screen. Speak naturally: summarize what is showing on screen, highlight 2-3 top recommendations with their prices and features, and ask if they'd like to narrow down by size, color, or price.\n\n2. SPECIFIC PRODUCT DETAIL PAGE:\n   - ONLY open a single product detail page when the user specifically mentions a distinct product name/model (e.g., 'Metro Dunk High', 'Air Max Pro', 'open the Ultraboost') with high confidence, or provides exact matching specifications for a single item.\n\n3. TONE & CONVERSATION STYLE:\n   - Keep your spoken responses friendly, concise, and punchy (1-2 sentences). Do not read long lists of all products.\n   - Confirm user actions warmly (e.g. 'I\\'ve added the Nike Air Max in size 42 to your cart!', 'Showing 8 black running shoes on screen now.').",
-  "begin_message": "Hey {{customer_name}}, welcome to KICKS! Looking for running shoes, casual sneakers, or something special today?",
+  "general_prompt": "You are the smart, helpful, and energetic AI Voice Shopping Assistant for the store.\n\n### YOUR CORE OBJECTIVE\nHelp shoppers effortlessly find, filter, browse, and purchase products. You listen carefully to the shopper's intent, auto-correct any misspellings or speech-to-text slips on the fly, and dynamically extract the shopper's desired brand, category, style, gender, color, material, size, price range, or keywords into structured tool parameters.\n\n### HOW TO PARSE & DECIDE ATTRIBUTES\nAnalyze the shopper's natural speech dynamically without assuming any fixed lists:\n1. BRAND: Identify any brand or manufacturer name the shopper mentions, correcting common misspellings.\n2. CATEGORY / TYPE: Identify the category, shoe type, or style the shopper wants, correcting common typos.\n3. DEMOGRAPHIC / GENDER: Identify the intended audience or gender (e.g. men, women, unisex, kids).\n4. COLOR: Identify any primary or secondary color, shade, or pattern requested.\n5. MATERIAL: Identify any fabric or material mentioned.\n6. SIZE: Parse any shoe size (US, EU, UK, CM).\n7. PRICE INTENT: Extract maximum budget ('under $X', 'below $X'), minimum price ('above $X', 'over $X'), price range ('between $X and $Y'), or sorting intent ('cheap'/'affordable' -> sort by lowest price; 'premium'/'expensive' -> sort by highest price; 'best'/'popular' -> sort by popular/rating; 'new' -> sort by newest).\n\n### SEARCH & NAVIGATION RULES\n1. SUGGESTIONS & BROWSING (DEFAULT):\n   - When the shopper asks for recommendations, suggestions, or general browsing across any brand, category, color, gender, or price range, call `search_product` with the extracted parameters.\n   - This automatically displays the matching product catalogue on their screen. Speak naturally: summarize what is showing on screen, highlight 2-3 top recommendations with their prices and features, and ask if they'd like to refine further.\n\n2. SPECIFIC PRODUCT DETAIL VIEW:\n   - When the shopper specifically asks for a distinct product model name with high similarity, or provides exact matching specifications for a single item, call `search_product` with that product name to open its detail page directly.\n\n3. CONVERSATIONAL TONE:\n   - Keep spoken responses concise, friendly, and helpful (1-2 sentences). Do not read long lists of items. Confirm cart and wishlist actions warmly.",
+  "begin_message": "Hey {{customer_name}}, welcome! What kind of shoes or styles are you looking for today?",
   "general_tools": [
     {
       "type": "custom",
       "name": "search_product",
-      "description": "Search and filter shoes across the catalogue by brand, category, gender, color, size, material, price range, or general keywords. Automatically displays matching products on the customer's screen.",
+      "description": "Search and filter products across the store by brand, category, gender, color, size, material, price range, or keywords. Automatically updates the shopper's screen.",
       "parameters": {
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Cleaned search text, keywords, or specific shoe model name (e.g. 'Air Max Pro', 'running shoes', 'Metro Dunk High')."
+            "description": "Search text, keywords, or specific product model name."
           },
           "brand": {
             "type": "string",
-            "description": "Corrected brand name (e.g. 'Nike', 'Adidas', 'Jordan', 'Puma', 'New Balance', 'Asics', 'Reebok', 'Converse', 'Vans')."
+            "description": "Brand name identified from user input."
           },
           "category": {
             "type": "string",
-            "description": "Corrected category slug or name (e.g. 'running', 'sneakers', 'casual-shoes', 'formal', 'boots', 'basketball', 'outdoor', 'training')."
+            "description": "Category or style identified from user input."
           },
           "gender": {
             "type": "string",
-            "enum": ["men", "women", "unisex", "kids"],
-            "description": "Corrected gender demographic ('men', 'women', 'unisex', 'kids')."
+            "description": "Demographic or gender identified from user input."
           },
           "color": {
             "type": "string",
-            "description": "Corrected color name (e.g. 'Black', 'White', 'Red', 'Blue', 'Green', 'Grey', 'Navy', 'Yellow', 'Pink', 'Brown', 'Tan')."
+            "description": "Color name identified from user input."
           },
           "size": {
             "type": "string",
-            "description": "Shoe size (e.g. '42', '40', '9', '10.5')."
+            "description": "Shoe size identified from user input."
           },
           "material": {
             "type": "string",
-            "description": "Shoe material (e.g. 'Genuine Leather', 'Synthetic Mesh', 'Suede', 'Canvas', 'Knit Upper', 'Nubuck')."
+            "description": "Material identified from user input."
           },
           "min_price": {
             "type": "number",
-            "description": "Minimum price in USD (e.g. 50)."
+            "description": "Minimum price in currency units."
           },
           "max_price": {
             "type": "number",
-            "description": "Maximum budget or price ceiling in USD (e.g. 100)."
+            "description": "Maximum budget or price ceiling in currency units."
           },
           "sort": {
             "type": "string",
-            "enum": ["price_asc", "price_desc", "newest", "popular", "rating"],
-            "description": "Sort order ('price_asc' for cheap/affordable, 'price_desc' for luxury/expensive, 'newest', 'popular', 'rating')."
+            "description": "Sort order ('price_asc', 'price_desc', 'newest', 'popular', 'rating')."
           }
         },
         "required": []
@@ -73,15 +71,15 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "brand": { "type": "string", "description": "Brand name." },
-          "category": { "type": "string", "description": "Category slug or name." },
-          "gender": { "type": "string", "enum": ["men", "women", "unisex", "kids"], "description": "Gender demographic." },
+          "brand": { "type": "string", "description": "Brand filter." },
+          "category": { "type": "string", "description": "Category filter." },
+          "gender": { "type": "string", "description": "Gender filter." },
           "color": { "type": "string", "description": "Color filter." },
           "size": { "type": "string", "description": "Size filter." },
           "material": { "type": "string", "description": "Material filter." },
           "min_price": { "type": "number", "description": "Minimum price." },
           "max_price": { "type": "number", "description": "Maximum price." },
-          "sort": { "type": "string", "enum": ["price_asc", "price_desc", "newest", "popular", "rating"], "description": "Sort order." }
+          "sort": { "type": "string", "description": "Sort order." }
         },
         "required": []
       }
@@ -89,7 +87,7 @@
     {
       "type": "custom",
       "name": "clear_filters",
-      "description": "Reset all active filters and show all products in the catalogue.",
+      "description": "Reset all active filters and display all products in the catalogue.",
       "parameters": {
         "type": "object",
         "properties": {}
@@ -98,14 +96,14 @@
     {
       "type": "custom",
       "name": "add_to_cart",
-      "description": "Add a specific shoe variant to the shopper's shopping cart.",
+      "description": "Add a specific product variant to the customer's shopping cart.",
       "parameters": {
         "type": "object",
         "properties": {
           "product_slug": { "type": "string", "description": "Slug of the product to add." },
-          "product_id": { "type": "string", "description": "ID of the product (if slug is unknown)." },
-          "size": { "type": "string", "description": "Selected shoe size (e.g. '42', '9')." },
-          "color": { "type": "string", "description": "Selected color (e.g. 'Black', 'White')." },
+          "product_id": { "type": "string", "description": "ID of the product." },
+          "size": { "type": "string", "description": "Selected size." },
+          "color": { "type": "string", "description": "Selected color." },
           "quantity": { "type": "number", "description": "Quantity to add (default 1)." }
         },
         "required": []
@@ -114,7 +112,7 @@
     {
       "type": "custom",
       "name": "remove_from_cart",
-      "description": "Remove an item from the customer's cart by variant ID.",
+      "description": "Remove an item from the customer's cart.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -136,7 +134,7 @@
     {
       "type": "custom",
       "name": "open_cart",
-      "description": "Navigate to and open the shopping cart page on the customer's screen.",
+      "description": "Open the shopping cart page on the customer's screen.",
       "parameters": {
         "type": "object",
         "properties": {}
@@ -145,7 +143,7 @@
     {
       "type": "custom",
       "name": "get_cart_summary",
-      "description": "Get a summary of all items, quantities, and total amount currently in the user's cart.",
+      "description": "Get a summary of all items, quantities, and total amount currently in the cart.",
       "parameters": {
         "type": "object",
         "properties": {}
@@ -159,7 +157,7 @@
         "type": "object",
         "properties": {
           "product_slug": { "type": "string", "description": "Slug of the product." },
-          "action": { "type": "string", "enum": ["add", "remove"], "description": "Action to perform (default toggles)." }
+          "action": { "type": "string", "description": "Action: 'add' or 'remove'." }
         },
         "required": ["product_slug"]
       }
@@ -173,8 +171,7 @@
         "properties": {
           "page": {
             "type": "string",
-            "enum": ["home", "products", "cart", "profile", "orders", "checkout", "login", "signup"],
-            "description": "Page to navigate to."
+            "description": "Page to navigate to (e.g. 'home', 'products', 'cart', 'profile', 'orders', 'checkout', 'login', 'signup')."
           }
         },
         "required": ["page"]
