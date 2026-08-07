@@ -1,9 +1,12 @@
 import * as retellService from '../services/retell.service.js'
 import { dispatch } from '../handlers/retell-functions.js'
+import { logger } from '../config/logger.js'
 
 export const createCall = async (req, res) => {
   try {
     const { userId, userName } = req.body
+    logger.info({ userId, userName }, '[RetellController] createCall invoked')
+
     if (!userId || !userName) {
       return res.status(400).json({
         success: false,
@@ -11,6 +14,7 @@ export const createCall = async (req, res) => {
       })
     }
 
+    // calling retell service
     const session = await retellService.createCall(userId, userName)
 
     return res.status(200).json({
@@ -18,37 +22,11 @@ export const createCall = async (req, res) => {
       session,
     })
   } catch (error) {
+    logger.error({ err: error.message }, '[RetellController] createCall failed')
     return res.status(500).json({
       success: false,
       message: 'Failed to create call session',
       error: error.message,
-      
-import { logger } from '../config/logger.js'
-
-export const createCall = async (req, res) => {
-  try {
-    const { userId, userName } = req.body;
-    console.log(userId, userName)
-    if (!userId || !userName) {
-      return res.status(400).json({
-        success: false,
-        message: "UserId or userName is missing"
-      })
-    }
-
-    //calling retell service
-    const session = await retellService.createCall(userId, userName)
-
-    return res.status(200).json({
-      success: true,
-      session
-    })
-
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "failed to create call",
-      error: error.message
     })
   }
 }
@@ -82,6 +60,7 @@ export const handleFunction = async (req, res) => {
       result: typeof result === 'string' ? result : JSON.stringify(result),
     })
   } catch (err) {
+    logger.error({ err: err.message }, '[RetellController] handleFunction error')
     return res.status(200).json({
       function_call_id: req.body?.function_call_id || req.body?.call_id || req.body?.call?.call_id || 'call_id',
       result: JSON.stringify({ success: false, message: 'Internal error. Please try again.' }),
