@@ -54,7 +54,10 @@ export default function ProductListPage() {
   const currentSort    = searchParams.get('sort')      || 'trending';
   const currentPage    = parseInt(searchParams.get('page')     || '1',    10);
   const currentSearch  = searchParams.get('q')         || '';
-  const currentPriceMax = parseInt(searchParams.get('priceMax') || '1000', 10);
+  const rawPriceMin    = searchParams.get('priceMin')  || searchParams.get('minPrice') || '';
+  const rawPriceMax    = searchParams.get('priceMax')  || searchParams.get('maxPrice') || '';
+  const currentPriceMin = rawPriceMin ? parseInt(rawPriceMin, 10) : undefined;
+  const currentPriceMax = rawPriceMax ? parseInt(rawPriceMax, 10) : 1000;
 
   // Derived arrays — only used for rendering / passing to sidebar, NOT in deps.
   const currentCategories = categoryParam.split(',').filter(Boolean);
@@ -151,12 +154,13 @@ export default function ProductListPage() {
       sort:     currentSort !== 'trending' ? currentSort : undefined,
       page:     currentPage,
       limit:    12,
+      minPrice: currentPriceMin,
       maxPrice: currentPriceMax < 1000 ? currentPriceMax : undefined,
       q:        currentSearch  || undefined,
     }));
   // Stable primitive deps — no new array references every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, categoryParam, genderParam, sizeParam, colorParam, currentSort, currentPage, currentPriceMax, currentSearch]);
+  }, [dispatch, categoryParam, genderParam, sizeParam, colorParam, currentSort, currentPage, currentPriceMin, currentPriceMax, currentSearch]);
 
   useEffect(() => {
     fetchData();

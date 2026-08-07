@@ -137,37 +137,48 @@ export const ProductDetails = ({
     {
       /* ABOUT THE PRODUCT SECTION */
     }
-    <div className="pt-4 border-t border-neutral-200/80 space-y-3 text-neutral-800">
+    <div className="pt-4 border-t border-neutral-200/80 space-y-3.5 text-neutral-800">
       <h3 className="text-xs font-black uppercase tracking-wider text-neutral-900">
         ABOUT THE PRODUCT
       </h3>
 
-      <div className="text-xs text-neutral-600 font-medium">
-        {selectedColor?.name || 'Select a colour'}
-      </div>
-
-      <p className="text-xs text-neutral-600 leading-relaxed font-normal">
-        This product is excluded from all promotional discounts and offers.
+      {/* Main Product Description */}
+      <p className="text-xs text-neutral-700 leading-relaxed font-normal bg-white/70 p-3.5 rounded-xl border border-neutral-200/70 shadow-2xs">
+        {product.description || "High-performance sneakers engineered for comfort, durability, and athletic mobility."}
       </p>
 
-      {
-        /* Bullet points with bullet dots */
-      }
-      <ul className="space-y-2 text-xs text-neutral-700 font-medium">
+      {/* Selected Color & Key Highlights */}
+      <div className="flex items-center gap-2 text-xs font-semibold text-neutral-800">
+        <span className="text-neutral-500 uppercase text-[11px] tracking-wider">Color:</span>
+        <span className="bg-neutral-100 px-2.5 py-0.5 rounded-md text-[#4A69E2] font-bold">
+          {selectedColor?.name || 'Standard Colorway'}
+        </span>
+      </div>
+
+      {/* Product Spec Badges */}
+      <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+        {product.specs?.slice(0, 4).map((spec, i) => (
+          <div key={i} className="flex justify-between items-center bg-white/50 border border-neutral-200/60 p-2 rounded-lg text-[11px]">
+            <span className="text-neutral-500 font-bold uppercase">{spec.label}</span>
+            <span className="text-neutral-900 font-semibold text-right">{spec.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Bullet points with bullet dots */}
+      <ul className="space-y-2 text-xs text-neutral-700 font-medium pt-1">
         <li className="flex items-start gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 mt-1.5 shrink-0" />
           <span>Pay over time in interest-free installments with Affirm, Klarna or Afterpay.</span>
         </li>
         <li className="flex items-start gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 mt-1.5 shrink-0" />
-          <span>Join adiClub to get unlimited free standard shipping, returns, & exchanges.</span>
+          <span>Unlimited free standard shipping, 30-day hassle-free returns & exchanges.</span>
         </li>
       </ul>
 
-      {
-        /* Value Badges */
-      }
-      <div className="grid grid-cols-2 gap-3 pt-3">
+      {/* Value Badges */}
+      <div className="grid grid-cols-2 gap-3 pt-2">
         <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white/60 border border-neutral-200 text-xs">
           <CreditCard className="w-4 h-4 text-[#4A69E2] shrink-0" />
           <span className="font-semibold text-neutral-800">Secure Checkout</span>

@@ -86,13 +86,84 @@ const USERS_DATA = [
   },
 ]
 
+const BRANDS_LIST = [
+  'Nike', 'Adidas', 'Jordan', 'Puma', 'New Balance',
+  'Asics', 'Reebok', 'Converse', 'Vans', 'Under Armour',
+  'Saucony', 'Brooks', 'Hoka', 'Salomon', 'Timberland',
+]
+
+const UNIQUE_SHOE_IMAGES = [
+  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1539185441755-769473a23570?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1586525198428-225f6f12cff5?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1512374382149-233c42b6a83b?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1520639888713-7851133b1ed0?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1562183241-b937e95585b6?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1588117305388-c26305436df8?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1605348532760-6753d2c43329?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1579338559194-a162d19bf842?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1607522370275-f14206abe5d3?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1587563871167-1ee9c731aefb?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1617606002779-51d866bdd1d1?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1603808033192-082d6919d3e1?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?w=800&auto=format&fit=crop&q=80',
+]
+
+const COLOR_GALLERY = {
+  Black: [
+    'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1512374382149-233c42b6a83b?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1520639888713-7851133b1ed0?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1579338559194-a162d19bf842?w=800&auto=format&fit=crop&q=80',
+  ],
+  White: [
+    'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=800&auto=format&fit=crop&q=80',
+  ],
+  Red: [
+    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?w=800&auto=format&fit=crop&q=80',
+  ],
+  Blue: [
+    'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1539185441755-769473a23570?w=800&auto=format&fit=crop&q=80',
+  ],
+  Grey: [
+    'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1539185441755-769473a23570?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1605348532760-6753d2c43329?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1562183241-b937e95585b6?w=800&auto=format&fit=crop&q=80',
+  ],
+}
+
 function generateProducts() {
   const prefixes = [
-    'Aero', 'Velocity', 'Metro', 'Street', 'Executive', 'Summit', 'Urban', 'Glide', 'Apex', 'Pulse',
-    'Nitro', 'Endurance', 'Marathon', 'Hyper', 'Horizon', 'Cloud', 'Zenith', 'Pure', 'Flyknit', 'Volt',
-    'Heritage', 'Royal', 'Monk', 'Brogue', 'Chukka', 'Timber', 'Explorer', 'Stealth', 'Slam', 'Crossfit',
-    'Retro', 'Cyber', 'Terrace', 'Neon', 'Grand', 'Legend', 'Air', 'Court', 'Vapor', 'Zoom',
-    'Titan', 'Nova', 'React', 'Pegasus', 'Force', 'Infinity', 'Lunar', 'Free', 'Structure', 'Winflo'
+    'Air Max', 'Ultraboost', 'Retro High', 'Court Vision', 'Velocity', 'Summit', 'Metro', 'Legacy', 'Quantum', 'Cloud',
+    'Pulse', 'Blazer', 'Zoom', 'Vapor', 'Classic', 'Ignite', 'Phantom', 'Titan', 'Samba', 'Gazelle',
+    'Pegasus', 'Dunk Low', 'Forum', 'Clyde', 'Floatride', 'Speedcross', 'Clifton', 'Ghost', 'Terrex'
   ]
 
   const suffixes = [
@@ -103,11 +174,14 @@ function generateProducts() {
   ]
 
   const genders = ['men', 'women', 'unisex']
-  const materials = ['Mesh', 'Knit', 'Canvas', 'Genuine Leather', 'Suede', 'Nubuck', 'Synthetic']
-  const categoryNames = ['Running', 'Sneakers', 'Formal', 'Boots', 'Training', 'Basketball']
+  const materials = ['Mesh', 'Knit Upper', 'Canvas', 'Genuine Leather', 'Suede', 'Nubuck', 'Synthetic Mesh']
+  const categoryNames = ['Running', 'Sneakers', 'Formal', 'Boots', 'Training', 'Basketball', 'Outdoor', 'Casual shoes']
   const colorsList = [
-    ['Black', 'White'], ['Red', 'Black'], ['Blue', 'Grey'], ['White', 'Green'],
-    ['Brown', 'Tan'], ['Black', 'Navy'], ['Olive', 'Black'], ['Pink', 'White']
+    ['Black', 'White', 'Red'],
+    ['Blue', 'Grey', 'White'],
+    ['White', 'Black'],
+    ['Red', 'Black'],
+    ['Grey', 'Blue'],
   ]
 
   const products = []
@@ -117,19 +191,32 @@ function generateProducts() {
     for (let j = 0; j < suffixes.length; j++) {
       if (products.length >= 100) break
 
-      const pName = `${prefixes[i]} ${suffixes[j]}`
+      const brand = BRANDS_LIST[count % BRANDS_LIST.length]
+      const pName = `${brand} ${prefixes[i]} ${suffixes[j]}`.toUpperCase()
       const category = categoryNames[count % categoryNames.length]
       const gender = genders[count % genders.length]
       const material = materials[count % materials.length]
       const colors = colorsList[count % colorsList.length]
-      const price = Number((59.99 + (count * 3.7) % 220).toFixed(2))
+      const price = Number((59.99 + (count * 4.5) % 200).toFixed(2))
       const compareAtPrice = count % 3 === 0 ? Number((price * 1.25).toFixed(2)) : null
-      const img1 = unsplashImages[(count - 1) % unsplashImages.length]
-      const img2 = unsplashImages[count % unsplashImages.length]
+
+      const uniquePrimary = UNIQUE_SHOE_IMAGES[(count * 3 + i) % UNIQUE_SHOE_IMAGES.length]
+      const uniqueSecondary = UNIQUE_SHOE_IMAGES[(count * 3 + j + 5) % UNIQUE_SHOE_IMAGES.length]
+
+      const colorImages = colors.map((col, cIdx) => {
+        const palette = COLOR_GALLERY[col] || COLOR_GALLERY.Black
+        return {
+          color: col,
+          images: [palette[(count + cIdx) % palette.length], uniqueSecondary],
+        }
+      })
+
+      const allImages = [uniquePrimary, uniqueSecondary, ...colorImages.flatMap((ci) => ci.images)]
       const pId = publicId()
 
       products.push({
         name: pName,
+        brand,
         category,
         sku: `SS-KICK-${String(count).padStart(4, '0')}`,
         price,
@@ -137,11 +224,12 @@ function generateProducts() {
         gender,
         material,
         colors,
-        images: [img1, img2],
-        image: img1,
+        images: allImages,
+        image: uniquePrimary,
+        colorImages,
         featured: count % 6 === 0,
-        description: `Premium grade ${pName} designed for superior comfort and modern athletic lifestyle. Crafted with high performance ${material.toLowerCase()} upper and responsive cushioning.`,
-        tags: [category.toLowerCase(), gender, material.toLowerCase()],
+        description: `Premium grade ${pName} from ${brand}. Engineered with ${material.toLowerCase()} upper, anatomically contoured cushioning, and multi-surface traction outer sole for high performance ${category.toLowerCase()} and daily lifestyle comfort.`,
+        tags: [category.toLowerCase(), brand.toLowerCase(), gender, material.toLowerCase(), 'footwear', 'authentic', 'cushioned'],
         rating: Number((4.2 + (count % 8) * 0.1).toFixed(1)),
         reviewCount: 15 + count * 3,
         id: pId,
@@ -211,7 +299,7 @@ function buildInitialData() {
       price: p.price,
       compareAtPrice: p.compareAtPrice,
       costPerItem: Number((p.price * 0.45).toFixed(2)),
-      brand: 'Kick',
+      brand: p.brand,
       gender: p.gender,
       material: p.material,
       status: 'active',
@@ -223,7 +311,7 @@ function buildInitialData() {
       reviewCount: p.reviewCount,
       images: p.images,
       image: p.image,
-      colorImages: p.colors.map((color, colorIndex) => ({
+      colorImages: p.colorImages || p.colors.map((color, colorIndex) => ({
         color,
         images: [p.images[colorIndex % p.images.length]],
       })),
@@ -388,20 +476,53 @@ class MemoryStore {
       const genders = Array.isArray(filters.gender) ? filters.gender : [filters.gender]
       list = list.filter((p) => genders.includes(p.gender))
     }
-    if (filters.minPrice) {
-      list = list.filter((p) => p.price >= Number(filters.minPrice))
+    const effectiveMin = filters.minPrice ?? filters.priceMin
+    const effectiveMax = filters.maxPrice ?? filters.priceMax
+    if (effectiveMin !== undefined && effectiveMin !== null) {
+      list = list.filter((p) => p.price >= Number(effectiveMin))
     }
-    if (filters.maxPrice) {
-      list = list.filter((p) => p.price <= Number(filters.maxPrice))
+    if (effectiveMax !== undefined && effectiveMax !== null) {
+      list = list.filter((p) => p.price <= Number(effectiveMax))
+    }
+    if (filters.color) {
+      const col = String(filters.color).toLowerCase()
+      list = list.filter((p) =>
+        p.colors?.some((c) => c.toLowerCase() === col) ||
+        p.colorImages?.some((ci) => ci.color?.toLowerCase() === col) ||
+        p.variants?.some((v) => v.color?.toLowerCase() === col)
+      )
+    }
+    if (filters.size) {
+      const sz = String(filters.size)
+      list = list.filter((p) =>
+        p.variants?.some((v) => String(v.size) === sz && (v.inStock || (v.stock - (v.reserved || 0)) > 0))
+      )
     }
     if (filters.search) {
-      const q = filters.search.toLowerCase()
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q)
-      )
+      const q = filters.search.toLowerCase().trim()
+      const searchTokens = q.split(/\s+/).filter(Boolean)
+      list = list.filter((p) => {
+        const fullDoc = [
+          p.name,
+          p.brand,
+          p.description,
+          p.material,
+          p.category?.name,
+          p.category?.slug,
+          p.gender,
+          p.sku,
+          ...(p.tags || []),
+          ...(p.colors || []),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+
+        // Match if all search tokens are found, or any token is found
+        return searchTokens.length > 1
+          ? searchTokens.some((tok) => fullDoc.includes(tok))
+          : fullDoc.includes(q)
+      })
     }
     if (filters.featured) {
       list = list.filter((p) => p.featured)

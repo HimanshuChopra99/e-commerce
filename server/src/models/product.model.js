@@ -130,9 +130,12 @@ export async function findAll(filters = {}) {
   try {
     const {
       limit = 20, offset = 0, categorySlug, categoryPublicId, gender,
-      minPrice, maxPrice, size, color, search, status, featured,
+      minPrice, maxPrice, priceMin, priceMax, size, color, search, status, featured,
       inStockOnly = false, sort = 'newest', storefront = false,
     } = filters
+
+    const effectiveMinPrice = minPrice ?? priceMin
+    const effectiveMaxPrice = maxPrice ?? priceMax
 
     const where = ['p.deleted_at IS NULL']
     const params = []
@@ -158,17 +161,19 @@ export async function findAll(filters = {}) {
       params.push(...list)
     }
 
-    if (minPrice !== undefined && minPrice !== null) { where.push('p.price >= ?'); params.push(minPrice) }
-    if (maxPrice !== undefined && maxPrice !== null) { where.push('p.price <= ?'); params.push(maxPrice) }
+    if (effectiveMinPrice !== undefined && effectiveMinPrice !== null) { where.push('p.price >= ?'); params.push(effectiveMinPrice) }
+    if (effectiveMaxPrice !== undefined && effectiveMaxPrice !== null) { where.push('p.price <= ?'); params.push(effectiveMaxPrice) }
     if (featured !== undefined) { where.push('p.is_featured = ?'); params.push(featured ? 1 : 0) }
 
     if (search) {
-      // Search across customer-facing product information and category, not just SKU.
+      // Search across customer-facing product information, material, tags, and category.
       where.push(`(MATCH(p.name, p.description, p.brand) AGAINST (? IN NATURAL LANGUAGE MODE)
                    OR p.name LIKE ? OR p.sku LIKE ? OR p.brand LIKE ?
-                   OR p.description LIKE ? OR c.name LIKE ? OR c.slug LIKE ?)`)
+                   OR p.description LIKE ? OR p.material LIKE ? OR p.gender LIKE ?
+                   OR c.name LIKE ? OR c.slug LIKE ?
+                   OR p.tags LIKE ?)`)
       const like = `%${search}%`
-      params.push(search, like, like, like, like, like, like)
+      params.push(search, like, like, like, like, like, like, like, like, like)
     }
 
     if (size) {
