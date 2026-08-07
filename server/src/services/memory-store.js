@@ -86,13 +86,40 @@ const USERS_DATA = [
   },
 ]
 
+const BRANDS_LIST = [
+  'Nike', 'Adidas', 'Jordan', 'Puma', 'New Balance',
+  'Asics', 'Reebok', 'Converse', 'Vans', 'Under Armour',
+  'Saucony', 'Brooks', 'Hoka', 'Salomon', 'Timberland',
+]
+
+const COLOR_GALLERY = {
+  Black: [
+    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&w=800&q=80',
+  ],
+  White: [
+    'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?auto=format&fit=crop&w=800&q=80',
+  ],
+  Red: [
+    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=800&q=80',
+  ],
+  Blue: [
+    'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?auto=format&fit=crop&w=800&q=80',
+  ],
+  Grey: [
+    'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=800&q=80',
+  ],
+}
+
 function generateProducts() {
   const prefixes = [
-    'Aero', 'Velocity', 'Metro', 'Street', 'Executive', 'Summit', 'Urban', 'Glide', 'Apex', 'Pulse',
-    'Nitro', 'Endurance', 'Marathon', 'Hyper', 'Horizon', 'Cloud', 'Zenith', 'Pure', 'Flyknit', 'Volt',
-    'Heritage', 'Royal', 'Monk', 'Brogue', 'Chukka', 'Timber', 'Explorer', 'Stealth', 'Slam', 'Crossfit',
-    'Retro', 'Cyber', 'Terrace', 'Neon', 'Grand', 'Legend', 'Air', 'Court', 'Vapor', 'Zoom',
-    'Titan', 'Nova', 'React', 'Pegasus', 'Force', 'Infinity', 'Lunar', 'Free', 'Structure', 'Winflo'
+    'Air Max', 'Ultraboost', 'Retro High', 'Court Vision', 'Velocity', 'Summit', 'Metro', 'Legacy', 'Quantum', 'Cloud',
+    'Pulse', 'Blazer', 'Zoom', 'Vapor', 'Classic', 'Ignite', 'Phantom', 'Titan', 'Samba', 'Gazelle',
+    'Pegasus', 'Dunk Low', 'Forum', 'Clyde', 'Floatride', 'Speedcross', 'Clifton', 'Ghost', 'Terrex'
   ]
 
   const suffixes = [
@@ -103,11 +130,14 @@ function generateProducts() {
   ]
 
   const genders = ['men', 'women', 'unisex']
-  const materials = ['Mesh', 'Knit', 'Canvas', 'Genuine Leather', 'Suede', 'Nubuck', 'Synthetic']
-  const categoryNames = ['Running', 'Sneakers', 'Formal', 'Boots', 'Training', 'Basketball']
+  const materials = ['Mesh', 'Knit Upper', 'Canvas', 'Genuine Leather', 'Suede', 'Nubuck', 'Synthetic Mesh']
+  const categoryNames = ['Running', 'Sneakers', 'Formal', 'Boots', 'Training', 'Basketball', 'Outdoor', 'Casual shoes']
   const colorsList = [
-    ['Black', 'White'], ['Red', 'Black'], ['Blue', 'Grey'], ['White', 'Green'],
-    ['Brown', 'Tan'], ['Black', 'Navy'], ['Olive', 'Black'], ['Pink', 'White']
+    ['Black', 'White', 'Red'],
+    ['Blue', 'Grey', 'White'],
+    ['White', 'Black'],
+    ['Red', 'Black'],
+    ['Grey', 'Blue'],
   ]
 
   const products = []
@@ -117,19 +147,26 @@ function generateProducts() {
     for (let j = 0; j < suffixes.length; j++) {
       if (products.length >= 100) break
 
-      const pName = `${prefixes[i]} ${suffixes[j]}`
+      const brand = BRANDS_LIST[count % BRANDS_LIST.length]
+      const pName = `${brand} ${prefixes[i]} ${suffixes[j]}`.toUpperCase()
       const category = categoryNames[count % categoryNames.length]
       const gender = genders[count % genders.length]
       const material = materials[count % materials.length]
       const colors = colorsList[count % colorsList.length]
-      const price = Number((59.99 + (count * 3.7) % 220).toFixed(2))
+      const price = Number((59.99 + (count * 4.5) % 200).toFixed(2))
       const compareAtPrice = count % 3 === 0 ? Number((price * 1.25).toFixed(2)) : null
-      const img1 = unsplashImages[(count - 1) % unsplashImages.length]
-      const img2 = unsplashImages[count % unsplashImages.length]
+
+      const colorImages = colors.map((col) => ({
+        color: col,
+        images: COLOR_GALLERY[col] || COLOR_GALLERY.Black,
+      }))
+
+      const allImages = colorImages.flatMap((ci) => ci.images)
       const pId = publicId()
 
       products.push({
         name: pName,
+        brand,
         category,
         sku: `SS-KICK-${String(count).padStart(4, '0')}`,
         price,
@@ -137,11 +174,12 @@ function generateProducts() {
         gender,
         material,
         colors,
-        images: [img1, img2],
-        image: img1,
+        images: allImages,
+        image: allImages[0],
+        colorImages,
         featured: count % 6 === 0,
-        description: `Premium grade ${pName} designed for superior comfort and modern athletic lifestyle. Crafted with high performance ${material.toLowerCase()} upper and responsive cushioning.`,
-        tags: [category.toLowerCase(), gender, material.toLowerCase()],
+        description: `Premium grade ${pName} from ${brand}. Engineered with ${material.toLowerCase()} upper, anatomically contoured cushioning, and multi-surface traction outer sole for high performance ${category.toLowerCase()} and daily lifestyle comfort.`,
+        tags: [category.toLowerCase(), brand.toLowerCase(), gender, material.toLowerCase(), 'footwear', 'authentic', 'cushioned'],
         rating: Number((4.2 + (count % 8) * 0.1).toFixed(1)),
         reviewCount: 15 + count * 3,
         id: pId,
@@ -211,7 +249,7 @@ function buildInitialData() {
       price: p.price,
       compareAtPrice: p.compareAtPrice,
       costPerItem: Number((p.price * 0.45).toFixed(2)),
-      brand: 'Kick',
+      brand: p.brand,
       gender: p.gender,
       material: p.material,
       status: 'active',
@@ -223,7 +261,7 @@ function buildInitialData() {
       reviewCount: p.reviewCount,
       images: p.images,
       image: p.image,
-      colorImages: p.colors.map((color, colorIndex) => ({
+      colorImages: p.colorImages || p.colors.map((color, colorIndex) => ({
         color,
         images: [p.images[colorIndex % p.images.length]],
       })),
