@@ -1,6 +1,21 @@
 import { pool, isDatabaseConnected } from '../config/database.js'
 import { parseJson } from '../utils/helpers.js'
 import { memoryStore } from '../services/memory-store.js'
+import * as userModel from './user.model.js'
+
+// ULIDs are exactly 26 uppercase alphanumeric characters.
+// If userId matches that pattern it is a public_id; resolve it to the
+// internal BIGINT so MySQL does not truncate it into the BIGINT column.
+const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/i
+
+async function resolveInternalUserId(userId) {
+  if (ULID_RE.test(String(userId))) {
+    const user = await userModel.findByPublicId(userId)
+    if (!user?.internalId) throw new Error(`User not found for public_id: ${userId}`)
+    return user.internalId
+  }
+  return userId
+}
 
 function imageForColor(imagesValue, colorImagesValue, color) {
   const colorImages = parseJson(colorImagesValue, [])
@@ -51,7 +66,8 @@ const CART_SELECT = `
 export async function findByUser(userId, conn = pool) {
   if (isDatabaseConnected()) {
     try {
-      const [rows] = await conn.query(CART_SELECT, [userId])
+      const internalId = await resolveInternalUserId(userId)
+      const [rows] = await conn.query(CART_SELECT, [internalId])
       return rows.map(mapCartRow)
     } catch {
       // Development can continue through the in-memory fallback.
@@ -91,11 +107,12 @@ export async function findByUser(userId, conn = pool) {
 
 export async function setItem(userId, variantInternalId, variantPublicId, quantity, conn = pool) {
   if (isDatabaseConnected()) {
+    const internalId = await resolveInternalUserId(userId)
     const [result] = await conn.query(
       `INSERT INTO cart_items (user_id, variant_id, quantity)
        VALUES (?,?,?)
        ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), updated_at = CURRENT_TIMESTAMP`,
-      [userId, variantInternalId, quantity]
+      [internalId, variantInternalId, quantity]
     )
     return result.affectedRows > 0
   }
@@ -105,13 +122,14 @@ export async function setItem(userId, variantInternalId, variantPublicId, quanti
 
 export async function mergeItem(userId, variantInternalId, variantPublicId, quantity, conn = pool) {
   if (isDatabaseConnected()) {
+    const internalId = await resolveInternalUserId(userId)
     const [result] = await conn.query(
       `INSERT INTO cart_items (user_id, variant_id, quantity)
        VALUES (?,?,?)
        ON DUPLICATE KEY UPDATE
          quantity = GREATEST(quantity, VALUES(quantity)),
          updated_at = CURRENT_TIMESTAMP`,
-      [userId, variantInternalId, quantity]
+      [internalId, variantInternalId, quantity]
     )
     return result.affectedRows > 0
   }
@@ -124,9 +142,10 @@ export async function mergeItem(userId, variantInternalId, variantPublicId, quan
 
 export async function removeItem(userId, variantInternalId, variantPublicId, conn = pool) {
   if (isDatabaseConnected()) {
+    const internalId = await resolveInternalUserId(userId)
     const [result] = await conn.query(
       'DELETE FROM cart_items WHERE user_id = ? AND variant_id = ?',
-      [userId, variantInternalId]
+      [internalId, variantInternalId]
     )
     return result.affectedRows > 0
   }
@@ -136,7 +155,8 @@ export async function removeItem(userId, variantInternalId, variantPublicId, con
 
 export async function clearByUser(userId, conn = pool) {
   if (isDatabaseConnected()) {
-    const [result] = await conn.query('DELETE FROM cart_items WHERE user_id = ?', [userId])
+    const internalId = await resolveInternalUserId(userId)
+    const [result] = await conn.query('DELETE FROM cart_items WHERE user_id = ?', [internalId])
     return result.affectedRows ?? 0
   }
   memoryStore.clearCart(userId)

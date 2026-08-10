@@ -1,6 +1,18 @@
 import { pool, isDatabaseConnected } from '../config/database.js'
 import * as productModel from './product.model.js'
 import { memoryStore } from '../services/memory-store.js'
+import * as userModel from './user.model.js'
+
+const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/i
+
+async function resolveInternalUserId(userId) {
+  if (ULID_RE.test(String(userId))) {
+    const user = await userModel.findByPublicId(userId)
+    if (!user?.internalId) throw new Error(`User not found for public_id: ${userId}`)
+    return user.internalId
+  }
+  return userId
+}
 
 const FAVOURITES_SELECT = `
   SELECT p.*,
@@ -23,7 +35,8 @@ const FAVOURITES_SELECT = `
 export async function findByUser(userId, conn = pool) {
   if (isDatabaseConnected()) {
     try {
-      const [rows] = await conn.query(FAVOURITES_SELECT, [userId])
+      const internalId = await resolveInternalUserId(userId)
+      const [rows] = await conn.query(FAVOURITES_SELECT, [internalId])
       return rows.map(productModel.mapProduct).map(productModel.toPublicProduct)
     } catch {
       // Development can continue through the in-memory fallback.
@@ -39,9 +52,10 @@ export async function findByUser(userId, conn = pool) {
 
 export async function add(userId, productInternalId, productPublicId, conn = pool) {
   if (isDatabaseConnected()) {
+    const internalUserId = await resolveInternalUserId(userId)
     const [result] = await conn.query(
       'INSERT IGNORE INTO favourites (user_id, product_id) VALUES (?,?)',
-      [userId, productInternalId]
+      [internalUserId, productInternalId]
     )
     return result.affectedRows > 0
   }
@@ -51,9 +65,10 @@ export async function add(userId, productInternalId, productPublicId, conn = poo
 
 export async function remove(userId, productInternalId, productPublicId, conn = pool) {
   if (isDatabaseConnected()) {
+    const internalUserId = await resolveInternalUserId(userId)
     const [result] = await conn.query(
       'DELETE FROM favourites WHERE user_id = ? AND product_id = ?',
-      [userId, productInternalId]
+      [internalUserId, productInternalId]
     )
     return result.affectedRows > 0
   }

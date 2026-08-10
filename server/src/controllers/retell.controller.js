@@ -45,7 +45,7 @@ export const handleFunction = async (req, res) => {
 
     const args = req.body.args || req.body.parameters || req.body.arguments || {}
     const userId = req.body.metadata?.userId || req.body.call?.metadata?.userId || req.body.userId || 'guest'
-
+    
     // Console Log 1: What user send to Retell / Tool Call received
     console.log(`\n📥 [USER -> RETELL] Tool Call: "${function_name}"`)
     console.log(`   Arguments:`, JSON.stringify(args))

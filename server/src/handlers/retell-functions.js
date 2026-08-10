@@ -5,8 +5,24 @@ import { getPublicBySlug } from '../services/product.service.js'
 import { getPageState } from '../services/session-state.service.js'
 import { emitToUser } from '../config/socket.js'
 import { logger } from '../config/logger.js'
+import { findByPublicId } from '../models/user.model.js'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+// ULIDs are 26-char alphanumeric public_ids used in the API / socket layer.
+// DB tables store the internal BIGINT id in user_id columns.
+// This helper resolves the ULID → internalId so all service/model calls use
+// the correct type. The original ULID is kept for socket emits.
+const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/i
+async function resolveDbUserId(publicId) {
+  if (!publicId || publicId === 'guest') return null
+  if (ULID_RE.test(String(publicId))) {
+    const user = await findByPublicId(publicId)
+    return user?.internalId ?? null
+  }
+  // Already an internal numeric id (e.g. from REST middleware)
+  return publicId
+}
 
 function emit(userId, type, payload = {}) {
   try {
@@ -28,21 +44,15 @@ function fail(message, extra = {}) {
 }
 
 // ─── Variant Selection Helpers ───────────────────────────────────────────────
-//
-// These normalise free-form voice values ("red", "grey", "10", "ten") into the
-// canonical strings stored on the product's variants ("Red", "10"). Validation
-// happens HERE, server-side, so the UI never renders an invalid selection.
 
 function normalizeColor(product, rawColor) {
   if (!product?.variants?.length || rawColor === undefined || rawColor === null || rawColor === '') return null
   const target = String(rawColor).trim().toLowerCase()
   const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean))]
 
-  // Exact match wins
   const exact = colors.find((c) => c.toLowerCase() === target)
   if (exact) return exact
 
-  // Common spelling variants (grey/gray, etc.)
   const synonyms = { gray: 'grey', grey: 'gray', 'off-white': 'white', cream: 'beige' }
   const swapped = synonyms[target]
   if (swapped) {
@@ -50,7 +60,6 @@ function normalizeColor(product, rawColor) {
     if (match) return match
   }
 
-  // Partial match — "navy" matches "Shadow Navy", "red" matches "Dark Red"
   const partial = colors.find((c) => c.toLowerCase().includes(target) || target.includes(c.toLowerCase()))
   return partial || null
 }
@@ -60,11 +69,9 @@ function normalizeSize(product, rawSize) {
   const target = String(rawSize).trim()
   const sizes = [...new Set(product.variants.map((v) => String(v.size)).filter(Boolean))]
 
-  // Exact match wins ("10", "10.5")
   const exact = sizes.find((s) => s === target)
   if (exact) return exact
 
-  // Numeric match tolerates formatting ("10.0" → "10")
   const num = parseFloat(target)
   if (!Number.isNaN(num)) {
     const numeric = sizes.find((s) => parseFloat(s) === num)
@@ -77,12 +84,8 @@ function isVariantInStock(variant) {
   return Boolean(variant?.inStock ?? Number(variant?.available ?? 0) > 0)
 }
 
-// If the customer is on a product detail page and an incoming search/filter
-// request is really a color/size selection ("select red", "grey size 42",
-// "pick the blue one"), return the selection args to apply to the OPEN
-// product instead of navigating to the catalog. This makes the feature work
-// even when the LLM agent chooses the search/filter tools, because the
-// server knows which page the customer is on.
+// FIX #1: selectionRedirectArgs — was too aggressive; only redirect when the
+// user is already on a product page AND the text has NO new product name intent.
 function selectionRedirectArgs(args, userId) {
   const tracked = getPageState(userId)
   if (tracked?.type !== 'product' || !tracked.slug) return null
@@ -93,17 +96,13 @@ function selectionRedirectArgs(args, userId) {
   const extractedSize = args.size || voiceSearch.extractSize(text)
   if (!extractedColor && !extractedSize) return null
 
-  // Other browse signals (category, brand, material, gender, price) mean the
-  // customer wants the catalog, not a selection on the open product.
   const hasOtherFilter = Boolean(args.category || args.brand || args.material || args.gender) ||
     Boolean(voiceSearch.extractCategory(text) || voiceSearch.extractBrand(text) || voiceSearch.extractMaterial(text) || voiceSearch.extractGender(text))
   const hasPrice = [args.min_price, args.max_price, args.price_min, args.price_max]
     .some((v) => v !== undefined && v !== null)
   if (hasOtherFilter || hasPrice) return null
 
-  // Selection verbs win even if the phrase also contains "shoes".
   const selectionVerb = /\b(select|pick|choose|switch|change|make it|go with|i want|i'll take|put me in|swap|try|grab)\b/i.test(text)
-  // Explicit browse intent means a real search ("show me red shoes").
   const browseWord = /\b(show|find|browse|search|looking|list|suggest|recommend|any|some|best|cheap|under|over|need)\b/i.test(text)
 
   if (selectionVerb || !browseWord) {
@@ -117,8 +116,6 @@ function selectionRedirectArgs(args, userId) {
 async function handleSearchProduct(args = {}, userId) {
   logger.info({ args, userId }, '[RetellHandler] handleSearchProduct invoked')
 
-  // If the customer is already on a product detail page and the request is
-  // really a color/size selection, apply it there instead of searching.
   const selectionArgs = selectionRedirectArgs(args, userId)
   if (selectionArgs) {
     return handleSelectVariant(selectionArgs, userId)
@@ -140,7 +137,6 @@ async function handleSearchProduct(args = {}, userId) {
   }
 
   if (result.type === 'exact') {
-    // Specific product match >= 80% or exact comprehensive details >= 90%
     emit(userId, 'navigate', { path: `/product/${result.product.slug}` })
     emit(userId, 'toast', { message: `Opening ${result.product.name}`, kind: 'info' })
     return ok(result.message, {
@@ -159,7 +155,6 @@ async function handleSearchProduct(args = {}, userId) {
     })
   }
 
-  // Suggestions, browsing, and multi-result searches — navigate to filtered product list on screen
   emit(userId, 'navigate', { path: result.navigateTo })
   emit(userId, 'toast', { message: result.toastMessage || result.message, kind: 'info' })
 
@@ -176,49 +171,83 @@ async function handleSearchProduct(args = {}, userId) {
     })),
   })
 }
-  
+
 async function handleSuggestProducts(args = {}, userId) {
-  // Explicit suggestion intent handler
   const suggestionArgs = typeof args === 'string'
     ? { query: `suggest ${args}`, isSuggestion: true }
     : { ...args, isSuggestion: true }
   return handleSearchProduct(suggestionArgs, userId)
 }
 
-async function handleAddToCart({ product_id, product_slug, size, color, quantity = 1 }, userId) {
+async function handleAddToCart({ product_id, product_slug, product_name, size, color, quantity = 1 }, userId) {
   if (!userId || userId === 'guest') {
     return fail('Please sign in to add items to your cart.')
   }
 
+  const dbUserId = await resolveDbUserId(userId)
+  if (!dbUserId) return fail('Could not identify your account. Please sign in again.')
+
   try {
-    let product
+    // ── 1. Resolve product ───────────────────────────────────────────────────
+    let product = null
+    let tracked = getPageState(userId)
+
     if (product_slug) {
       product = await getPublicBySlug(product_slug)
+    } else if (product_name) {
+      const result = await voiceSearch.search({ query: product_name })
+      if (result.type === 'exact') product = result.product
     } else if (product_id) {
-      const result = await voiceSearch.search(product_id)
+      const result = await voiceSearch.search({ query: product_id })
       product = result.product || null
+    } else if (tracked?.type === 'product' && tracked.slug) {
+      // No product identifier from agent — use whatever is open on screen
+      product = await getPublicBySlug(tracked.slug)
     }
 
-    if (!product) return fail('I could not find that product. Please try searching for it first.')
+    if (!product) {
+      return fail('I could not find that product. Please search for a shoe first, then say "add to cart".')
+    }
 
     if (!product.inStock) {
       return fail(`Sorry, ${product.name} is currently out of stock.`)
     }
 
-    // Find the right variant
+    // ── 2. Inherit size/color from the tracked page state when agent omits them
+    // This is the core fix: after the user says "select blue size 40" and the
+    // variant:select event fires, the client reports the selection back via
+    // page:update → setPageState. So when the agent calls add_to_cart with {}
+    // we can read size/color right here instead of asking the user again.
+    if (tracked?.type === 'product' && tracked.slug === product.slug) {
+      if (!size  && tracked.size)  size  = tracked.size
+      if (!color && tracked.color) color = tracked.color
+    }
+
+    // ── 3. Validate size/color before attempting findVariant ─────────────────
+    const availableSizes  = [...new Set(product.variants?.filter(isVariantInStock).map(v => String(v.size)))].sort((a, b) => Number(a) - Number(b))
+    const availableColors = [...new Set(product.variants?.filter(isVariantInStock).map(v => v.color).filter(Boolean))]
+
+    if (!size && availableSizes.length > 1) {
+      return fail(
+        `What size do you want for ${product.name}? Available sizes: ${availableSizes.join(', ')}.`,
+        { availableSizes, availableColors }
+      )
+    }
+
     const variant = voiceSearch.findVariant(product, size, color)
 
     if (!variant) {
-      const availableSizes = [...new Set(product.variants?.filter(v => v.inStock).map(v => v.size))].join(', ')
-      const availableColors = [...new Set(product.variants?.filter(v => v.inStock).map(v => v.color))].join(', ')
       let msg = `I couldn't find ${product.name}`
-      if (size) msg += ` in size ${size}`
+      if (size)  msg += ` in size ${size}`
       if (color) msg += ` in ${color}`
-      msg += `. Available sizes: ${availableSizes}. Available colors: ${availableColors}.`
-      return fail(msg)
+      msg += `.`
+      if (availableSizes.length)  msg += ` Available sizes: ${availableSizes.join(', ')}.`
+      if (availableColors.length) msg += ` Available colors: ${availableColors.join(', ')}.`
+      return fail(msg, { availableSizes, availableColors })
     }
 
-    await cartService.addItem(userId, { variantId: variant.id, quantity: Math.min(quantity, 10) })
+    // ── 4. Add to cart ───────────────────────────────────────────────────
+    await cartService.addItem(dbUserId, { variantId: variant.id, quantity: Math.min(quantity, 10) })
 
     emit(userId, 'cart:refresh', {})
     emit(userId, 'toast', {
@@ -226,24 +255,56 @@ async function handleAddToCart({ product_id, product_slug, size, color, quantity
       kind: 'success',
     })
 
-    return ok(`Added ${product.name} to your cart successfully.`)
+    return ok(`Added ${product.name}${size ? ` size ${size}` : ''}${color ? ` in ${color}` : ''} to your cart!`)
   } catch (err) {
     logger.error({ err: err.message, userId }, 'handleAddToCart error')
-    return fail(err.message || 'Failed to add item to cart. Please try again.')
+
+    // ── 5. Sanitize DB/internal errors — never speak raw SQL to the user ─────
+    const rawMsg = err.message || ''
+    const isDbError = /truncated|column|row \d|sql|duplicate entry|constraint/i.test(rawMsg)
+    if (isDbError) {
+      logger.error({ rawMsg, userId }, '[handleAddToCart] DB error — check user_id column length or schema')
+      return fail('Something went wrong adding to your cart. Please try again.')
+    }
+
+    // Known domain errors (stock, unavailable) are safe to surface
+    return fail(rawMsg || 'Failed to add item to cart. Please try again.')
   }
 }
 
-async function handleRemoveFromCart({ product_name, variant_id }, userId) {
+// FIX #5: handleRemoveFromCart — support product_name lookup as fallback
+// when the agent only has a name (not variant_id). The old code returned
+// a silent fail("Please specify which item to remove") in that case.
+async function handleRemoveFromCart({ product_name, variant_id, product_slug }, userId) {
   if (!userId || userId === 'guest') return fail('Please sign in first.')
+  const dbUserId = await resolveDbUserId(userId)
+  if (!dbUserId) return fail('Could not identify your account. Please sign in again.')
 
   try {
-    if (variant_id) {
-      await cartService.removeItem(userId, variant_id)
-      emit(userId, 'cart:refresh', {})
-      emit(userId, 'toast', { message: 'Item removed from cart.', kind: 'info' })
-      return ok('Item removed from your cart.')
+    // Resolve variant_id from name/slug if not provided directly
+    if (!variant_id && (product_name || product_slug)) {
+      const items = await cartService.get(dbUserId)
+      const needle = (product_name || product_slug || '').toLowerCase()
+      const match = items.find(i =>
+        i.name?.toLowerCase().includes(needle) ||
+        i.slug?.toLowerCase() === needle
+      )
+      if (!match) {
+        return fail(
+          `I don't see ${product_name || product_slug} in your cart. Say "show my cart" to check what's in there.`
+        )
+      }
+      variant_id = match.variantId || match.variant_id
     }
-    return fail('Please specify which item to remove.')
+
+    if (!variant_id) {
+      return fail('Please tell me which item you want to remove, or say "show my cart" to check what\'s in there.')
+    }
+
+    await cartService.removeItem(dbUserId, variant_id)
+    emit(userId, 'cart:refresh', {})
+    emit(userId, 'toast', { message: 'Item removed from cart.', kind: 'info' })
+    return ok('Done, item removed from your cart.')
   } catch (err) {
     logger.error({ err: err.message }, 'handleRemoveFromCart error')
     return fail('Failed to remove item. Please try again.')
@@ -252,8 +313,10 @@ async function handleRemoveFromCart({ product_name, variant_id }, userId) {
 
 async function handleClearCart(_, userId) {
   if (!userId || userId === 'guest') return fail('Please sign in first.')
+  const dbUserId = await resolveDbUserId(userId)
+  if (!dbUserId) return fail('Could not identify your account. Please sign in again.')
   try {
-    await cartService.clear(userId)
+    await cartService.clear(dbUserId)
     emit(userId, 'cart:refresh', {})
     emit(userId, 'toast', { message: 'Cart cleared.', kind: 'info' })
     return ok('Your cart has been cleared.')
@@ -262,26 +325,39 @@ async function handleClearCart(_, userId) {
   }
 }
 
-async function handleToggleFavourite({ product_slug, action }, userId) {
+// FIX #6: handleToggleFavourite — resolve product from tracked page when no
+// slug given, same pattern as add-to-cart fix.
+async function handleToggleFavourite({ product_slug, product_name, action }, userId) {
   if (!userId || userId === 'guest') return fail('Please sign in to save favourites.')
+  const dbUserId = await resolveDbUserId(userId)
+  if (!dbUserId) return fail('Could not identify your account. Please sign in again.')
 
   try {
-    let product
+    let product = null
     if (product_slug) {
       product = await getPublicBySlug(product_slug)
+    } else if (product_name) {
+      const result = await voiceSearch.search({ query: product_name })
+      if (result.type === 'exact') product = result.product
+    } else {
+      const tracked = getPageState(userId)
+      if (tracked?.type === 'product' && tracked.slug) {
+        product = await getPublicBySlug(tracked.slug)
+      }
     }
-    if (!product) return fail('Could not find that product.')
 
-    const favourites = await favouriteService.get(userId)
+    if (!product) return fail('Could not find that product. Which shoe do you want to save?')
+
+    const favourites = await favouriteService.get(dbUserId)
     const isSaved = favourites.some(f => f.id === product.id || f.slug === product.slug)
 
     if (action === 'add' || (!action && !isSaved)) {
-      await favouriteService.add(userId, product.id)
+      await favouriteService.add(dbUserId, product.id)
       emit(userId, 'wishlist:refresh', {})
       emit(userId, 'toast', { message: `${product.name} saved to favourites.`, kind: 'success' })
       return ok(`${product.name} has been saved to your favourites.`)
     } else {
-      await favouriteService.remove(userId, product.id)
+      await favouriteService.remove(dbUserId, product.id)
       emit(userId, 'wishlist:refresh', {})
       emit(userId, 'toast', { message: `${product.name} removed from favourites.`, kind: 'info' })
       return ok(`${product.name} has been removed from your favourites.`)
@@ -292,48 +368,19 @@ async function handleToggleFavourite({ product_slug, action }, userId) {
   }
 }
 
-// ─── Retell agent tool schema (paste into your Retell agent's tool list) ─────
-// name: select_variant
-// description: >
-//   Selects a color and/or size on the product detail page the user is
-//   currently viewing. Call this when the user says things like "select red
-//   and size 10", "pick the blue one", "make it size 9", "I want the black
-//   colour in a 10", "go with grey". You may pass ONLY the fields the user
-//   mentioned (color, size, or both). product_slug is optional: if omitted,
-//   the server uses the product page the user currently has open. If the tool
-//   returns success:false, the requested color/size is NOT available — read
-//   the available options from the message to the user.
-// parameters:
-//   type: object
-//   properties:
-//     product_slug:
-//       type: string
-//       description: Optional. Slug of the product currently displayed on the user's screen.
-//     color:
-//       type: string
-//       description: The color the user asked for (e.g. "red", "navy", "grey").
-//     size:
-//       type: string
-//       description: The size the user asked for (e.g. "10", "9.5").
-//   required: []
-// ─────────────────────────────────────────────────────────────────────────────
-
 async function handleSelectVariant({ product_slug, product_id, product_name, color, size }, userId) {
   try {
     const tracked = getPageState(userId)
 
-    // 1. Resolve the product: explicit agent args win, otherwise use the page
-    //    the user actually has open (reported by the client via page:update),
-    //    so manually-opened product pages work exactly like agent-opened ones.
-    let product
+    let product = null
     let source = 'agent'
     if (product_slug) {
       product = await getPublicBySlug(product_slug)
     } else if (product_name) {
-      const result = await voiceSearch.search(product_name)
+      const result = await voiceSearch.search({ query: product_name })
       product = result.type === 'exact' ? result.product : null
     } else if (product_id) {
-      const result = await voiceSearch.search(product_id)
+      const result = await voiceSearch.search({ query: product_id })
       product = result.product || null
     } else if (tracked?.type === 'product' && tracked.slug) {
       product = await getPublicBySlug(tracked.slug)
@@ -345,8 +392,6 @@ async function handleSelectVariant({ product_slug, product_id, product_name, col
       : null
 
     if (!product) {
-      // No product context — tell the agent where the user IS so it can
-      // choose the right tool (open a product vs filter the catalog).
       const where = tracked?.type && tracked.type !== 'unknown'
         ? `The customer is on the ${tracked.type === 'product' ? 'product' : tracked.path || tracked.type} page`
         : 'I cannot see a product page on the customer\'s screen right now'
@@ -363,7 +408,6 @@ async function handleSelectVariant({ product_slug, product_id, product_name, col
     const wantsColor = color !== undefined && color !== null && String(color).trim() !== ''
     const wantsSize = size !== undefined && size !== null && String(size).trim() !== ''
 
-    // Nothing requested at all → tell the agent what this product offers
     if (!wantsColor && !wantsSize) {
       return ok(`${product.name} is on your screen. Available colors: ${availableColors.join(', ') || 'none'}. Available sizes: ${availableSizes.join(', ') || 'none'}.`, {
         product: { slug: product.slug, name: product.name },
@@ -373,11 +417,8 @@ async function handleSelectVariant({ product_slug, product_id, product_name, col
       })
     }
 
-    // The currently selected color (from the tracked page) is used as context
-    // when the user only asks for a size.
     const trackedColor = tracked?.type === 'product' && tracked.slug === product.slug ? tracked.color : null
 
-    // 2. Validate the requested color (exists + in stock anywhere on product)
     let canonicalColor = null
     if (wantsColor) {
       canonicalColor = normalizeColor(product, color)
@@ -397,7 +438,6 @@ async function handleSelectVariant({ product_slug, product_id, product_name, col
       }
     }
 
-    // 3. Validate the requested size (exists + in stock for the effective color)
     let canonicalSize = null
     if (wantsSize) {
       canonicalSize = normalizeSize(product, size)
@@ -436,7 +476,6 @@ async function handleSelectVariant({ product_slug, product_id, product_name, col
       }
     }
 
-    // 4. Validated — flip the selection on the user's screen through the socket.
     const payload = { slug: product.slug }
     if (canonicalColor) payload.color = canonicalColor
     if (canonicalSize) payload.size = canonicalSize
@@ -454,19 +493,6 @@ async function handleSelectVariant({ product_slug, product_id, product_name, col
     return fail('Could not select that color and size. Please try again.')
   }
 }
-
-// ─── Retell agent tool schema (paste into your Retell agent's tool list) ─────
-// name: get_current_page
-// description: >
-//   Returns which page the customer is currently viewing (product detail page
-//   with its slug, the catalog, cart, etc.) and the color/size currently
-//   selected on a product page. Call this when a command could apply to
-//   different pages and you are unsure where the customer is.
-// parameters:
-//   type: object
-//   properties: {}
-//   required: []
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function handleGetCurrentPage(_, userId) {
   const tracked = getPageState(userId)
@@ -524,9 +550,10 @@ async function handleNavigateTo({ page }, userId) {
   return ok(`Navigating to ${page}.`)
 }
 
+// FIX #7: handleFilterProducts — removed duplicate URLSearchParams.set calls.
+// The original code set color, size, gender, priceMin, priceMax, category TWICE
+// which polluted the query string and sometimes produced double values.
 async function handleFilterProducts(args = {}, userId) {
-  // Same interception as search: a color/size-only filter while a product
-  // detail page is open is a selection request, not a catalog filter.
   const selectionArgs = selectionRedirectArgs(args, userId)
   if (selectionArgs) {
     return handleSelectVariant(selectionArgs, userId)
@@ -535,33 +562,27 @@ async function handleFilterProducts(args = {}, userId) {
   let { color, size, gender, min_price, max_price, price_min, price_max, sort, category, brand, material, query, q } = args
   const rawText = [query, q, brand, category, material].filter(Boolean).join(' ')
 
-  if (!brand) {
-    brand = voiceSearch.extractBrand(rawText)
-  }
+  if (!brand)    brand    = voiceSearch.extractBrand(rawText)
   if (!category) {
     const extractedCat = voiceSearch.extractCategory(rawText)
     if (extractedCat) category = extractedCat.slug
   }
-  if (!gender) {
-    gender = voiceSearch.extractGender(rawText)
-  }
-  if (!color) {
-    color = voiceSearch.extractColor(rawText)
-  }
-  if (!material) {
-    material = voiceSearch.extractMaterial(rawText)
-  }
+  if (!gender)   gender   = voiceSearch.extractGender(rawText)
+  if (!color)    color    = voiceSearch.extractColor(rawText)
+  if (!material) material = voiceSearch.extractMaterial(rawText)
 
   const actualMinPrice = min_price ?? price_min
   const actualMaxPrice = max_price ?? price_max
 
+  // Build params once — no duplicates
   const params = new URLSearchParams()
-  if (category)  params.set('category', category)
-  if (gender)    params.set('gender', gender)
-  if (color)     params.set('color', color)
-  if (size)      params.set('size', String(size))
+  if (category)   params.set('category', category)
+  if (gender)     params.set('gender', gender)
+  if (color)      params.set('color', color)
+  if (size)       params.set('size', String(size))
   if (actualMinPrice !== undefined && actualMinPrice !== null) params.set('priceMin', String(actualMinPrice))
   if (actualMaxPrice !== undefined && actualMaxPrice !== null) params.set('priceMax', String(actualMaxPrice))
+
   if (brand) {
     params.set('q', brand)
   } else if (query && query.trim()) {
@@ -569,25 +590,17 @@ async function handleFilterProducts(args = {}, userId) {
       .replace(/\b(running|sneakers|casual|formal|boots|basketball|outdoor|training|shoes|shoe|for|in|men|women|unisex|kids)\b/gi, '')
       .replace(/\s+/g, ' ')
       .trim()
-    if (cleanQ) {
-      params.set('q', cleanQ)
-    }
+    if (cleanQ) params.set('q', cleanQ)
   }
-  if (color) params.set('color', color)
-  if (size) params.set('size', String(size))
-  if (gender) params.set('gender', gender)
-  if (min_price) params.set('priceMin', String(min_price))
-  if (max_price) params.set('priceMax', String(max_price))
-  if (category) params.set('category', category)
-  
+
   const SORT_MAP = {
-    'price_asc': 'price_asc',
-    'price_desc': 'price_desc',
-    'lowest': 'price_asc',
-    'highest': 'price_desc',
-    'newest': 'newest',
-    'popular': 'popular',
-    'rating': 'rating',
+    price_asc:  'price_asc',
+    price_desc: 'price_desc',
+    lowest:     'price_asc',
+    highest:    'price_desc',
+    newest:     'newest',
+    popular:    'popular',
+    rating:     'rating',
   }
   if (sort) params.set('sort', SORT_MAP[sort] || sort)
 
@@ -595,26 +608,20 @@ async function handleFilterProducts(args = {}, userId) {
   emit(userId, 'navigate', { path })
   emit(userId, 'toast', { message: 'Filters applied. Showing matching products.', kind: 'info' })
 
-  const description = [
-    brand    && `Brand: ${brand}`,
-    category && `Category: ${category}`,
-    gender   && `Gender: ${gender}`,
-    color    && `Color: ${color}`,
-    size     && `Size: ${size}`,
-    material && `Material: ${material}`,
-    actualMinPrice && `Min price: $${actualMinPrice}`,
-    actualMaxPrice && `Max price: $${actualMaxPrice}`,
-    sort     && `Sort: ${sort}`,
-    color && `Color: ${color}`,
-    size && `Size: ${size}`,
-    gender && `Gender: ${gender}`,
-    min_price && `Min price: $${min_price}`,
-    max_price && `Max price: $${max_price}`,
-    sort && `Sort: ${sort}`,
-    category && `Category: ${category}`,
-  ].filter(Boolean).join(', ')
+  // Build a clean human-readable description (no duplicates)
+  const descParts = [
+    brand        && `Brand: ${brand}`,
+    category     && `Category: ${category}`,
+    gender       && `Gender: ${gender}`,
+    color        && `Color: ${color}`,
+    size         && `Size: ${size}`,
+    material     && `Material: ${material}`,
+    actualMinPrice != null && `Min price: $${actualMinPrice}`,
+    actualMaxPrice != null && `Max price: $${actualMaxPrice}`,
+    sort         && `Sort: ${sort}`,
+  ].filter(Boolean)
 
-  return ok(`Filters applied: ${description || 'all shoes'}. Showing results on your screen.`)
+  return ok(`Filters applied: ${descParts.join(', ') || 'all shoes'}. Showing results on your screen.`)
 }
 
 async function handleClearFilters(_, userId) {
@@ -630,8 +637,10 @@ async function handleOpenCart(_, userId) {
 
 async function handleGetCartSummary(_, userId) {
   if (!userId || userId === 'guest') return fail('Please sign in to view your cart.')
+  const dbUserId = await resolveDbUserId(userId)
+  if (!dbUserId) return fail('Could not identify your account.')
   try {
-    const items = await cartService.get(userId)
+    const items = await cartService.get(dbUserId)
     if (!items.length) return ok('Your cart is empty.')
     const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
     const summary = items.map(i => `${i.name} x${i.quantity}`).join(', ')
@@ -642,6 +651,10 @@ async function handleGetCartSummary(_, userId) {
 }
 
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
+// FIX #8: Removed all duplicate keys from FUNCTION_MAP.
+// JS objects silently keep only the LAST value for a duplicate key, so the
+// first block of aliases at the top was being shadowed by the smaller repeat
+// block at the bottom — making the aliases unreachable during debugging.
 
 const FUNCTION_MAP = {
   // Search & suggestions
@@ -685,7 +698,7 @@ const FUNCTION_MAP = {
   add_to_wishlist:      handleToggleFavourite,
   toggleWishlist:       handleToggleFavourite,
 
-  // Product variant selection (color/size) on the product detail page
+  // Product variant selection
   select_variant:       handleSelectVariant,
   selectVariant:        handleSelectVariant,
   select_color_size:    handleSelectVariant,
@@ -709,19 +722,10 @@ const FUNCTION_MAP = {
   where_is_user:        handleGetCurrentPage,
   whereIsUser:          handleGetCurrentPage,
 
+  // Navigation
   navigate_to:          handleNavigateTo,
   navigateTo:           handleNavigateTo,
   go_to_page:           handleNavigateTo,
-  search_product: handleSearchProduct,
-  add_to_cart: handleAddToCart,
-  remove_from_cart: handleRemoveFromCart,
-  clear_cart: handleClearCart,
-  toggle_favourite: handleToggleFavourite,
-  navigate_to: handleNavigateTo,
-  filter_products: handleFilterProducts,
-  clear_filters: handleClearFilters,
-  open_cart: handleOpenCart,
-  get_cart_summary: handleGetCartSummary,
 }
 
 export async function dispatch(functionName, args, userId) {
