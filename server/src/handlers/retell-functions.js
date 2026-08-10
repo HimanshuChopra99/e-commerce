@@ -141,16 +141,16 @@ async function handleSearchProduct(args = {}, userId) {
     emit(userId, 'toast', { message: `Opening ${result.product.name}`, kind: 'info' })
     return ok(result.message, {
       product: {
-        id:       result.product.id,
-        name:     result.product.name,
-        brand:    result.product.brand,
-        price:    result.product.price,
-        slug:     result.product.slug,
+        id: result.product.id,
+        name: result.product.name,
+        brand: result.product.brand,
+        price: result.product.price,
+        slug: result.product.slug,
         material: result.product.material,
-        gender:   result.product.gender,
-        inStock:  result.product.inStock,
-        sizes:    result.product.sizes || [],
-        colors:   result.product.colors || [],
+        gender: result.product.gender,
+        inStock: result.product.inStock,
+        sizes: result.product.sizes || [],
+        colors: result.product.colors || [],
       },
     })
   }
@@ -159,15 +159,15 @@ async function handleSearchProduct(args = {}, userId) {
   emit(userId, 'toast', { message: result.toastMessage || result.message, kind: 'info' })
 
   return ok(result.message, {
-    total:      result.total,
+    total: result.total,
     navigateTo: result.navigateTo,
-    products:   (result.products || []).slice(0, 6).map(p => ({
-      name:     p.name,
-      brand:    p.brand,
-      price:    p.price,
-      slug:     p.slug,
+    products: (result.products || []).slice(0, 6).map(p => ({
+      name: p.name,
+      brand: p.brand,
+      price: p.price,
+      slug: p.slug,
       material: p.material,
-      gender:   p.gender,
+      gender: p.gender,
     })),
   })
 }
@@ -219,12 +219,12 @@ async function handleAddToCart({ product_id, product_slug, product_name, size, c
     // page:update → setPageState. So when the agent calls add_to_cart with {}
     // we can read size/color right here instead of asking the user again.
     if (tracked?.type === 'product' && tracked.slug === product.slug) {
-      if (!size  && tracked.size)  size  = tracked.size
+      if (!size && tracked.size) size = tracked.size
       if (!color && tracked.color) color = tracked.color
     }
 
     // ── 3. Validate size/color before attempting findVariant ─────────────────
-    const availableSizes  = [...new Set(product.variants?.filter(isVariantInStock).map(v => String(v.size)))].sort((a, b) => Number(a) - Number(b))
+    const availableSizes = [...new Set(product.variants?.filter(isVariantInStock).map(v => String(v.size)))].sort((a, b) => Number(a) - Number(b))
     const availableColors = [...new Set(product.variants?.filter(isVariantInStock).map(v => v.color).filter(Boolean))]
 
     if (!size && availableSizes.length > 1) {
@@ -238,10 +238,10 @@ async function handleAddToCart({ product_id, product_slug, product_name, size, c
 
     if (!variant) {
       let msg = `I couldn't find ${product.name}`
-      if (size)  msg += ` in size ${size}`
+      if (size) msg += ` in size ${size}`
       if (color) msg += ` in ${color}`
       msg += `.`
-      if (availableSizes.length)  msg += ` Available sizes: ${availableSizes.join(', ')}.`
+      if (availableSizes.length) msg += ` Available sizes: ${availableSizes.join(', ')}.`
       if (availableColors.length) msg += ` Available colors: ${availableColors.join(', ')}.`
       return fail(msg, { availableSizes, availableColors })
     }
@@ -562,13 +562,13 @@ async function handleFilterProducts(args = {}, userId) {
   let { color, size, gender, min_price, max_price, price_min, price_max, sort, category, brand, material, query, q } = args
   const rawText = [query, q, brand, category, material].filter(Boolean).join(' ')
 
-  if (!brand)    brand    = voiceSearch.extractBrand(rawText)
+  if (!brand) brand = voiceSearch.extractBrand(rawText)
   if (!category) {
     const extractedCat = voiceSearch.extractCategory(rawText)
     if (extractedCat) category = extractedCat.slug
   }
-  if (!gender)   gender   = voiceSearch.extractGender(rawText)
-  if (!color)    color    = voiceSearch.extractColor(rawText)
+  if (!gender) gender = voiceSearch.extractGender(rawText)
+  if (!color) color = voiceSearch.extractColor(rawText)
   if (!material) material = voiceSearch.extractMaterial(rawText)
 
   const actualMinPrice = min_price ?? price_min
@@ -576,10 +576,10 @@ async function handleFilterProducts(args = {}, userId) {
 
   // Build params once — no duplicates
   const params = new URLSearchParams()
-  if (category)   params.set('category', category)
-  if (gender)     params.set('gender', gender)
-  if (color)      params.set('color', color)
-  if (size)       params.set('size', String(size))
+  if (category) params.set('category', category)
+  if (gender) params.set('gender', gender)
+  if (color) params.set('color', color)
+  if (size) params.set('size', String(size))
   if (actualMinPrice !== undefined && actualMinPrice !== null) params.set('priceMin', String(actualMinPrice))
   if (actualMaxPrice !== undefined && actualMaxPrice !== null) params.set('priceMax', String(actualMaxPrice))
 
@@ -594,13 +594,13 @@ async function handleFilterProducts(args = {}, userId) {
   }
 
   const SORT_MAP = {
-    price_asc:  'price_asc',
+    price_asc: 'price_asc',
     price_desc: 'price_desc',
-    lowest:     'price_asc',
-    highest:    'price_desc',
-    newest:     'newest',
-    popular:    'popular',
-    rating:     'rating',
+    lowest: 'price_asc',
+    highest: 'price_desc',
+    newest: 'newest',
+    popular: 'popular',
+    rating: 'rating',
   }
   if (sort) params.set('sort', SORT_MAP[sort] || sort)
 
@@ -610,15 +610,15 @@ async function handleFilterProducts(args = {}, userId) {
 
   // Build a clean human-readable description (no duplicates)
   const descParts = [
-    brand        && `Brand: ${brand}`,
-    category     && `Category: ${category}`,
-    gender       && `Gender: ${gender}`,
-    color        && `Color: ${color}`,
-    size         && `Size: ${size}`,
-    material     && `Material: ${material}`,
+    brand && `Brand: ${brand}`,
+    category && `Category: ${category}`,
+    gender && `Gender: ${gender}`,
+    color && `Color: ${color}`,
+    size && `Size: ${size}`,
+    material && `Material: ${material}`,
     actualMinPrice != null && `Min price: $${actualMinPrice}`,
     actualMaxPrice != null && `Max price: $${actualMaxPrice}`,
-    sort         && `Sort: ${sort}`,
+    sort && `Sort: ${sort}`,
   ].filter(Boolean)
 
   return ok(`Filters applied: ${descParts.join(', ') || 'all shoes'}. Showing results on your screen.`)
@@ -658,74 +658,74 @@ async function handleGetCartSummary(_, userId) {
 
 const FUNCTION_MAP = {
   // Search & suggestions
-  search_product:       handleSearchProduct,
-  searchProduct:        handleSearchProduct,
-  search_products:      handleSearchProduct,
-  searchProducts:       handleSearchProduct,
-  product_search:       handleSearchProduct,
-  suggest_product:      handleSuggestProducts,
-  suggestProduct:       handleSuggestProducts,
-  suggest_products:     handleSuggestProducts,
-  suggestProducts:      handleSuggestProducts,
-  recommend_products:   handleSuggestProducts,
-  recommendProducts:    handleSuggestProducts,
-  get_suggestions:      handleSuggestProducts,
+  search_product: handleSearchProduct,
+  searchProduct: handleSearchProduct,
+  search_products: handleSearchProduct,
+  searchProducts: handleSearchProduct,
+  product_search: handleSearchProduct,
+  suggest_product: handleSuggestProducts,
+  suggestProduct: handleSuggestProducts,
+  suggest_products: handleSuggestProducts,
+  suggestProducts: handleSuggestProducts,
+  recommend_products: handleSuggestProducts,
+  recommendProducts: handleSuggestProducts,
+  get_suggestions: handleSuggestProducts,
 
   // Filters & catalogue navigation
-  filter_products:      handleFilterProducts,
-  filterProducts:       handleFilterProducts,
-  apply_filters:        handleFilterProducts,
-  clear_filters:        handleClearFilters,
-  clearFilters:         handleClearFilters,
-  reset_filters:        handleClearFilters,
+  filter_products: handleFilterProducts,
+  filterProducts: handleFilterProducts,
+  apply_filters: handleFilterProducts,
+  clear_filters: handleClearFilters,
+  clearFilters: handleClearFilters,
+  reset_filters: handleClearFilters,
 
   // Cart operations
-  add_to_cart:          handleAddToCart,
-  addToCart:            handleAddToCart,
-  remove_from_cart:     handleRemoveFromCart,
-  removeFromCart:       handleRemoveFromCart,
-  clear_cart:           handleClearCart,
-  clearCart:            handleClearCart,
-  open_cart:            handleOpenCart,
-  openCart:             handleOpenCart,
-  view_cart:            handleOpenCart,
-  get_cart_summary:     handleGetCartSummary,
-  getCartSummary:       handleGetCartSummary,
+  add_to_cart: handleAddToCart,
+  addToCart: handleAddToCart,
+  remove_from_cart: handleRemoveFromCart,
+  removeFromCart: handleRemoveFromCart,
+  clear_cart: handleClearCart,
+  clearCart: handleClearCart,
+  open_cart: handleOpenCart,
+  openCart: handleOpenCart,
+  view_cart: handleOpenCart,
+  get_cart_summary: handleGetCartSummary,
+  getCartSummary: handleGetCartSummary,
 
   // Favourites & general navigation
-  toggle_favourite:     handleToggleFavourite,
-  toggleFavourite:      handleToggleFavourite,
-  add_to_wishlist:      handleToggleFavourite,
-  toggleWishlist:       handleToggleFavourite,
+  toggle_favourite: handleToggleFavourite,
+  toggleFavourite: handleToggleFavourite,
+  add_to_wishlist: handleToggleFavourite,
+  toggleWishlist: handleToggleFavourite,
 
   // Product variant selection
-  select_variant:       handleSelectVariant,
-  selectVariant:        handleSelectVariant,
-  select_color_size:    handleSelectVariant,
-  selectColorSize:      handleSelectVariant,
-  select_color:         handleSelectVariant,
-  selectColor:          handleSelectVariant,
-  select_size:          handleSelectVariant,
-  selectSize:           handleSelectVariant,
-  choose_variant:       handleSelectVariant,
-  chooseVariant:        handleSelectVariant,
-  pick_variant:         handleSelectVariant,
-  pickVariant:          handleSelectVariant,
-  customize_product:    handleSelectVariant,
-  customizeProduct:     handleSelectVariant,
+  select_variant: handleSelectVariant,
+  selectVariant: handleSelectVariant,
+  select_color_size: handleSelectVariant,
+  selectColorSize: handleSelectVariant,
+  select_color: handleSelectVariant,
+  selectColor: handleSelectVariant,
+  select_size: handleSelectVariant,
+  selectSize: handleSelectVariant,
+  choose_variant: handleSelectVariant,
+  chooseVariant: handleSelectVariant,
+  pick_variant: handleSelectVariant,
+  pickVariant: handleSelectVariant,
+  customize_product: handleSelectVariant,
+  customizeProduct: handleSelectVariant,
 
   // Current page awareness
-  get_current_page:     handleGetCurrentPage,
-  getCurrentPage:       handleGetCurrentPage,
-  current_page:         handleGetCurrentPage,
-  currentPage:          handleGetCurrentPage,
-  where_is_user:        handleGetCurrentPage,
-  whereIsUser:          handleGetCurrentPage,
+  get_current_page: handleGetCurrentPage,
+  getCurrentPage: handleGetCurrentPage,
+  current_page: handleGetCurrentPage,
+  currentPage: handleGetCurrentPage,
+  where_is_user: handleGetCurrentPage,
+  whereIsUser: handleGetCurrentPage,
 
   // Navigation
-  navigate_to:          handleNavigateTo,
-  navigateTo:           handleNavigateTo,
-  go_to_page:           handleNavigateTo,
+  navigate_to: handleNavigateTo,
+  navigateTo: handleNavigateTo,
+  go_to_page: handleNavigateTo,
 }
 
 export async function dispatch(functionName, args, userId) {
