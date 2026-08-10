@@ -160,29 +160,89 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
       </Section>
 
       {/* Category */}
+      {/* Category - Single Select with Toggle & "All Categories" Option */}
       <Section title="Category">
         <div className="space-y-2">
-          {categories.map((cat) => (
-            <label key={cat.slug} className="flex items-center gap-2.5 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={(filters.categories || []).includes(cat.slug)}
-                onChange={() =>
-                  onChange({
-                    ...filters,
-                    categories: toggle(filters.categories, cat.slug),
-                  })
-                }
-                className="w-4 h-4 accent-[#4C64F4] rounded"
-              />
-              <span
-                className="text-[13px] text-[#555] group-hover:text-[#1E1E1E] transition-colors"
-                style={{ fontFamily: "'Rubik', sans-serif" }}
-              >
-                {cat.name}
-              </span>
-            </label>
-          ))}
+          {/* "All Categories" Option */}
+          {(() => {
+            const currentCat = (filters.categories || [])[0] || filters.category || null;
+            const isAllSelected = !currentCat;
+
+            return (
+              <label className="flex items-center gap-2.5 cursor-pointer group">
+                <input
+                  type="radio"
+                  name="category"
+                  checked={isAllSelected}
+                  onChange={() =>
+                    onChange({
+                      ...filters,
+                      categories: [],
+                      category: null,
+                    })
+                  }
+                  className="w-4 h-4 accent-[#4C64F4] cursor-pointer"
+                />
+                <span
+                  className={`text-[13px] transition-colors ${
+                    isAllSelected
+                      ? "text-[#1E1E1E] font-semibold"
+                      : "text-[#555] group-hover:text-[#1E1E1E]"
+                  }`}
+                  style={{ fontFamily: "'Rubik', sans-serif" }}
+                >
+                  All Categories
+                </span>
+              </label>
+            );
+          })()}
+
+          {/* List of Categories */}
+          {categories.map((cat) => {
+            const currentCat = (filters.categories || [])[0] || filters.category || null;
+            const isSelected = currentCat === cat.slug;
+
+            const handleToggle = () => {
+              if (isSelected) {
+                // Clicking an already selected category removes the filter (resets to All)
+                onChange({
+                  ...filters,
+                  categories: [],
+                  category: null,
+                });
+              } else {
+                // Select only this category
+                onChange({
+                  ...filters,
+                  categories: [cat.slug],
+                  category: cat.slug,
+                });
+              }
+            };
+
+            return (
+              <label key={cat.slug} className="flex items-center gap-2.5 cursor-pointer group">
+                <input
+                  type="radio"
+                  name="category"
+                  checked={isSelected}
+                  onClick={handleToggle}
+                  onChange={() => {}} // handled via onClick so toggle-off works
+                  className="w-4 h-4 accent-[#4C64F4] cursor-pointer"
+                />
+                <span
+                  className={`text-[13px] transition-colors ${
+                    isSelected
+                      ? "text-[#1E1E1E] font-semibold"
+                      : "text-[#555] group-hover:text-[#1E1E1E]"
+                  }`}
+                  style={{ fontFamily: "'Rubik', sans-serif" }}
+                >
+                  {cat.name}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </Section>
 
