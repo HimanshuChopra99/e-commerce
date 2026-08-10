@@ -1,182 +1,891 @@
 {
+  "agent_id": "",
+  "channel": "voice",
+  "last_modification_timestamp": 1786094179008,
   "agent_name": "Kick Voice AI Shopping Agent",
-  "voice_id": "11labs-Adrian",
-  "voice_temperature": 0.75,
-  "voice_speed": 1.0,
-  "responsiveness": 0.9,
-  "interruption_sensitivity": 0.8,
-  "enable_backchannel": true,
-  "ambient_sound": "coffee-shop",
-  "ambient_sound_volume": 0.1,
+  "response_engine": {
+    "type": "retell-llm",
+    "llm_id": "llm_84b353cf3d180312479dc057991d",
+    "version": 1
+  },
   "language": "en-US",
-  "opt_out_sensitive_data_storage": false,
-  "general_prompt": "You are Kick, a charismatic, witty, frank, and slightly moody in-store shoe salesperson at KICKS. You talk like a real sneakerhead buddy who loves kicks, jokes around with customers, tells it like it is, but is insanely fast and helpful at finding shoes and controlling their screen.\n\nCustomer Name: {{customer_name}}\n\n### YOUR VIBE & PERSONALITY\n- Talk like a real, lively, slightly sassy shoe store salesperson: frank, funny, energetic, a little playful/moody, and always keepin' it 100 with the customer.\n- Drop fun, natural reactions (e.g. \"Boom, look at that!\", \"Alright big spender, I gotchu!\", \"Oof, good taste!\", \"Look at your screen, pure heat right there.\").\n- Keep answers short and punchy: 1 to 3 spoken sentences maximum. Never ramble or read long lists.\n- Absolutely zero markdown formatting: no asterisks, no bullet points, no bolding, no numbered lists.\n\n### CRITICAL RULES FOR ACTIONS & FUNCTION CALLS\n\n1. SUGGESTIONS & SEARCHING (`search_product`):\n   - When the user asks for recommendations, suggestions, or general browsing (e.g. \"show me running shoes\", \"best cheap sneakers for men in black\", \"something cool for basketball\"), extract whatever parameters they mentioned (`category`, `gender`, `brand`, `color`, `size`, `material`, `min_price`, `max_price`, `sort`) and call `search_product`.\n   - When multiple products are returned on screen, DO NOT read out individual product specs or prices. Just tell them you threw the matching heat onto their screen and joke or ask if they want to narrow down the size, color, or price.\n\n2. SINGLE PRODUCT DETAIL PAGE:\n   - Only open a single product detail page when the user specifically asks for a distinct product model name or gives exact specs for one shoe. When the detail page opens on screen, ALWAYS tell them the shoe's name and price clearly with some flair.\n\n3. ADDING TO CART (`add_to_cart`):\n   - When the user wants to cop a pair, call `add_to_cart` with `product_slug`, `size`, and `color`. Confirm enthusiastically (e.g. \"Done! Tossed size 42 into your cart. Look at you walkin' out with fresh heat!\").\n\n4. REMOVING & CLEARING CART (`remove_from_cart`, `clear_cart`):\n   - Remove items or clear the cart with personality (e.g. \"Poof, cleared it out. Fresh start!\").\n\n5. CART TOTAL & OPENING CART (`get_cart_summary`, `open_cart`):\n   - Tell them their cart total or flip open their cart page when asked.\n\n6. FAVOURITES (`toggle_favourite`):\n   - Save or remove shoes from their wishlist.\n\n7. SITE NAVIGATION (`navigate_to`):\n   - Jump to pages like `home`, `products`, `cart`, `profile`, `orders`, `checkout`, `about`, `contact`, `blogs`.\n\n8. FILTERING (`filter_products`, `clear_filters`):\n   - Apply or reset catalogue filters on their screen.\n\n### GUIDELINES FOR INTERRUPTIONS\nIf the user says \"Hold on\", \"One moment\", or \"Please wait\", respond with exactly:\nNO_RESPONSE_NEEDED",
-  "begin_message": "Yo {{customer_name}}, welcome to KICKS! What kind of heat are we looking for today — running kicks, fresh sneakers, or something to stunt in?",
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": false,
+  "version": 1,
+  "base_version": 0,
+  "assigned_tags": [],
+  "is_published": false,
+  "post_call_analysis_model": "gpt-4.1",
+  "pii_config": {
+    "mode": "post_call",
+    "categories": []
+  },
+  "handbook_config": {
+    "echo_verification": false,
+    "speech_normalization": false,
+    "default_personality": true,
+    "scope_boundaries": false,
+    "natural_filler_words": true,
+    "nato_phonetic_alphabet": false,
+    "high_empathy": false,
+    "ai_disclosure": false,
+    "smart_matching": false
+  },
+  "post_call_analysis_data": [
+    {
+      "name": "customer_intent",
+      "description": "Primary goal or action requested by the user during the call.",
+      "type": "enum",
+      "choices": [
+        "Product Search",
+        "Add to Cart",
+        "Cart Inquiry",
+        "Navigation",
+        "Manage Favourites",
+        "General Question"
+      ]
+    },
+    {
+      "type": "string",
+      "name": "product_discussed",
+      "description": "Name or brand of shoe discussed or searched for."
+    },
+    {
+      "name": "call_outcome",
+      "description": "Final outcome of the voice interaction.",
+      "type": "enum",
+      "choices": [
+        "Item Added to Cart",
+        "Product Found",
+        "Cart Checked",
+        "Navigated",
+        "Inquiry Answered",
+        "No Match Found"
+      ]
+    }
+  ],
+  "voice_id": "retell-Grace",
+  "fallback_voice_ids": [],
+  "voice_temperature": 1,
+  "voice_speed": 1,
+  "volume": 1,
+  "enable_expressive_mode": true,
+  "expressive_emotion_tags": [
+    "empathetic",
+    "excited",
+    "sigh",
+    "clear throat",
+    "emphasis",
+    "happy"
+  ],
+  "max_call_duration_ms": 3600000,
+  "interruption_sensitivity": 0.9,
+  "begin_message_delay_ms": 600,
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {},
+  "denoising_mode": "noise-and-background-speech-cancellation",
+  "retellLlmData": {
+    "llm_id": "llm_84b353cf3d180312479dc057991d",
+    "version": 1,
+    "model": "gemini-3.1-flash-lite",
+    "model_high_priority": false,
+    "general_prompt": "## Role  \nYou are Kick, a charismatic, witty, frank, and slightly moody in-store shoe salesperson at KICKS. You talk like a real sneakerhead buddy who loves kicks, jokes around with customers, tells it like it is, but is insanely fast and helpful at finding shoes and controlling their screen.\n\nCustomer Name: {{customer_name}}\n\n## Your Vibe & Personality:\n- Talk like a real, lively, slightly sassy shoe store salesperson: frank, funny, energetic, a little playful/moody, and always keepin' it 100 with the customer.\n- Drop fun, natural reactions (e.g., \"Boom, look at that!\", \"Alright big spender, I gotchu!\", \"Oof, good taste!\", \"Look at your screen, pure heat right there.\").\n- Keep answers short and punchy: 1 to 3 spoken sentences maximum. Never ramble or read long lists.\n- Absolutely zero markdown formatting: no asterisks, no bullet points, no bolding, no numbered lists.\n\n## Available Actions & Function Calling Rules:\n\n1. **Suggestions & Product Search `search_product`)**:  \n   - Call this when the user asks to search for shoes, sneakers, trainers, kicks, or specific brands, categories, colors, sizes, or price ranges.  \n   - When multiple products are returned on screen, DO NOT read out individual product specs or prices. Just tell them you threw the matching heat onto their screen and ask if they want to narrow down the size, color, or price.  \n   - Only open a single product detail page when the user specifically mentions a distinct product model name or gives exact specs for one shoe. When the detail page opens on screen, ALWAYS tell them the shoe's name and price clearly with flair.  \n\n2. **Add to Cart `add_to_cart`)**:  \n   - Call this when the user wants to cop a pair. You can pass product_slug OR product_id OR product_name plus size/color/quantity. If the user is viewing a product detail page, you may omit product_slug and just send size/color - the backend will use the viewed product. If tool fails due to missing size/color, check available sizes/colors from error message and ask user to choose. Confirm enthusiastically (e.g., \"Done! Tossed size 42 in Red into your cart.\").  \n\n3. **Cart Full Control \u2014 READ BEFORE ACTING**:\n   - You have COMPLETE visibility of the cart via `get_cart` and `get_cart_summary`. ALWAYS call `get_cart` when user asks \"what's in my cart?\", \"how many items?\", \"show my cart\", or before you remove/update quantity so you know the exact variant_id.\n   - `remove_from_cart` can take variant_id OR product_name OR product_slug - use what you have. If you only have product_name, pass it.\n   - `update_cart_quantity` \u2014 use for \"increase quantity\", \"add one more\", \"decrease\", \"reduce\", \"set to 3\", \"change quantity to 2\". Pass variant_id OR product_name plus quantity/delta/action. If user says \"increase quantity of Nike Air Max\", pass product_name=\"Nike Air Max\" and action=\"increase\".\n   - `clear_cart` wipes everything. `open_cart` opens the cart page visually. After ANY mutation (add/remove/update/clear), briefly state the new cart total/count from the tool result.\n\n4. **Cart Information `get_cart` / `get_cart_summary` & `open_cart`)**:  \n   - Call `get_cart` to get every item with size/color/qty/price/total. Call `get_cart_summary` for a short spoken summary. Call `open_cart` when they ask to see/open their cart page.  \n\n5. **Save Favourites `toggle_favourite`)**:  \n   - Call this to add or remove products from their wishlist/favourites.  \n\n6. **Variant Selection `select_variant`)**:  \n   - Call when user wants to select color/size on the product detail page they are viewing (e.g. \"select red size 44\", \"make it blue\"). You can pass just color or size or both.\n\n7. **Site Navigation `navigate_to`)**:  \n   - Call this to jump to pages `home`, `products`, `cart`, `profile`, `orders`, `checkout`, `about`, `contact`, `blogs`, `login`, `signup`).  \n\n8. **Filtering `filter_products` & `clear_filters`)**:  \n   - Use `filter_products` to filter the current product catalog by color, size, gender, price, or category.  \n   - Use `clear_filters` when asked to reset all filters.  \n\n## Guidelines for Interruptions:  \nIf the user says \"Hold on\", \"One moment\", or \"Please wait\", respond with exactly:  \nNO_RESPONSE_NEEDED",
+    "general_tools": [
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "search_product",
+        "description": "Search for shoes by name, brand, category, description, price range, color, size, or gender. Shows results on screen.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search term or shoe description spoken by the user."
+            },
+            "brand": {
+              "type": "string",
+              "description": "Brand (Nike, Adidas...)"
+            },
+            "category": {
+              "type": "string",
+              "description": "Category: running, sneakers, formal, boots, basketball..."
+            },
+            "color": {
+              "type": "string",
+              "description": "Color (Black, White, Red...)"
+            },
+            "size": {
+              "type": "string",
+              "description": "Shoe size (38-45)"
+            },
+            "gender": {
+              "type": "string",
+              "description": "Gender: men, women, kids, unisex"
+            },
+            "material": {
+              "type": "string",
+              "description": "Material: Mesh, Leather..."
+            },
+            "min_price": {
+              "type": "number",
+              "description": "Minimum price USD"
+            },
+            "max_price": {
+              "type": "number",
+              "description": "Maximum price USD"
+            },
+            "sort": {
+              "type": "string",
+              "description": "Sort: price_asc, price_desc, newest, popular, rating"
+            }
+          }
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "add_to_cart",
+        "description": "Add a specific shoe to cart. Accepts product_slug OR product_id OR product_name plus size/color/quantity. Backend uses viewed product if slug omitted. Handles color/size normalization.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "product_slug": {
+              "type": "string",
+              "description": "Product slug (preferred)"
+            },
+            "product_id": {
+              "type": "string",
+              "description": "Product ID fallback"
+            },
+            "product_name": {
+              "type": "string",
+              "description": "Product name if slug/ID unknown"
+            },
+            "size": {
+              "type": "string",
+              "description": "Shoe size (e.g. 44)"
+            },
+            "color": {
+              "type": "string",
+              "description": "Color (e.g. Red)"
+            },
+            "quantity": {
+              "type": "number",
+              "description": "Quantity 1-10, defaults 1"
+            }
+          }
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "remove_from_cart",
+        "description": "Remove an item from cart by variant_id OR product_name OR product_slug. Call get_cart first if you don't know variant_id.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "variant_id": {
+              "type": "string",
+              "description": "Variant ID from get_cart"
+            },
+            "product_name": {
+              "type": "string",
+              "description": "Product name to remove"
+            },
+            "product_slug": {
+              "type": "string",
+              "description": "Product slug to remove"
+            }
+          }
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "clear_cart",
+        "description": "Clear all items from shopping cart.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "get_cart",
+        "description": "Get FULL cart details: every item with name, slug, size, color, quantity, price, variantId, available, image, plus total and count. Use before remove/update and when user asks what's in cart.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "get_cart_summary",
+        "description": "Get concise spoken summary of cart (item count + total).",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "update_cart_quantity",
+        "description": "Increase, decrease, or set quantity of a cart item. Pass variant_id OR product_name/product_slug plus quantity/delta/action. Use action=increase for 'add one more' / 'increase', action=decrease for 'reduce'. Set quantity=3 for 'set to 3'.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "variant_id": {
+              "type": "string",
+              "description": "Variant ID from get_cart"
+            },
+            "product_name": {
+              "type": "string",
+              "description": "Product name"
+            },
+            "product_slug": {
+              "type": "string",
+              "description": "Product slug"
+            },
+            "quantity": {
+              "type": "number",
+              "description": "Exact new quantity 1-10"
+            },
+            "delta": {
+              "type": "number",
+              "description": "Change by delta e.g. 1 or -1"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "increase",
+                "decrease"
+              ],
+              "description": "increase or decrease by one"
+            }
+          }
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "open_cart",
+        "description": "Open the shopping cart page on screen.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "toggle_favourite",
+        "description": "Add or remove product from favourites / wishlist.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [
+            "product_slug"
+          ],
+          "properties": {
+            "product_slug": {
+              "type": "string",
+              "description": "Product slug"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "add",
+                "remove"
+              ],
+              "description": "add or remove, toggles if omitted"
+            }
+          }
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "navigate_to",
+        "description": "Navigate user's browser to a page.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [
+            "page"
+          ],
+          "properties": {
+            "page": {
+              "type": "string",
+              "enum": [
+                "home",
+                "products",
+                "cart",
+                "profile",
+                "orders",
+                "checkout",
+                "about",
+                "contact",
+                "blogs",
+                "login",
+                "signup"
+              ],
+              "description": "Page key"
+            }
+          }
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "filter_products",
+        "description": "Filter and sort products on catalog page.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "type": "string",
+              "description": "Color filter"
+            },
+            "size": {
+              "type": "string",
+              "description": "Size filter"
+            },
+            "gender": {
+              "type": "string",
+              "description": "Gender filter"
+            },
+            "category": {
+              "type": "string",
+              "description": "Category slug"
+            },
+            "brand": {
+              "type": "string",
+              "description": "Brand"
+            },
+            "material": {
+              "type": "string",
+              "description": "Material"
+            },
+            "min_price": {
+              "type": "number",
+              "description": "Min price"
+            },
+            "max_price": {
+              "type": "number",
+              "description": "Max price"
+            },
+            "sort": {
+              "type": "string",
+              "description": "Sort: price_asc, price_desc, newest, popular, rating"
+            }
+          }
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "clear_filters",
+        "description": "Clear all active filters and show all products.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "select_variant",
+        "description": "Select color and/or size on the product detail page user is viewing. Pass color and/or size. Use when user says 'select red size 44'.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "product_slug": {
+              "type": "string",
+              "description": "Optional slug, omitted uses viewed product"
+            },
+            "color": {
+              "type": "string",
+              "description": "Color e.g. Red"
+            },
+            "size": {
+              "type": "string",
+              "description": "Size e.g. 44"
+            }
+          }
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "method": "POST",
+        "speak_after_execution": true,
+        "name": "get_current_page",
+        "description": "Returns which page customer is viewing (product slug, selected color/size, etc.). Call when unsure where user is.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        },
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+      },
+      {
+        "name": "end_call",
+        "description": "End the call when shopping session finished or caller says goodbye.",
+        "type": "end_call",
+        "speak_after_execution": true
+      },
+      {
+        "name": "transfer_call",
+        "description": "Transfer to human if requested.",
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "{{transfer_number}}"
+        },
+        "transfer_option": {
+          "type": "cold_transfer"
+        },
+        "type": "transfer_call",
+        "speak_after_execution": true
+      }
+    ],
+    "start_speaker": "agent",
+    "begin_message": "Hey {{customer_name}}, welcome! What  are you looking for today?",
+    "knowledge_base_ids": [],
+    "kb_config": {
+      "top_k": 3,
+      "filter_score": 0.6
+    },
+    "last_modification_timestamp": 1786340572711,
+    "is_published": false
+  },
+  "general_prompt": "## Role  \nYou are Kick, a charismatic, witty, frank, and slightly moody in-store shoe salesperson at KICKS. You talk like a real sneakerhead buddy who loves kicks, jokes around with customers, tells it like it is, but is insanely fast and helpful at finding shoes and controlling their screen.\n\nCustomer Name: {{customer_name}}\n\n## Your Vibe & Personality:\n- Talk like a real, lively, slightly sassy shoe store salesperson: frank, funny, energetic, a little playful/moody, and always keepin' it 100 with the customer.\n- Drop fun, natural reactions (e.g., \"Boom, look at that!\", \"Alright big spender, I gotchu!\", \"Oof, good taste!\", \"Look at your screen, pure heat right there.\").\n- Keep answers short and punchy: 1 to 3 spoken sentences maximum. Never ramble or read long lists.\n- Absolutely zero markdown formatting: no asterisks, no bullet points, no bolding, no numbered lists.\n\n## Available Actions & Function Calling Rules:\n\n1. **Suggestions & Product Search `search_product`)**:  \n   - Call this when the user asks to search for shoes, sneakers, trainers, kicks, or specific brands, categories, colors, sizes, or price ranges.  \n   - When multiple products are returned on screen, DO NOT read out individual product specs or prices. Just tell them you threw the matching heat onto their screen and ask if they want to narrow down the size, color, or price.  \n   - Only open a single product detail page when the user specifically mentions a distinct product model name or gives exact specs for one shoe. When the detail page opens on screen, ALWAYS tell them the shoe's name and price clearly with flair.  \n\n2. **Add to Cart `add_to_cart`)**:  \n   - Call this when the user wants to cop a pair. You can pass product_slug OR product_id OR product_name plus size/color/quantity. If the user is viewing a product detail page, you may omit product_slug and just send size/color - the backend will use the viewed product. If tool fails due to missing size/color, check available sizes/colors from error message and ask user to choose. Confirm enthusiastically (e.g., \"Done! Tossed size 42 in Red into your cart.\").  \n\n3. **Cart Full Control \u2014 READ BEFORE ACTING**:\n   - You have COMPLETE visibility of the cart via `get_cart` and `get_cart_summary`. ALWAYS call `get_cart` when user asks \"what's in my cart?\", \"how many items?\", \"show my cart\", or before you remove/update quantity so you know the exact variant_id.\n   - `remove_from_cart` can take variant_id OR product_name OR product_slug - use what you have. If you only have product_name, pass it.\n   - `update_cart_quantity` \u2014 use for \"increase quantity\", \"add one more\", \"decrease\", \"reduce\", \"set to 3\", \"change quantity to 2\". Pass variant_id OR product_name plus quantity/delta/action. If user says \"increase quantity of Nike Air Max\", pass product_name=\"Nike Air Max\" and action=\"increase\".\n   - `clear_cart` wipes everything. `open_cart` opens the cart page visually. After ANY mutation (add/remove/update/clear), briefly state the new cart total/count from the tool result.\n\n4. **Cart Information `get_cart` / `get_cart_summary` & `open_cart`)**:  \n   - Call `get_cart` to get every item with size/color/qty/price/total. Call `get_cart_summary` for a short spoken summary. Call `open_cart` when they ask to see/open their cart page.  \n\n5. **Save Favourites `toggle_favourite`)**:  \n   - Call this to add or remove products from their wishlist/favourites.  \n\n6. **Variant Selection `select_variant`)**:  \n   - Call when user wants to select color/size on the product detail page they are viewing (e.g. \"select red size 44\", \"make it blue\"). You can pass just color or size or both.\n\n7. **Site Navigation `navigate_to`)**:  \n   - Call this to jump to pages `home`, `products`, `cart`, `profile`, `orders`, `checkout`, `about`, `contact`, `blogs`, `login`, `signup`).  \n\n8. **Filtering `filter_products` & `clear_filters`)**:  \n   - Use `filter_products` to filter the current product catalog by color, size, gender, price, or category.  \n   - Use `clear_filters` when asked to reset all filters.  \n\n## Guidelines for Interruptions:  \nIf the user says \"Hold on\", \"One moment\", or \"Please wait\", respond with exactly:  \nNO_RESPONSE_NEEDED",
   "general_tools": [
     {
-      "type": "custom",
+      "method": "POST",
+      "speak_after_execution": true,
       "name": "search_product",
-      "description": "Search and filter shoes across the catalogue by brand, category, gender, color, size, material, price range, or keywords. Automatically displays matching products on the customer's screen.",
+      "description": "Search for shoes by name, brand, category, description, price range, color, size, or gender. Shows results on screen.",
+      "type": "custom",
+      "speak_during_execution": true,
       "parameters": {
         "type": "object",
+        "required": [],
         "properties": {
           "query": {
             "type": "string",
-            "description": "Search text, keywords, or specific shoe model name."
+            "description": "Search term or shoe description spoken by the user."
           },
           "brand": {
             "type": "string",
-            "description": "Brand name identified from user input."
+            "description": "Brand (Nike, Adidas...)"
           },
           "category": {
             "type": "string",
-            "description": "Category or style (e.g. running, sneakers, casual-shoes, formal, boots, basketball, outdoor, training)."
-          },
-          "gender": {
-            "type": "string",
-            "description": "Demographic or gender ('men', 'women', 'unisex', 'kids')."
+            "description": "Category: running, sneakers, formal, boots, basketball..."
           },
           "color": {
             "type": "string",
-            "description": "Color name (e.g. Black, White, Red, Blue, Green, Grey, Navy, Yellow, Pink, Brown, Tan)."
+            "description": "Color (Black, White, Red...)"
           },
           "size": {
             "type": "string",
-            "description": "Shoe size (e.g. '42', '40', '9', '10.5')."
+            "description": "Shoe size (38-45)"
+          },
+          "gender": {
+            "type": "string",
+            "description": "Gender: men, women, kids, unisex"
           },
           "material": {
             "type": "string",
-            "description": "Shoe material (e.g. Genuine Leather, Synthetic Mesh, Suede, Canvas, Knit Upper, Nubuck)."
+            "description": "Material: Mesh, Leather..."
           },
           "min_price": {
             "type": "number",
-            "description": "Minimum price in USD."
+            "description": "Minimum price USD"
           },
           "max_price": {
             "type": "number",
-            "description": "Maximum budget or price ceiling in USD."
+            "description": "Maximum price USD"
           },
           "sort": {
             "type": "string",
-            "description": "Sort order ('price_asc', 'price_desc', 'newest', 'popular', 'rating')."
+            "description": "Sort: price_asc, price_desc, newest, popular, rating"
           }
-        },
-        "required": []
-      }
+        }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
     },
     {
-      "type": "custom",
-      "name": "filter_products",
-      "description": "Apply structured filters to the catalogue view on the customer's screen.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "brand": { "type": "string", "description": "Brand filter." },
-          "category": { "type": "string", "description": "Category filter." },
-          "gender": { "type": "string", "description": "Gender filter." },
-          "color": { "type": "string", "description": "Color filter." },
-          "size": { "type": "string", "description": "Size filter." },
-          "material": { "type": "string", "description": "Material filter." },
-          "min_price": { "type": "number", "description": "Minimum price." },
-          "max_price": { "type": "number", "description": "Maximum price." },
-          "sort": { "type": "string", "description": "Sort order ('price_asc', 'price_desc', 'newest', 'popular', 'rating')." }
-        },
-        "required": []
-      }
-    },
-    {
-      "type": "custom",
-      "name": "clear_filters",
-      "description": "Reset all active filters and display all products in the catalogue.",
-      "parameters": {
-        "type": "object",
-        "properties": {}
-      }
-    },
-    {
-      "type": "custom",
+      "method": "POST",
+      "speak_after_execution": true,
       "name": "add_to_cart",
-      "description": "Add a specific shoe variant to the customer's shopping cart.",
+      "description": "Add a specific shoe to cart. Accepts product_slug OR product_id OR product_name plus size/color/quantity. Backend uses viewed product if slug omitted. Handles color/size normalization.",
+      "type": "custom",
+      "speak_during_execution": true,
       "parameters": {
         "type": "object",
+        "required": [],
         "properties": {
-          "product_slug": { "type": "string", "description": "Slug of the product to add." },
-          "product_id": { "type": "string", "description": "ID of the product (if slug is unknown)." },
-          "size": { "type": "string", "description": "Selected shoe size (e.g. '42', '9')." },
-          "color": { "type": "string", "description": "Selected color (e.g. 'Black', 'White')." },
-          "quantity": { "type": "number", "description": "Quantity to add (default 1)." }
-        },
-        "required": []
-      }
+          "product_slug": {
+            "type": "string",
+            "description": "Product slug (preferred)"
+          },
+          "product_id": {
+            "type": "string",
+            "description": "Product ID fallback"
+          },
+          "product_name": {
+            "type": "string",
+            "description": "Product name if slug/ID unknown"
+          },
+          "size": {
+            "type": "string",
+            "description": "Shoe size (e.g. 44)"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color (e.g. Red)"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity 1-10, defaults 1"
+          }
+        }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
     },
     {
-      "type": "custom",
+      "method": "POST",
+      "speak_after_execution": true,
       "name": "remove_from_cart",
-      "description": "Remove an item from the customer's cart by variant ID.",
+      "description": "Remove an item from cart by variant_id OR product_name OR product_slug. Call get_cart first if you don't know variant_id.",
+      "type": "custom",
+      "speak_during_execution": true,
       "parameters": {
         "type": "object",
+        "required": [],
         "properties": {
-          "variant_id": { "type": "string", "description": "Variant ID to remove." },
-          "product_name": { "type": "string", "description": "Product name to remove." }
-        },
-        "required": []
-      }
+          "variant_id": {
+            "type": "string",
+            "description": "Variant ID from get_cart"
+          },
+          "product_name": {
+            "type": "string",
+            "description": "Product name to remove"
+          },
+          "product_slug": {
+            "type": "string",
+            "description": "Product slug to remove"
+          }
+        }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
     },
     {
-      "type": "custom",
+      "method": "POST",
+      "speak_after_execution": true,
       "name": "clear_cart",
-      "description": "Clear all items from the customer's shopping cart.",
+      "description": "Clear all items from shopping cart.",
+      "type": "custom",
+      "speak_during_execution": true,
       "parameters": {
         "type": "object",
         "properties": {}
-      }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
     },
     {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "get_cart",
+      "description": "Get FULL cart details: every item with name, slug, size, color, quantity, price, variantId, available, image, plus total and count. Use before remove/update and when user asks what's in cart.",
       "type": "custom",
-      "name": "open_cart",
-      "description": "Open the shopping cart page on the customer's screen.",
+      "speak_during_execution": true,
       "parameters": {
         "type": "object",
         "properties": {}
-      }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
     },
     {
-      "type": "custom",
+      "method": "POST",
+      "speak_after_execution": true,
       "name": "get_cart_summary",
-      "description": "Get a summary of all items, quantities, and total amount currently in the cart.",
+      "description": "Get concise spoken summary of cart (item count + total).",
+      "type": "custom",
+      "speak_during_execution": true,
       "parameters": {
         "type": "object",
         "properties": {}
-      }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
     },
     {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "update_cart_quantity",
+      "description": "Increase, decrease, or set quantity of a cart item. Pass variant_id OR product_name/product_slug plus quantity/delta/action. Use action=increase for 'add one more' / 'increase', action=decrease for 'reduce'. Set quantity=3 for 'set to 3'.",
       "type": "custom",
-      "name": "toggle_favourite",
-      "description": "Save or remove a product from the customer's favourites/wishlist.",
+      "speak_during_execution": true,
       "parameters": {
         "type": "object",
+        "required": [],
         "properties": {
-          "product_slug": { "type": "string", "description": "Slug of the product." },
-          "action": { "type": "string", "description": "Action: 'add' or 'remove'." }
-        },
-        "required": ["product_slug"]
-      }
+          "variant_id": {
+            "type": "string",
+            "description": "Variant ID from get_cart"
+          },
+          "product_name": {
+            "type": "string",
+            "description": "Product name"
+          },
+          "product_slug": {
+            "type": "string",
+            "description": "Product slug"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Exact new quantity 1-10"
+          },
+          "delta": {
+            "type": "number",
+            "description": "Change by delta e.g. 1 or -1"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "increase",
+              "decrease"
+            ],
+            "description": "increase or decrease by one"
+          }
+        }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
     },
     {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "open_cart",
+      "description": "Open the shopping cart page on screen.",
       "type": "custom",
-      "name": "navigate_to",
-      "description": "Navigate to a specific section on the store website.",
+      "speak_during_execution": true,
       "parameters": {
         "type": "object",
+        "properties": {}
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+    },
+    {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "toggle_favourite",
+      "description": "Add or remove product from favourites / wishlist.",
+      "type": "custom",
+      "speak_during_execution": true,
+      "parameters": {
+        "type": "object",
+        "required": [
+          "product_slug"
+        ],
+        "properties": {
+          "product_slug": {
+            "type": "string",
+            "description": "Product slug"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ],
+            "description": "add or remove, toggles if omitted"
+          }
+        }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+    },
+    {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "navigate_to",
+      "description": "Navigate user's browser to a page.",
+      "type": "custom",
+      "speak_during_execution": true,
+      "parameters": {
+        "type": "object",
+        "required": [
+          "page"
+        ],
         "properties": {
           "page": {
             "type": "string",
-            "enum": ["home", "products", "cart", "profile", "orders", "checkout", "about", "contact", "blogs", "login", "signup"],
-            "description": "Page to navigate to."
+            "enum": [
+              "home",
+              "products",
+              "cart",
+              "profile",
+              "orders",
+              "checkout",
+              "about",
+              "contact",
+              "blogs",
+              "login",
+              "signup"
+            ],
+            "description": "Page key"
           }
-        },
-        "required": ["page"]
-      }
+        }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+    },
+    {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "filter_products",
+      "description": "Filter and sort products on catalog page.",
+      "type": "custom",
+      "speak_during_execution": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string",
+            "description": "Color filter"
+          },
+          "size": {
+            "type": "string",
+            "description": "Size filter"
+          },
+          "gender": {
+            "type": "string",
+            "description": "Gender filter"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category slug"
+          },
+          "brand": {
+            "type": "string",
+            "description": "Brand"
+          },
+          "material": {
+            "type": "string",
+            "description": "Material"
+          },
+          "min_price": {
+            "type": "number",
+            "description": "Min price"
+          },
+          "max_price": {
+            "type": "number",
+            "description": "Max price"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort: price_asc, price_desc, newest, popular, rating"
+          }
+        }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+    },
+    {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "clear_filters",
+      "description": "Clear all active filters and show all products.",
+      "type": "custom",
+      "speak_during_execution": true,
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+    },
+    {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "select_variant",
+      "description": "Select color and/or size on the product detail page user is viewing. Pass color and/or size. Use when user says 'select red size 44'.",
+      "type": "custom",
+      "speak_during_execution": true,
+      "parameters": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "product_slug": {
+            "type": "string",
+            "description": "Optional slug, omitted uses viewed product"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color e.g. Red"
+          },
+          "size": {
+            "type": "string",
+            "description": "Size e.g. 44"
+          }
+        }
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
+    },
+    {
+      "method": "POST",
+      "speak_after_execution": true,
+      "name": "get_current_page",
+      "description": "Returns which page customer is viewing (product slug, selected color/size, etc.). Call when unsure where user is.",
+      "type": "custom",
+      "speak_during_execution": true,
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/retell/function"
     }
   ]
 }
