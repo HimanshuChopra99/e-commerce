@@ -33,13 +33,13 @@ export function mapUser(row) {
     emailVerified: Boolean(row.email_verified_at),
     address: row.address_line1
       ? {
-          line1: row.address_line1,
-          line2: row.address_line2,
-          city: row.address_city,
-          state: row.address_state,
-          postalCode: row.address_postal,
-          country: row.address_country,
-        }
+        line1: row.address_line1,
+        line2: row.address_line2,
+        city: row.address_city,
+        state: row.address_state,
+        postalCode: row.address_postal,
+        country: row.address_country,
+      }
       : null,
     preferredSize: row.preferred_size,
     marketingOptIn: Boolean(row.marketing_opt_in),
@@ -92,7 +92,7 @@ export async function findByPublicId(publicId) {
     try {
       const row = await queryOne(`SELECT ${SAFE_COLUMNS} FROM users WHERE public_id = ? LIMIT 1`, [publicId])
       if (row) return mapUser(row)
-    } catch {}
+    } catch { }
   }
   const mem = memoryStore.getUserByPublicId(publicId)
   return mem ? mapMemoryUser(mem) : null
@@ -103,7 +103,7 @@ export async function findById(id) {
     try {
       const row = await queryOne(`SELECT ${SAFE_COLUMNS} FROM users WHERE id = ? LIMIT 1`, [id])
       if (row) return mapUser(row)
-    } catch {}
+    } catch { }
   }
   const mem = memoryStore.getUsers().find((u) => u.internalId === id || u.id === id || u.publicId === id)
   return mem ? mapMemoryUser(mem) : null
@@ -114,7 +114,7 @@ export async function findByEmail(email) {
     try {
       const row = await queryOne(`SELECT ${SAFE_COLUMNS} FROM users WHERE email = ? LIMIT 1`, [email])
       if (row) return mapUser(row)
-    } catch {}
+    } catch { }
   }
   const mem = memoryStore.getUserByEmail(email)
   return mem ? mapMemoryUser(mem) : null
@@ -129,7 +129,7 @@ export async function findByEmailWithHash(email) {
         [email]
       )
       if (row) return { ...mapUser(row), passwordHash: row.password_hash }
-    } catch {}
+    } catch { }
   }
   const mem = memoryStore.getUserByEmail(email)
   return mem ? { ...mapMemoryUser(mem), passwordHash: mem.passwordHash } : null
@@ -143,7 +143,7 @@ export async function findByIdWithHash(id) {
         [id]
       )
       if (row) return { ...mapUser(row), passwordHash: row.password_hash }
-    } catch {}
+    } catch { }
   }
   const mem = memoryStore.getUsers().find((u) => u.internalId === id || u.id === id || u.publicId === id)
   return mem ? { ...mapMemoryUser(mem), passwordHash: mem.passwordHash } : null
@@ -154,7 +154,7 @@ export async function emailExists(email) {
     try {
       const row = await queryOne('SELECT 1 AS x FROM users WHERE email = ? LIMIT 1', [email])
       if (row) return true
-    } catch {}
+    } catch { }
   }
   return Boolean(memoryStore.getUserByEmail(email))
 }
@@ -180,7 +180,7 @@ export async function create(data, conn = pool) {
       )
       const created = await findById(result.insertId)
       if (created) return created
-    } catch {}
+    } catch { }
   }
 
   const mem = memoryStore.addUser({
@@ -247,7 +247,7 @@ export async function update(id, patch) {
         const updated = await findById(id)
         if (updated) return updated
       }
-    } catch {}
+    } catch { }
   }
 
   // Memory store fallback
@@ -270,7 +270,7 @@ export async function updatePassword(id, passwordHash) {
     try {
       await query('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, id])
       return
-    } catch {}
+    } catch { }
   }
   const mem = memoryStore.getUsers().find((u) => u.internalId === id || u.id === id || u.publicId === id)
   if (mem) {
@@ -284,7 +284,7 @@ export async function markEmailVerified(id) {
     try {
       await query('UPDATE users SET email_verified_at = NOW() WHERE id = ?', [id])
       return
-    } catch {}
+    } catch { }
   }
   const mem = memoryStore.getUsers().find((u) => u.internalId === id || u.id === id || u.publicId === id)
   if (mem) {
@@ -298,7 +298,7 @@ export async function touchLastLogin(id) {
     try {
       await query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [id])
       return
-    } catch {}
+    } catch { }
   }
   const mem = memoryStore.getUsers().find((u) => u.internalId === id || u.id === id || u.publicId === id)
   if (mem) {
@@ -400,7 +400,7 @@ export async function listCustomers({
           total: Number(countRows[0]?.total ?? 0),
         }
       }
-    } catch {}
+    } catch { }
   }
 
   // Memory store fallback
@@ -449,7 +449,7 @@ export async function getCustomerStats(userId) {
           tier: tierForSpend(totalSpent),
         }
       }
-    } catch {}
+    } catch { }
   }
 
   const mem = memoryStore.getUsers().find((u) => u.internalId === userId || u.id === userId || u.publicId === userId)
@@ -487,7 +487,7 @@ export async function getFavouriteProducts(userId, limit = 4) {
           unitsBought: Number(r.units),
         }))
       }
-    } catch {}
+    } catch { }
   }
   return []
 }
@@ -500,7 +500,7 @@ export async function countNewSince(date) {
         [date]
       )
       return Number(row?.n ?? 0)
-    } catch {}
+    } catch { }
   }
   return memoryStore.getUsers().filter((u) => u.role === 'customer' && new Date(u.createdAt) >= new Date(date)).length
 }
@@ -513,7 +513,7 @@ export async function countBetween(from, to) {
         [from, to]
       )
       return Number(row?.n ?? 0)
-    } catch {}
+    } catch { }
   }
   return memoryStore.getUsers().filter(
     (u) => u.role === 'customer' && new Date(u.createdAt) >= new Date(from) && new Date(u.createdAt) < new Date(to)
@@ -525,7 +525,7 @@ export async function countAll() {
     try {
       const row = await queryOne("SELECT COUNT(*) AS n FROM users WHERE role = 'customer'")
       return Number(row?.n ?? 0)
-    } catch {}
+    } catch { }
   }
   return memoryStore.getUsers().filter((u) => u.role === 'customer').length
 }
