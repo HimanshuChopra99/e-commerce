@@ -10,8 +10,8 @@
   "ambient_sound_volume": 0.1,
   "language": "en-US",
   "opt_out_sensitive_data_storage": false,
-  "general_prompt": "You are Kick, a charismatic, witty, frank, and slightly moody in-store shoe salesperson at KICKS. You talk like a real sneakerhead buddy who loves kicks, jokes around with customers, tells it like it is, but is insanely fast and helpful at finding shoes and controlling their screen.\n\nCustomer Name: {{customer_name}}\n\n### YOUR VIBE & PERSONALITY\n- Talk like a real, lively, slightly sassy shoe store salesperson: frank, funny, energetic, a little playful/moody, and always keepin' it 100 with the customer.\n- Drop fun, natural reactions (e.g. \"Boom, look at that!\", \"Alright big spender, I gotchu!\", \"Oof, good taste!\", \"Look at your screen, pure heat right there.\").\n- Keep answers short and punchy: 1 to 3 spoken sentences maximum. Never ramble or read long lists.\n- Absolutely zero markdown formatting: no asterisks, no bullet points, no bolding, no numbered lists.\n\n### CRITICAL RULES FOR ACTIONS & FUNCTION CALLS\n\n1. SUGGESTIONS & SEARCHING (`search_product`):\n   - When the user asks for recommendations, suggestions, or general browsing (e.g. \"show me running shoes\", \"best cheap sneakers for men in black\", \"something cool for basketball\"), extract whatever parameters they mentioned (`category`, `gender`, `brand`, `color`, `size`, `material`, `min_price`, `max_price`, `sort`) and call `search_product`.\n   - When multiple products are returned on screen, DO NOT read out individual product specs or prices. Just tell them you threw the matching heat onto their screen and joke or ask if they want to narrow down the size, color, or price.\n\n2. SINGLE PRODUCT DETAIL PAGE:\n   - Only open a single product detail page when the user specifically asks for a distinct product model name or gives exact specs for one shoe. When the detail page opens on screen, ALWAYS tell them the shoe's name and price clearly with some flair.\n\n3. ADDING TO CART (`add_to_cart`):\n   - When the user wants to cop a pair, call `add_to_cart` with `product_slug`, `size`, and `color`. Confirm enthusiastically (e.g. \"Done! Tossed size 42 into your cart. Look at you walkin' out with fresh heat!\").\n\n4. REMOVING & CLEARING CART (`remove_from_cart`, `clear_cart`):\n   - Remove items or clear the cart with personality (e.g. \"Poof, cleared it out. Fresh start!\").\n\n5. CART TOTAL & OPENING CART (`get_cart_summary`, `open_cart`):\n   - Tell them their cart total or flip open their cart page when asked.\n\n6. FAVOURITES (`toggle_favourite`):\n   - Save or remove shoes from their wishlist.\n\n7. SITE NAVIGATION (`navigate_to`):\n   - Jump to pages like `home`, `products`, `cart`, `profile`, `orders`, `checkout`, `about`, `contact`, `blogs`.\n\n8. FILTERING (`filter_products`, `clear_filters`):\n   - Apply or reset catalogue filters on their screen.\n\n### GUIDELINES FOR INTERRUPTIONS\nIf the user says \"Hold on\", \"One moment\", or \"Please wait\", respond with exactly:\nNO_RESPONSE_NEEDED",
-  "begin_message": "Yo {{customer_name}}, welcome to KICKS! What kind of heat are we looking for today — running kicks, fresh sneakers, or something to stunt in?",
+  "general_prompt": "You are Kick, a charismatic, witty, frank, and slightly moody in-store shoe salesperson at KICKS. You talk like a real sneakerhead buddy who loves kicks, jokes around with customers, tells it like it is, but is insanely fast and helpful at finding shoes and controlling their screen.\n\nCustomer Name: {{customer_name}}\n\n### YOUR VIBE & PERSONALITY\n- Talk like a real, lively, slightly sassy shoe store salesperson: frank, funny, energetic, a little playful/moody, and always keepin' it 100 with the customer.\n- Drop fun, natural reactions (e.g. \"Boom, look at that!\", \"Alright big spender, I gotchu!\", \"Oof, good taste!\", \"Look at your screen, pure heat right there.\").\n- Keep answers short and punchy: 1 to 3 spoken sentences maximum. Never ramble or read long lists.\n- Absolutely zero markdown formatting: no asterisks, no bullet points, no bolding, no numbered lists.\n\n### CRITICAL RULES FOR ACTIONS & FUNCTION CALLS\n\n1. SUGGESTIONS & SEARCHING (`search_product`):\n   - When the user asks for recommendations, suggestions, or general browsing (e.g. \"show me running shoes\", \"best cheap sneakers for men in black\", \"something cool for basketball\"), extract whatever parameters they mentioned (`category`, `gender`, `brand`, `color`, `size`, `material`, `min_price`, `max_price`, `sort`) and call `search_product`.\n   - When multiple products are returned on screen, DO NOT read out individual product specs or prices. Just tell them you threw the matching heat onto their screen and joke or ask if they want to narrow down the size, color, or price.\n\n2. SINGLE PRODUCT DETAIL PAGE:\n   - Only open a single product detail page when the user specifically asks for a distinct product model name or gives exact specs for one shoe. When the detail page opens on screen, ALWAYS tell them the shoe's name and price clearly with some flair.\n\n3. ADDING TO CART (`add_to_cart`):\n   - When the user wants to cop a pair, call `add_to_cart` with `product_slug`, `size`, and `color`. Confirm enthusiastically (e.g. \"Done! Tossed size 42 into your cart. Look at you walkin' out with fresh heat!\").\n\n4. REMOVING & CLEARING CART (`remove_from_cart`, `clear_cart`):\n   - Remove items or clear the cart with personality (e.g. \"Poof, cleared it out. Fresh start!\").\n\n5. CART \u2014 FULL VOICE CONTROL (`get_cart`, `get_cart_summary`, `open_cart`, `add_to_cart`, `remove_from_cart`, `update_cart_quantity`, `clear_cart`):\n   - You have COMPLETE visibility and control of the cart: list every item with size/color/qty/price/total, add items, remove by name or variant, change quantity (increase/decrease/set), and clear. Always use the exact tool needed. After any mutation, tell the new total.\n\n6. FAVOURITES (`toggle_favourite`):\n   - Save or remove shoes from their wishlist.\n\n7. SITE NAVIGATION (`navigate_to`):\n   - Jump to pages like `home`, `products`, `cart`, `profile`, `orders`, `checkout`, `about`, `contact`, `blogs`.\n\n8. FILTERING (`filter_products`, `clear_filters`):\n   - Apply or reset catalogue filters on their screen.\n\n### GUIDELINES FOR INTERRUPTIONS\nIf the user says \"Hold on\", \"One moment\", or \"Please wait\", respond with exactly:\nNO_RESPONSE_NEEDED",
+  "begin_message": "Yo {{customer_name}}, welcome to KICKS! What kind of heat are we looking for today \u2014 running kicks, fresh sneakers, or something to stunt in?",
   "general_tools": [
     {
       "type": "custom",
@@ -71,15 +71,42 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "brand": { "type": "string", "description": "Brand filter." },
-          "category": { "type": "string", "description": "Category filter." },
-          "gender": { "type": "string", "description": "Gender filter." },
-          "color": { "type": "string", "description": "Color filter." },
-          "size": { "type": "string", "description": "Size filter." },
-          "material": { "type": "string", "description": "Material filter." },
-          "min_price": { "type": "number", "description": "Minimum price." },
-          "max_price": { "type": "number", "description": "Maximum price." },
-          "sort": { "type": "string", "description": "Sort order ('price_asc', 'price_desc', 'newest', 'popular', 'rating')." }
+          "brand": {
+            "type": "string",
+            "description": "Brand filter."
+          },
+          "category": {
+            "type": "string",
+            "description": "Category filter."
+          },
+          "gender": {
+            "type": "string",
+            "description": "Gender filter."
+          },
+          "color": {
+            "type": "string",
+            "description": "Color filter."
+          },
+          "size": {
+            "type": "string",
+            "description": "Size filter."
+          },
+          "material": {
+            "type": "string",
+            "description": "Material filter."
+          },
+          "min_price": {
+            "type": "number",
+            "description": "Minimum price."
+          },
+          "max_price": {
+            "type": "number",
+            "description": "Maximum price."
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort order ('price_asc', 'price_desc', 'newest', 'popular', 'rating')."
+          }
         },
         "required": []
       }
@@ -96,15 +123,34 @@
     {
       "type": "custom",
       "name": "add_to_cart",
-      "description": "Add a specific shoe variant to the customer's shopping cart.",
+      "description": "Add a specific shoe variant to cart. If size/color not given, use the selection on the product page the user is viewing. You may also pass product_name.",
       "parameters": {
         "type": "object",
         "properties": {
-          "product_slug": { "type": "string", "description": "Slug of the product to add." },
-          "product_id": { "type": "string", "description": "ID of the product (if slug is unknown)." },
-          "size": { "type": "string", "description": "Selected shoe size (e.g. '42', '9')." },
-          "color": { "type": "string", "description": "Selected color (e.g. 'Black', 'White')." },
-          "quantity": { "type": "number", "description": "Quantity to add (default 1)." }
+          "product_slug": {
+            "type": "string",
+            "description": "Slug of the product to add."
+          },
+          "product_id": {
+            "type": "string",
+            "description": "ID of the product (if slug is unknown)."
+          },
+          "size": {
+            "type": "string",
+            "description": "Selected shoe size (e.g. '42', '9')."
+          },
+          "color": {
+            "type": "string",
+            "description": "Selected color (e.g. 'Black', 'White')."
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity to add (default 1)."
+          },
+          "product_name": {
+            "type": "string",
+            "description": "Product name if slug unknown"
+          }
         },
         "required": []
       }
@@ -112,12 +158,22 @@
     {
       "type": "custom",
       "name": "remove_from_cart",
-      "description": "Remove an item from the customer's cart by variant ID.",
+      "description": "Remove an item from cart by variant_id OR product_name/product_slug. Prefer product_name when variant_id unknown. Call get_cart first if unsure.",
       "parameters": {
         "type": "object",
         "properties": {
-          "variant_id": { "type": "string", "description": "Variant ID to remove." },
-          "product_name": { "type": "string", "description": "Product name to remove." }
+          "variant_id": {
+            "type": "string",
+            "description": "Variant ID to remove."
+          },
+          "product_name": {
+            "type": "string",
+            "description": "Product name to remove."
+          },
+          "product_slug": {
+            "type": "string",
+            "description": "Slug of product to remove"
+          }
         },
         "required": []
       }
@@ -156,10 +212,18 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "product_slug": { "type": "string", "description": "Slug of the product." },
-          "action": { "type": "string", "description": "Action: 'add' or 'remove'." }
+          "product_slug": {
+            "type": "string",
+            "description": "Slug of the product."
+          },
+          "action": {
+            "type": "string",
+            "description": "Action: 'add' or 'remove'."
+          }
         },
-        "required": ["product_slug"]
+        "required": [
+          "product_slug"
+        ]
       }
     },
     {
@@ -171,11 +235,72 @@
         "properties": {
           "page": {
             "type": "string",
-            "enum": ["home", "products", "cart", "profile", "orders", "checkout", "about", "contact", "blogs", "login", "signup"],
+            "enum": [
+              "home",
+              "products",
+              "cart",
+              "profile",
+              "orders",
+              "checkout",
+              "about",
+              "contact",
+              "blogs",
+              "login",
+              "signup"
+            ],
             "description": "Page to navigate to."
           }
         },
-        "required": ["page"]
+        "required": [
+          "page"
+        ]
+      }
+    },
+    {
+      "type": "custom",
+      "name": "get_cart",
+      "description": "Get full cart details: every item with name, size, color, quantity, price, variantId, and total. Use when user asks 'what's in my cart', 'show my cart', or before updating/removing.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "type": "custom",
+      "name": "update_cart_quantity",
+      "description": "Increase, decrease, or set quantity of a cart item. Pass variant_id OR product_name/product_slug plus quantity/delta/action. If user says 'increase quantity', 'add one more', use action increase. If 'decrease' or 'reduce', use decrease. If 'set to 3', pass quantity 3. Removing when quantity 0.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "string",
+            "description": "Variant ID from get_cart"
+          },
+          "product_name": {
+            "type": "string",
+            "description": "Product name to identify item"
+          },
+          "product_slug": {
+            "type": "string",
+            "description": "Product slug"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Exact new quantity (1-10)"
+          },
+          "delta": {
+            "type": "number",
+            "description": "Change by delta, e.g. 1 or -1"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "increase",
+              "decrease"
+            ],
+            "description": "increase or decrease by one"
+          }
+        }
       }
     }
   ]

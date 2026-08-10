@@ -185,80 +185,262 @@ async function handleSuggestProducts(args = {}, userId) {
   return handleSearchProduct(suggestionArgs, userId)
 }
 
-async function handleAddToCart({ product_id, product_slug, size, color, quantity = 1 }, userId) {
-  if (!userId || userId === 'guest') {
-    return fail('Please sign in to add items to your cart.')
+// ─── Helpers for friendly errors ───────────────────────────────────────────
+function friendlyCartError(err) {
+  const msg = String(err?.message || '')
+  // Never leak raw SQL / truncation errors to the voice agent
+  if (/Data truncated|ER_TRUNCATED|ER_DATA_TOO_LONG|Incorrect integer|column.*user_id/i.test(msg)) {
+    return 'Sorry, your cart is temporarily unavailable. Please try again in a moment.'
   }
+  if (err?.statusCode === 401 || /sign in/i.test(msg)) return 'Please sign in to use your cart.'
+  if (err?.statusCode === 404) return msg
+  if (err?.statusCode === 409) return msg // stock messages
+  return msg || 'Something went wrong with your cart. Please try again.'
+}
+
+function requireAuth(userId) {
+  if (!userId || userId === 'guest' || String(userId).trim() === '') {
+    return fail('Please sign in to use your cart. You can say "go to login" and I\'ll take you there.')
+  }
+  return null
+}
+
+async function resolveAddToCartProduct({ product_id, product_slug, product_name }) {
+  if (product_slug) {
+    try { const p = await getPublicBySlug(product_slug); if (p) return p } catch {}
+  }
+  if (product_id) {
+    try {
+      const p = await getPublicBySlug(product_id)
+      if (p) return p
+    } catch {}
+    const result = await voiceSearch.search(String(product_id))
+    if (result?.product) return result.product
+  }
+  if (product_name) {
+    const result = await voiceSearch.search(String(product_name))
+    if (result?.product) return result.product
+    if (result?.type === 'exact' && result.product) return result.product
+  }
+  return null
+}
+
+async function handleAddToCart({ product_id, product_slug, product_name, size, color, quantity = 1 }, userId) {
+  const authFail = requireAuth(userId)
+  if (authFail) return authFail
 
   try {
-    let product
-    if (product_slug) {
-      product = await getPublicBySlug(product_slug)
-    } else if (product_id) {
-      const result = await voiceSearch.search(product_id)
-      product = result.product || null
+    let product = await resolveAddToCartProduct({ product_id, product_slug, product_name })
+
+    // If still not found and user is on a product page, use that product
+    if (!product) {
+      const tracked = getPageState(userId)
+      if (tracked?.type === 'product' && tracked.slug) {
+        try { product = await getPublicBySlug(tracked.slug) } catch {}
+      }
     }
 
-    if (!product) return fail('I could not find that product. Please try searching for it first.')
+    if (!product) return fail('I could not find that product. Please tell me the shoe name or search for it first, then say "add to cart".')
 
-    if (!product.inStock) {
+    if (product.inStock === false) {
       return fail(`Sorry, ${product.name} is currently out of stock.`)
     }
 
-    // Find the right variant
-    const variant = voiceSearch.findVariant(product, size, color)
+    // Normalize size/color against available variants; fall back to tracked selection
+    const tracked = getPageState(userId)
+    const effectiveSize = size ?? (tracked?.type === 'product' && tracked.slug === product.slug ? tracked.size : null)
+    const effectiveColor = color ?? (tracked?.type === 'product' && tracked.slug === product.slug ? tracked.color : null)
+
+    // Try to find variant with exact match, with color normalization
+    let variant = null
+    if (effectiveSize || effectiveColor) {
+      // Normalize color to canonical
+      let canonColor = effectiveColor
+      if (effectiveColor) {
+        const norm = normalizeColor(product, effectiveColor)
+        if (norm) canonColor = norm
+      }
+      let canonSize = effectiveSize
+      if (effectiveSize) {
+        const norm = normalizeSize(product, effectiveSize)
+        if (norm) canonSize = norm
+      }
+      variant = voiceSearch.findVariant(product, canonSize, canonColor)
+      // If color-specific variant missing, try size-only
+      if (!variant && canonSize) variant = voiceSearch.findVariant(product, canonSize, null)
+    }
+    if (!variant) {
+      // No variants specified – pick first in-stock variant
+      variant = product.variants?.find(isVariantInStock) || null
+    }
 
     if (!variant) {
-      const availableSizes = [...new Set(product.variants?.filter(v => v.inStock).map(v => v.size))].join(', ')
-      const availableColors = [...new Set(product.variants?.filter(v => v.inStock).map(v => v.color))].join(', ')
+      const availableSizes = [...new Set(product.variants?.filter(isVariantInStock).map(v => v.size))].join(', ')
+      const availableColors = [...new Set(product.variants?.filter(isVariantInStock).map(v => v.color))].join(', ')
       let msg = `I couldn't find ${product.name}`
-      if (size) msg += ` in size ${size}`
-      if (color) msg += ` in ${color}`
-      msg += `. Available sizes: ${availableSizes}. Available colors: ${availableColors}.`
+      if (effectiveSize) msg += ` in size ${effectiveSize}`
+      if (effectiveColor) msg += ` in ${effectiveColor}`
+      msg += `. Available sizes: ${availableSizes || 'none'}. Available colors: ${availableColors || 'none'}.`
       return fail(msg)
     }
 
-    await cartService.addItem(userId, { variantId: variant.id, quantity: Math.min(quantity, 10) })
+    const qty = Math.max(1, Math.min(Number(quantity) || 1, 10))
+    await cartService.addItem(userId, { variantId: variant.id, quantity: qty })
 
     emit(userId, 'cart:refresh', {})
     emit(userId, 'toast', {
-      message: `Added ${product.name}${size ? ` size ${size}` : ''}${color ? ` in ${color}` : ''} to your cart.`,
+      message: `Added ${product.name} size ${variant.size} in ${variant.color} to your cart.`,
       kind: 'success',
     })
 
-    return ok(`Added ${product.name} to your cart successfully.`)
+    const cart = await cartService.get(userId)
+    const total = cart.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0)
+    return ok(`Added ${product.name} size ${variant.size} in ${variant.color} to your cart. You now have ${cart.length} item${cart.length !== 1 ? 's' : ''} totaling $${total.toFixed(2)}.`, {
+      cart: cart.map(c => ({ name: c.name, size: c.size, color: c.color, quantity: c.quantity, price: c.price, variantId: c.variantId })),
+      total: Number(total.toFixed(2)),
+    })
   } catch (err) {
     logger.error({ err: err.message, userId }, 'handleAddToCart error')
-    return fail(err.message || 'Failed to add item to cart. Please try again.')
+    if (err.statusCode === 401) return fail('Please sign in to add items to your cart.')
+    if (err.statusCode === 404 || err.statusCode === 409) return fail(err.message)
+    return fail(friendlyCartError(err))
   }
 }
 
-async function handleRemoveFromCart({ product_name, variant_id }, userId) {
-  if (!userId || userId === 'guest') return fail('Please sign in first.')
+async function findCartVariantIdForProduct(userId, { variant_id, variantId, product_name, product_slug, product_id }) {
+  const vid = variant_id || variantId
+  if (vid) return String(vid)
+  const items = await cartService.get(userId)
+  if (!items.length) return null
+  // Match by product identifiers
+  const needle = String(product_name || product_slug || product_id || '').toLowerCase().trim()
+  if (!needle) return null
+  // Try slug exact first
+  let match = items.find(i => String(i.slug).toLowerCase() === needle || String(i.productId).toLowerCase() === needle)
+  if (match) return match.variantId
+  // Fuzzy name match
+  match = items.find(i => String(i.name).toLowerCase().includes(needle) || needle.includes(String(i.name).toLowerCase().split(' ').slice(0,2).join(' ')))
+  if (match) return match.variantId
+  // If only one item, assume that
+  if (items.length === 1) return items[0].variantId
+  return null
+}
 
+async function handleRemoveFromCart(args = {}, userId) {
+  const authFail = requireAuth(userId)
+  if (authFail) return authFail
   try {
-    if (variant_id) {
-      await cartService.removeItem(userId, variant_id)
-      emit(userId, 'cart:refresh', {})
-      emit(userId, 'toast', { message: 'Item removed from cart.', kind: 'info' })
-      return ok('Item removed from your cart.')
+    const variantId = await findCartVariantIdForProduct(userId, args)
+    if (!variantId) {
+      const items = await cartService.get(userId)
+      if (!items.length) return fail('Your cart is already empty.')
+      if (!args.product_name && !args.variant_id && !args.variantId) {
+        // No identifier – list cart to help agent
+        const summary = items.map(i => `${i.name} size ${i.size} ${i.color}`).join(', ')
+        return fail(`Which item should I remove? Your cart has: ${summary}. Tell me the product name.`)
+      }
+      return fail('I could not find that item in your cart. Please tell me the exact product name.')
     }
-    return fail('Please specify which item to remove.')
+    await cartService.removeItem(userId, variantId)
+    emit(userId, 'cart:refresh', {})
+    emit(userId, 'toast', { message: 'Item removed from cart.', kind: 'info' })
+    const cart = await cartService.get(userId)
+    if (!cart.length) return ok('Removed that item. Your cart is now empty.')
+    const total = cart.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0)
+    return ok(`Removed that item. You have ${cart.length} item${cart.length !== 1 ? 's' : ''} left totaling $${total.toFixed(2)}.`, { cart })
   } catch (err) {
     logger.error({ err: err.message }, 'handleRemoveFromCart error')
-    return fail('Failed to remove item. Please try again.')
+    return fail(friendlyCartError(err))
   }
 }
 
 async function handleClearCart(_, userId) {
-  if (!userId || userId === 'guest') return fail('Please sign in first.')
+  const authFail = requireAuth(userId)
+  if (authFail) return authFail
   try {
     await cartService.clear(userId)
     emit(userId, 'cart:refresh', {})
     emit(userId, 'toast', { message: 'Cart cleared.', kind: 'info' })
-    return ok('Your cart has been cleared.')
+    return ok('Your cart has been cleared. It is now empty.')
   } catch (err) {
-    return fail('Failed to clear cart.')
+    logger.error({ err: err.message }, 'handleClearCart error')
+    return fail(friendlyCartError(err))
+  }
+}
+
+async function handleUpdateCartQuantity({ variant_id, variantId, product_name, product_slug, quantity, delta, action }, userId) {
+  const authFail = requireAuth(userId)
+  if (authFail) return authFail
+  try {
+    let targetVariantId = variant_id || variantId
+    if (!targetVariantId && (product_name || product_slug)) {
+      targetVariantId = await findCartVariantIdForProduct(userId, { product_name, product_slug })
+    }
+    // If still no target and single item, pick it
+    if (!targetVariantId) {
+      const items = await cartService.get(userId)
+      if (!items.length) return fail('Your cart is empty.')
+      if (items.length === 1) targetVariantId = items[0].variantId
+      else return fail('Tell me which item to update — for example "increase quantity of Nike Air Max" or "set it to 2".')
+    }
+
+    const items = await cartService.get(userId)
+    const line = items.find(i => String(i.variantId) === String(targetVariantId))
+    if (!line) return fail('That item is not in your cart.')
+
+    let newQty
+    if (action === 'increase' || delta === 1 || String(action).toLowerCase() === 'increment') {
+      newQty = Number(line.quantity) + 1
+    } else if (action === 'decrease' || action === 'decrement' || delta === -1) {
+      newQty = Number(line.quantity) - 1
+    } else if (quantity !== undefined && quantity !== null) {
+      newQty = Number(quantity)
+    } else if (delta !== undefined && delta !== null) {
+      newQty = Number(line.quantity) + Number(delta)
+    } else {
+      return fail('Tell me the new quantity, for example "set quantity to 3" or "increase it".')
+    }
+
+    if (newQty <= 0) {
+      await cartService.removeItem(userId, targetVariantId)
+      emit(userId, 'cart:refresh', {})
+      emit(userId, 'toast', { message: 'Item removed from cart.', kind: 'info' })
+      return ok(`Removed ${line.name} from your cart.`)
+    }
+    if (newQty > 10) return fail('Maximum 10 per item. Tell me a quantity between 1 and 10.')
+    // Check stock
+    if (Number(line.available) < newQty) {
+      return fail(`Only ${line.available} left in stock for ${line.name} size ${line.size}.`)
+    }
+
+    await cartService.setItem(userId, { variantId: targetVariantId, quantity: newQty })
+    emit(userId, 'cart:refresh', {})
+    emit(userId, 'toast', { message: `Quantity updated to ${newQty}.`, kind: 'info' })
+    return ok(`Updated ${line.name} quantity to ${newQty}.`, { quantity: newQty })
+  } catch (err) {
+    logger.error({ err: err.message }, 'handleUpdateCartQuantity error')
+    return fail(friendlyCartError(err))
+  }
+}
+
+async function handleGetCart(args = {}, userId) {
+  const authFail = requireAuth(userId)
+  if (authFail) return authFail
+  try {
+    const items = await cartService.get(userId)
+    if (!items.length) return ok('Your cart is empty.', { items: [], total: 0 })
+    const total = items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0)
+    const lines = items.map(i => `${i.name} size ${i.size} ${i.color} x${i.quantity} $${(Number(i.price)*Number(i.quantity)).toFixed(2)}`).join(', ')
+    // Also push cart page if agent wants visual
+    if (args.open === true || args.navigate === true) emit(userId, 'navigate', { path: '/cart' })
+    return ok(`Your cart has ${items.length} item${items.length !== 1 ? 's' : ''}: ${lines}. Total $${total.toFixed(2)}.`, {
+      items: items.map(i => ({ name: i.name, slug: i.slug, size: i.size, color: i.color, quantity: i.quantity, price: i.price, variantId: i.variantId, available: i.available, image: i.image })),
+      total: Number(total.toFixed(2)),
+      count: items.length,
+    })
+  } catch (err) {
+    logger.error({ err: err.message }, 'handleGetCart error')
+    return fail(friendlyCartError(err))
   }
 }
 
@@ -624,21 +806,24 @@ async function handleClearFilters(_, userId) {
 }
 
 async function handleOpenCart(_, userId) {
-  emit(userId, 'navigate', { path: '/cart' })
-  return ok('Opening your cart.')
+  const authFail = requireAuth(userId)
+  if (authFail) return authFail
+  try {
+    const items = await cartService.get(userId)
+    emit(userId, 'navigate', { path: '/cart' })
+    emit(userId, 'cart:refresh', {})
+    if (!items.length) return ok('Opening your cart. It is currently empty.', { items: [] })
+    const total = items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0)
+    return ok(`Opening your cart. You have ${items.length} item${items.length !== 1 ? 's' : ''} totaling $${total.toFixed(2)}.`, { items, total })
+  } catch (err) {
+    emit(userId, 'navigate', { path: '/cart' })
+    return ok('Opening your cart.')
+  }
 }
 
 async function handleGetCartSummary(_, userId) {
-  if (!userId || userId === 'guest') return fail('Please sign in to view your cart.')
-  try {
-    const items = await cartService.get(userId)
-    if (!items.length) return ok('Your cart is empty.')
-    const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
-    const summary = items.map(i => `${i.name} x${i.quantity}`).join(', ')
-    return ok(`You have ${items.length} item${items.length > 1 ? 's' : ''} in your cart: ${summary}. Total: $${total.toFixed(2)}.`)
-  } catch (err) {
-    return fail('Could not retrieve your cart.')
-  }
+  // Alias to handleGetCart but concise spoken summary
+  return handleGetCart({}, userId)
 }
 
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
@@ -666,18 +851,39 @@ const FUNCTION_MAP = {
   clearFilters:         handleClearFilters,
   reset_filters:        handleClearFilters,
 
-  // Cart operations
+  // Cart operations — full voice control
   add_to_cart:          handleAddToCart,
   addToCart:            handleAddToCart,
+  add_item_to_cart:     handleAddToCart,
   remove_from_cart:     handleRemoveFromCart,
   removeFromCart:       handleRemoveFromCart,
+  delete_from_cart:     handleRemoveFromCart,
   clear_cart:           handleClearCart,
   clearCart:            handleClearCart,
+  empty_cart:           handleClearCart,
   open_cart:            handleOpenCart,
   openCart:             handleOpenCart,
   view_cart:            handleOpenCart,
+  show_cart:            handleOpenCart,
+  get_cart:             handleGetCart,
+  getCart:              handleGetCart,
+  view_my_cart:         handleGetCart,
+  what_is_in_my_cart:   handleGetCart,
+  whats_in_my_cart:     handleGetCart,
   get_cart_summary:     handleGetCartSummary,
   getCartSummary:       handleGetCartSummary,
+  cart_summary:         handleGetCartSummary,
+  update_cart:          handleUpdateCartQuantity,
+  update_cart_quantity: handleUpdateCartQuantity,
+  updateCartQuantity:   handleUpdateCartQuantity,
+  set_cart_quantity:    handleUpdateCartQuantity,
+  set_quantity:         handleUpdateCartQuantity,
+  increase_quantity:    handleUpdateCartQuantity,
+  increaseQuantity:     handleUpdateCartQuantity,
+  decrease_quantity:    handleUpdateCartQuantity,
+  decreaseQuantity:     handleUpdateCartQuantity,
+  increment_quantity:   (args,u)=>handleUpdateCartQuantity({ ...args, action:'increase'},u),
+  decrement_quantity:   (args,u)=>handleUpdateCartQuantity({ ...args, action:'decrease'},u),
 
   // Favourites & general navigation
   toggle_favourite:     handleToggleFavourite,
@@ -712,16 +918,6 @@ const FUNCTION_MAP = {
   navigate_to:          handleNavigateTo,
   navigateTo:           handleNavigateTo,
   go_to_page:           handleNavigateTo,
-  search_product: handleSearchProduct,
-  add_to_cart: handleAddToCart,
-  remove_from_cart: handleRemoveFromCart,
-  clear_cart: handleClearCart,
-  toggle_favourite: handleToggleFavourite,
-  navigate_to: handleNavigateTo,
-  filter_products: handleFilterProducts,
-  clear_filters: handleClearFilters,
-  open_cart: handleOpenCart,
-  get_cart_summary: handleGetCartSummary,
 }
 
 export async function dispatch(functionName, args, userId) {
