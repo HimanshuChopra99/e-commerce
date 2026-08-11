@@ -60,7 +60,7 @@ const CART_SELECT = `
   JOIN product_variants v ON v.id = ci.variant_id
   JOIN products p ON p.id = v.product_id
   WHERE ci.user_id = ?
-  ORDER BY ci.updated_at DESC, ci.id DESC
+  ORDER BY ci.created_at DESC, ci.id DESC
 `
 
 export async function findByUser(userId, conn = pool) {
