@@ -33,7 +33,12 @@ export const PRODUCT_STATUS = Object.freeze([
 
 export const GENDERS = Object.freeze(['men', 'women', 'unisex', 'kids'])
 
-export const SIZES = Object.freeze(['5', '6', '7', '8', '9', '10', '11', '12'])
+export const SIZES = Object.freeze([
+  // EU sizes (used in seed data and memory store)
+  '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50',
+  // US sizes
+  '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12', '12.5', '13',
+])
 
 export const COLORS = Object.freeze([
   'Black', 'White', 'Grey', 'Navy', 'Red', 'Blue',

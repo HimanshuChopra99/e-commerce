@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { SIZES } from '../utils/constants.js'
+
 
 /**
  * Passwords: 8+ chars with a lowercase letter and a digit.
@@ -43,7 +43,7 @@ export const updateProfileSchema = z.object({
   firstName: name.optional(),
   lastName: name.optional(),
   phone,
-  preferredSize: z.enum(SIZES).optional().nullable(),
+  preferredSize: z.string().trim().max(10).optional().nullable(),
   marketingOptIn: z.boolean().optional(),
   address: addressSchema.optional().nullable(),
 })

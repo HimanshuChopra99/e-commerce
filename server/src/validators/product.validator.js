@@ -33,7 +33,7 @@ export const productQuerySchema = z.object({
   maxPrice: z.coerce.number().min(0).optional(),
   priceMin: z.coerce.number().min(0).optional(),
   priceMax: z.coerce.number().min(0).optional(),
-  size: z.enum(SIZES).optional(),
+  size: z.string().trim().max(10).optional(),
   color: colorValue.optional(),
   q: z.string().trim().max(120).optional(),
   featured: z
