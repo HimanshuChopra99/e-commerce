@@ -119,7 +119,11 @@ const BASE = `
 export async function findByPublicId(publicId) {
   if (isDatabaseConnected()) {
     try {
-      const row = await queryOne(`${BASE} WHERE o.public_id = ? LIMIT 1`, [publicId])
+      const cleanNumber = String(publicId).startsWith('#') ? String(publicId) : `#${publicId}`
+      const row = await queryOne(
+        `${BASE} WHERE o.public_id = ? OR o.order_number = ? OR o.order_number = ? OR o.id = ? LIMIT 1`,
+        [publicId, publicId, cleanNumber, publicId]
+      )
       if (row) return mapOrder(row)
     } catch {}
   }

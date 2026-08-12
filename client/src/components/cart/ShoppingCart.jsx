@@ -273,7 +273,7 @@ export default function ShoppingCart() {
                   <div key={item.variantId || index}>
                     {index > 0 && <div className="border-t border-gray-100 my-6" />}
                     <div className="flex gap-4 sm:gap-6">
-                      <div className="w-28 h-28 sm:w-36 sm:h-36 bg-[#F2F1ED] rounded-2xl flex-shrink-0 p-2 flex items-center justify-center overflow-hidden">
+                      <div className="w-28 h-28 sm:w-36 sm:h-36 bg-[#F2F1ED] rounded-2xl flex-shrink-0 flex items-center justify-center overflow-hidden">
                         <img
                           src={item.image}
                           alt={item.name}

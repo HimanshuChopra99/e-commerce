@@ -15,15 +15,11 @@ import ScrollToTop from './components/common/ScrollToTop';
 import AiAgentIcon from './components/common/AiAgentIcon';
 import { usePageTracker } from './hooks/usePageTracker';
 
-// Reports the current page to the server over the socket so the voice agent
-// knows which page the customer is on (see hooks/usePageTracker.js).
 function PageTracker() {
   usePageTracker();
   return null;
 }
 
-// Route-level code splitting: each page chunk is fetched lazily, so the first
-// paint only downloads the code for the page the visitor actually opens.
 const Home = lazy(() => import('./pages/Home'));
 const Product = lazy(() => import('./pages/Product'));
 const ProductView = lazy(() => import('./pages/ProductView'));
@@ -32,6 +28,7 @@ const Payment = lazy(() => import('./pages/Payment'));
 const Signup = lazy(() => import('./pages/Signup'));
 const Login = lazy(() => import('./pages/Login'));
 const Orders = lazy(() => import('./pages/Orders'));
+const OrderDetail = lazy(() => import('./pages/OrderDetail'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Company = lazy(() => import('./pages/Company'));
 
@@ -55,22 +52,15 @@ function App() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [toastQueue, setToastQueue] = useState([]);
 
-  // Only the session identity and the guest/local cart are restored up-front.
-  // Everything else (categories, featured products, orders, favourites) is
-  // fetched lazily by the page that actually needs it — see Home, Product and
-  // Profile. This avoids firing every API call on the very first page load.
   useEffect(() => {
     dispatch(fetchMe());
   }, [dispatch]);
 
-  // Every authenticated account hydrates its database-backed cart so the
-  // navbar count is correct everywhere. Favourites/orders are page-lazy.
   useEffect(() => {
     if (!userId) return;
     dispatch(hydrateCart());
   }, [dispatch, userId]);
 
-  // Lock body scroll when any overlay/drawer is open
   useEffect(() => {
     if (isSearchOpen || isMobileOpen) {
       document.body.classList.add("locked");
@@ -79,8 +69,6 @@ function App() {
     }
   }, [isSearchOpen, isMobileOpen]);
 
-  // Global typed notifications. String details remain supported for older
-  // callers, while new callers provide { message, type, title }.
   useEffect(() => {
     const enqueueToast = (event) => {
       const detail = event.detail;
@@ -96,7 +84,6 @@ function App() {
     return () => window.removeEventListener('kick:toast', enqueueToast);
   }, []);
 
-  // Consume the queue one at a time
   const currentToast = toastQueue[0] || null;
 
   useEffect(() => {
@@ -107,9 +94,7 @@ function App() {
     return () => clearTimeout(timer);
   }, [currentToast]);
 
-  const handleLinkSelect = (_label) => {
-    // Navigation toast removed — was debug artifact
-  };
+  const handleLinkSelect = () => {};
 
   const handleSearchSelectProduct = (item) => {
     showToast(`Opening ${item.brand || ''} ${item.name || ''}`.trim(), 'info', { title: 'Product selected' });
@@ -125,7 +110,6 @@ function App() {
       <PageTracker />
       <AuthExpiredHandler />
       <div className="bg-[#EAE9E5] text-ink min-h-screen flex flex-col relative">
-        {/* ===== 1. Site Header & Navbar ===== */}
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenMobile={() => setIsMobileOpen(true)}
@@ -133,7 +117,6 @@ function App() {
           cartCount={cartCount}
         />
 
-        {/* ===== 2. Search Overlay ===== */}
         <SearchOverlay
           isOpen={isSearchOpen}
           onClose={() => setIsSearchOpen(false)}
@@ -141,14 +124,12 @@ function App() {
           onSelectTag={handleSearchSelectTag}
         />
 
-        {/* ===== 3. Mobile Drawer ===== */}
         <MobileDrawer
           isOpen={isMobileOpen}
           onClose={() => setIsMobileOpen(false)}
           onSelectLink={handleLinkSelect}
         />
 
-        {/* ===== 5. Global Toast Notification ===== */}
         {currentToast && (
           <Toast
             key={currentToast.id}
@@ -157,7 +138,6 @@ function App() {
           />
         )}
 
-        {/* ===== Main Page Sections ===== */}
         <main className="flex-1 pt-20 md:pt-24 w-full">
           <Suspense fallback={<RouteFallback />}>
             <Routes>
@@ -167,6 +147,7 @@ function App() {
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout/payment" element={<Payment />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/orders/:id" element={<OrderDetail />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/about" element={<Company page="about" />} />
               <Route path="/contact" element={<Company page="contact" />} />

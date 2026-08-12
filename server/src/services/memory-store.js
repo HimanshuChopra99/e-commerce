@@ -697,7 +697,18 @@ class MemoryStore {
   }
 
   getOrderById(publicId) {
-    return this.orders.find((o) => o.publicId === publicId || o.id === publicId) || null
+    const pStr = String(publicId)
+    const cleanNum = pStr.startsWith('#') ? pStr : `#${pStr}`
+    return (
+      this.orders.find(
+        (o) =>
+          String(o.publicId) === pStr ||
+          String(o.id) === pStr ||
+          String(o.internalId) === pStr ||
+          String(o.orderNumber) === pStr ||
+          String(o.orderNumber) === cleanNum
+      ) || null
+    )
   }
 
   addOrder(input) {
