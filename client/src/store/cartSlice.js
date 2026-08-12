@@ -1,8 +1,38 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { cartApi } from '../lib/api'
+import { getSocket } from '../lib/socket'
 
 const GUEST_CART_KEY = 'kick_guest_cart'
 const MAX_QTY = 10
+
+// Debounce cart:action socket events so rapid +/- clicks only fire 1 event
+// once the user stops clicking (after 500ms of inactivity).
+let _cartDebounceTimer = null
+function notifyCartAction(lastAction, items) {
+  try {
+    const socket = getSocket()
+    if (!socket?.connected) return
+
+    const totalItems = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+    const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0)
+    const summaryItems = items.map((item) => ({
+      name: item.name,
+      price: Number(item.price) || 0,
+      quantity: item.quantity || 1,
+      size: item.size || null,
+      color: item.color || null,
+    }))
+
+    const payload = { lastAction, cartSummary: { totalItems, totalPrice, items: summaryItems } }
+
+    if (_cartDebounceTimer) clearTimeout(_cartDebounceTimer)
+    _cartDebounceTimer = setTimeout(() => {
+      _cartDebounceTimer = null
+      const s = getSocket()
+      if (s?.connected) s.emit('cart:action', payload)
+    }, 500)
+  } catch {}
+}
 
 function loadGuestCart() {
   try {
@@ -190,7 +220,10 @@ const cartSlice = createSlice({
       .addCase(hydrateCart.fulfilled, fulfilled)
       .addCase(hydrateCart.rejected, rejected)
       .addCase(addToCart.pending, pending)
-      .addCase(addToCart.fulfilled, fulfilled)
+      .addCase(addToCart.fulfilled, (state, action) => {
+        fulfilled(state, action)
+        notifyCartAction(`Added ${action.meta?.arg?.name || 'item'} to cart`, action.payload.items)
+      })
       .addCase(addToCart.rejected, rejected)
       .addCase(updateQuantity.pending, (state, action) => {
         pending(state)
@@ -202,17 +235,27 @@ const cartSlice = createSlice({
           : state.items.map((item) =>
             item.variantId === variantId ? { ...item, quantity: capped } : item)
       })
-      .addCase(updateQuantity.fulfilled, fulfilled)
+      .addCase(updateQuantity.fulfilled, (state, action) => {
+        fulfilled(state, action)
+        const qty = action.meta?.arg?.quantity
+        notifyCartAction(`Updated cart item quantity to ${qty}`, action.payload.items)
+      })
       .addCase(updateQuantity.rejected, mutationRejected)
       .addCase(removeFromCart.pending, (state, action) => {
         pending(state)
         state.rollbackItems = state.items.map((item) => ({ ...item }))
         state.items = state.items.filter((item) => item.variantId !== action.meta.arg)
       })
-      .addCase(removeFromCart.fulfilled, fulfilled)
+      .addCase(removeFromCart.fulfilled, (state, action) => {
+        fulfilled(state, action)
+        notifyCartAction('Removed item from cart', action.payload.items)
+      })
       .addCase(removeFromCart.rejected, mutationRejected)
       .addCase(clearCart.pending, pending)
-      .addCase(clearCart.fulfilled, fulfilled)
+      .addCase(clearCart.fulfilled, (state, action) => {
+        fulfilled(state, action)
+        notifyCartAction('Cleared cart', action.payload.items)
+      })
       .addCase(clearCart.rejected, rejected)
   },
 })

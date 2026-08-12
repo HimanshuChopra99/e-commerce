@@ -11,6 +11,7 @@ import {
 import { placeOrder } from '../../store/ordersSlice'
 import { ordersApi } from '../../lib/api'
 import { showToast } from '../../lib/toast'
+import { emitCartVoiceAction } from '../../lib/cartVoiceAction'
 
 export default function ShoppingCart() {
   const dispatch = useDispatch()
@@ -96,6 +97,18 @@ export default function ShoppingCart() {
   }
 
   const handleQuantityChange = async (item, quantity) => {
+    const isIncrease = quantity > item.quantity
+    const actionType = quantity <= 0 ? 'remove_item' : isIncrease ? 'increase_quantity' : 'decrease_quantity'
+    
+    // Emit voice event IMMEDIATELY on click to remove network latency
+    emitCartVoiceAction({
+      action: actionType,
+      productName: item.name,
+      color: item.color,
+      size: item.size,
+      quantity,
+    })
+
     try {
       await dispatch(updateQuantity({ variantId: item.variantId, quantity })).unwrap()
       if (quantity <= 0) {
@@ -109,6 +122,15 @@ export default function ShoppingCart() {
   }
 
   const handleRemoveItem = async (item) => {
+    // Emit voice event IMMEDIATELY on click to remove network latency
+    emitCartVoiceAction({
+      action: 'remove_item',
+      productName: item.name,
+      color: item.color,
+      size: item.size,
+      quantity: 0,
+    })
+
     try {
       await dispatch(removeFromCart(item.variantId)).unwrap()
       showToast(`${item.name} removed from your cart.`, 'cart')

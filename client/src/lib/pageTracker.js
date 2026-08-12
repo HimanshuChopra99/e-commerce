@@ -1,18 +1,43 @@
 /**
- * Reports which page the customer is currently viewing to the server over the
- * socket (`page:update`). Voice handlers (select_variant, get_current_page)
- * use this to act on the page actually open on screen — whether the customer
- * got there via the agent, a manual click, or the browser back button.
+ * Reports which page, filters, product details, and cart state the customer is currently viewing
+ * to the server over the socket (`page:update`).
  */
 import { getSocket } from './socket'
 import { store } from '../store'
 
 let lastEmitted = null
 
+function extractFilters(params) {
+  const filters = {}
+  if (params.get('category')) filters.category = params.get('category')
+  if (params.get('gender'))   filters.gender = params.get('gender')
+  if (params.get('color'))    filters.color = params.get('color')
+  if (params.get('size'))     filters.size = params.get('size')
+  if (params.get('minPrice')) filters.minPrice = params.get('minPrice')
+  if (params.get('maxPrice')) filters.maxPrice = params.get('maxPrice')
+  if (params.get('sort'))     filters.sort = params.get('sort')
+  return Object.keys(filters).length ? filters : null
+}
+
+function summarizeCart(cartItems = []) {
+  if (!Array.isArray(cartItems)) return { totalItems: 0, totalPrice: 0, items: [] }
+  const totalItems = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0)
+  const totalPrice = cartItems.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0)
+  const items = cartItems.map((item) => ({
+    name: item.name,
+    price: Number(item.price) || 0,
+    quantity: item.quantity || 1,
+    size: item.size || null,
+    color: item.color || null,
+  }))
+  return { totalItems, totalPrice, items }
+}
+
 function parseLocation() {
   const path = window.location.pathname
   const search = window.location.search
   const params = new URLSearchParams(search)
+  const filters = extractFilters(params)
 
   // /product/{slug} — product detail page
   const productMatch = path.match(/^\/product\/([^/]+)/)
@@ -23,10 +48,11 @@ function parseLocation() {
       slug: decodeURIComponent(productMatch[1]),
       color: params.get('color') || null,
       size: params.get('size') || null,
+      filters,
     }
   }
 
-  // /products — catalog page (filters live in the query string)
+  // /products — catalog page (filters live in query string)
   if (path.startsWith('/products')) {
     return {
       path: path + search,
@@ -34,25 +60,39 @@ function parseLocation() {
       slug: null,
       color: params.get('color') || null,
       size: params.get('size') || null,
+      filters,
     }
   }
 
-  return { path: path + search, type: 'page', slug: null, color: null, size: null }
+  return { path: path + search, type: 'page', slug: null, color: null, size: null, filters }
 }
 
-/** Build the current page snapshot, merging the Redux selection on product pages. */
-export function buildPageInfo(selection = null) {
+/** Build the current page snapshot, merging Redux selection, active product, and cart summary. */
+export function buildPageInfo(selection = null, activeProduct = null) {
   const base = parseLocation()
-  if (base.type === 'product' && selection) {
-    // The store selection is the ground truth; URL params are the fallback
-    // (e.g. before the product data has loaded).
-    return {
-      ...base,
-      color: selection.color || base.color,
-      size: selection.size || base.size,
-    }
+  const state = store.getState()
+  const cartItems = state?.cart?.items || []
+  const cartSummary = summarizeCart(cartItems)
+
+  const productDetails = activeProduct || (selection?.slug === base.slug ? selection.productDetails : null)
+
+  const info = {
+    ...base,
+    color: selection?.color || base.color,
+    size: selection?.size || base.size,
+    filters: base.filters,
+    productDetails: productDetails ? {
+      name: productDetails.name || productDetails.title || base.slug,
+      price: productDetails.price || 0,
+      colors: productDetails.colors || (productDetails.variants ? [...new Set(productDetails.variants.map(v => v.color).filter(Boolean))] : []),
+      sizes: productDetails.sizes || (productDetails.variants ? [...new Set(productDetails.variants.map(v => v.size).filter(Boolean))] : []),
+      inStock: productDetails.inStock !== undefined ? productDetails.inStock : true,
+    } : null,
+    cartSummary,
+    lastAction: `Navigated to ${base.type === 'product' ? `product page (${base.slug})` : base.type === 'catalog' ? 'catalog page' : base.path}`,
   }
-  return base
+
+  return info
 }
 
 /** Send the snapshot if the socket exists and nothing identical was sent. */
@@ -65,10 +105,10 @@ export function emitPageUpdate(info) {
   socket.emit('page:update', info)
 }
 
-/** Force a fresh report (used when a voice call starts, in case the socket
- *  connected after the last navigation). */
+/** Force a fresh report (used when a voice call starts). */
 export function emitCurrentPage() {
   lastEmitted = null
   const selection = store.getState()?.productView || null
   emitPageUpdate(buildPageInfo(selection))
 }
+

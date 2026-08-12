@@ -5,15 +5,16 @@ import { selectProductView } from '../store/productViewSlice'
 import { buildPageInfo, emitPageUpdate } from '../lib/pageTracker'
 
 /**
- * Tracks route changes (manual clicks, agent navigation, back/forward) and
- * reports the current page to the server so voice handlers always know which
- * page the customer is on. Mount once inside the Router (see App.jsx).
+ * Tracks route changes (manual clicks, agent navigation, back/forward, cart updates)
+ * and reports the current page & session context to the server.
  */
 export function usePageTracker() {
   const location = useLocation()
   const selection = useSelector(selectProductView)
+  const cartItems = useSelector((state) => state.cart?.items)
 
   useEffect(() => {
     emitPageUpdate(buildPageInfo(selection))
-  }, [location, selection])
+  }, [location, selection, cartItems])
 }
+

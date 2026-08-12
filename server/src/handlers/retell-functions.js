@@ -559,11 +559,15 @@ async function handleGetCurrentPage(_, socketId) {
 
   return ok(`The customer is on ${description}.`, {
     page: {
-      type:  tracked.type,
-      path:  tracked.path,
-      slug:  tracked.slug,
-      color: tracked.color || null,
-      size:  tracked.size  || null,
+      type:           tracked.type,
+      path:           tracked.path,
+      slug:           tracked.slug,
+      color:          tracked.color || null,
+      size:           tracked.size  || null,
+      filters:        tracked.filters || null,
+      productDetails: tracked.productDetails || null,
+      cartSummary:    tracked.cartSummary || null,
+      lastAction:     tracked.lastAction || null,
     },
   })
 }

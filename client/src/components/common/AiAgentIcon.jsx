@@ -28,8 +28,9 @@ const AiAgentIcon = () => {
   const [isHovered, setIsHovered]         = useState(false)
   const [showGreeting, setShowGreeting]   = useState(true)
 
-  const lottieRef    = useRef(null)
+  const lottieRef        = useRef(null)
   const processingTimer = useRef(null)
+  const currentCallIdRef = useRef(null)
 
   const isCallActive = callState === CALL_STATES.CONNECTED
 
@@ -48,9 +49,11 @@ const AiAgentIcon = () => {
     if (socket?.connected) {
       socket.emit('retell-call-ended', {
         userId:    user?.id || 'guest',
+        callId:    currentCallIdRef.current,
         timestamp: new Date().toISOString(),
       })
     }
+    currentCallIdRef.current = null
 
     try { retellClient.stopCall() } catch {}
 
@@ -67,11 +70,11 @@ const AiAgentIcon = () => {
       if (socket?.connected) {
         socket.emit('retell-call-started', {
           userId:    user?.id || 'guest',
+          callId:    currentCallIdRef.current,
           timestamp: new Date().toISOString(),
         })
       }
-      // Make sure the server knows where the customer is right now — the
-      // socket may have connected after the last page change.
+      // Make sure the server knows where the customer is right now
       emitCurrentPage()
     }
 
@@ -138,6 +141,9 @@ const AiAgentIcon = () => {
       const formattedName = user?.firstName || user?.name || 'Guest'
       const data = await createCall({ userId, userName: formattedName })
       const accessToken = data?.session?.access_token
+      const callId = data?.session?.call_id || data?.call_id || data?.callId
+
+      if (callId) currentCallIdRef.current = callId
 
       if (!accessToken) throw new Error('Failed to receive Retell access token.')
 

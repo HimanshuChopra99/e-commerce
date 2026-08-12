@@ -5,6 +5,7 @@ import { addToCart, removeFromCart, selectCartItems } from "../store/cartSlice";
 import { toggleWishlist, selectIsWishlisted, fetchFavourites } from "../store/wishlistSlice";
 import { selectVariant, selectProductView } from "../store/productViewSlice";
 import { showToast } from "../lib/toast";
+import { emitCartVoiceAction } from "../lib/cartVoiceAction";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { ProductDetails } from "../components/product/ProductDetails";
 import { SizeChartModal } from "../components/product/SizeChartModal";
@@ -267,6 +268,13 @@ export default function ProductView() {
   const selectedVariantInCart = Boolean(selectedVariant?.id && cartItems.some((item) => item.variantId === selectedVariant.id));
   const handleRemoveFromCart = async () => {
     if (!selectedVariant?.id) return;
+    // Emit voice event IMMEDIATELY on click to remove network latency
+    emitCartVoiceAction({
+      action: 'remove_from_cart',
+      productName: product.name,
+      color: selectedColor?.name,
+      size: selectedSize?.value,
+    });
     try {
       await dispatch(removeFromCart(selectedVariant.id)).unwrap();
       showToast(`${product.name} removed from your cart.`, 'cart');
@@ -289,6 +297,14 @@ export default function ProductView() {
       showToast('This item is already in your cart.', 'cart');
       return false;
     }
+
+    // Emit voice event IMMEDIATELY on click to remove network latency
+    emitCartVoiceAction({
+      action: 'add_to_cart',
+      productName: product.name,
+      color: selectedColor?.name,
+      size: selectedSize?.value,
+    });
 
     try {
       await dispatch(
