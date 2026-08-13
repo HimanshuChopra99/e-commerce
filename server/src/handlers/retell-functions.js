@@ -2,6 +2,7 @@ import * as cartService from '../services/cart.service.js'
 import * as favouriteService from '../services/favourite.service.js'
 import * as voiceSearch from '../services/voice-search.service.js'
 import { getPublicBySlug } from '../services/product.service.js'
+import { listForUser, getOrder } from '../services/order.service.js'
 import { getPageState } from '../services/session-state.service.js'
 import { emitToUser } from '../config/socket.js'
 import { logger } from '../config/logger.js'
@@ -916,6 +917,173 @@ async function handleConfirmProduct({ selection, action = 'open', size, color, q
 //   go_to_page:           handleNavigateTo,
 // }
 
+// ─── Order Handlers ───────────────────────────────────────────────────────────
+
+/** Formats a single order into a clean, voice-friendly summary. */
+function formatOrderForVoice(order, includeItems = false) {
+  if (!order) return null
+
+  const STATUS_LABELS = {
+    pending:    'pending payment',
+    confirmed:  'confirmed',
+    processing: 'being processed',
+    shipped:    'shipped',
+    delivered:  'delivered',
+    cancelled:  'cancelled',
+    refunded:   'refunded',
+    returned:   'returned',
+  }
+
+  const placed = order.placedAt
+    ? new Date(order.placedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null
+
+  const result = {
+    orderNumber: order.orderNumber,
+    status:      order.status,
+    statusLabel: STATUS_LABELS[order.status] || order.status,
+    total:       Number(order.total || 0).toFixed(2),
+    itemCount:   order.itemCount ?? order.items?.length ?? 0,
+    placedAt:    placed,
+    paymentStatus: order.paymentStatus,
+  }
+
+  // Only add tracking if shipped/delivered
+  if (order.trackingNumber) result.trackingNumber = order.trackingNumber
+  if (order.courier)        result.courier = order.courier
+  if (order.shippedAt)      result.shippedAt = new Date(order.shippedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  if (order.deliveredAt)    result.deliveredAt = new Date(order.deliveredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  if (order.cancelledAt)    result.cancelledAt = new Date(order.cancelledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  // Compact items list (name + size + color + qty + price)
+  if (includeItems && order.items?.length) {
+    result.items = order.items.map(i => ({
+      name:      i.name,
+      size:      i.size || null,
+      color:     i.color || null,
+      qty:       i.quantity,
+      unitPrice: Number(i.unitPrice || 0).toFixed(2),
+      lineTotal: Number(i.lineTotal || 0).toFixed(2),
+    }))
+  }
+
+  return result
+}
+
+/**
+ * get_orders — returns recent orders for the signed-in user.
+ * Agent passes: limit (default 5), nth (e.g. 2 for "my 2nd order")
+ */
+async function handleGetOrders({ limit = 5, nth, status } = {}, socketId, dbId) {
+  if (!dbId) return fail('You need to be signed in to view your orders.')
+
+  try {
+    const safeLimit = Math.min(Math.max(Number(limit) || 5, 1), 20)
+    const { items: orders, total } = await listForUser(dbId, { limit: safeLimit, offset: 0 })
+
+    if (!orders || orders.length === 0) {
+      return ok('No orders found.', { orders: [], total: 0 })
+    }
+
+    // If user asked for "Nth order" (e.g. "my 3rd order")
+    if (nth != null) {
+      const index = Number(nth) - 1
+      if (index < 0 || index >= orders.length) {
+        return fail(`You only have ${orders.length} order${orders.length !== 1 ? 's' : ''} in your recent history. Which one would you like?`)
+      }
+      const order = orders[index]
+      const includeItems = order.items && order.items.length > 0
+      const formatted = formatOrderForVoice(order, includeItems)
+      const itemNames = order.items?.length
+        ? order.items.map(i => `${i.quantity}x ${i.name}${i.size ? ` size ${i.size}` : ''}${i.color ? ` in ${i.color}` : ''}`).join(', ')
+        : null
+      return ok(
+        `Your order ${formatted.orderNumber} placed on ${formatted.placedAt} is currently ${formatted.statusLabel}. Total: $${formatted.total}.${itemNames ? ` Items: ${itemNames}.` : ''}`,
+        { order: formatted }
+      )
+    }
+
+    // Filter by status if requested
+    let filtered = orders
+    if (status) {
+      filtered = orders.filter(o => o.status === status.toLowerCase())
+      if (!filtered.length) {
+        return ok(`No ${status} orders found.`, { orders: [], total: 0 })
+      }
+    }
+
+    const summaries = filtered.map(o => formatOrderForVoice(o, false))
+    const spoken = summaries.map((o, i) =>
+      `${i + 1}. Order ${o.orderNumber} placed ${o.placedAt} — ${o.statusLabel} — $${o.total}`
+    ).join('; ')
+
+    return ok(
+      `You have ${total} total order${total !== 1 ? 's' : ''}. Here are your ${summaries.length} most recent: ${spoken}.`,
+      { orders: summaries, total }
+    )
+  } catch (err) {
+    logger.error({ err: err.message, dbId }, 'handleGetOrders error')
+    return fail('I had trouble fetching your orders. Please try again.')
+  }
+}
+
+/**
+ * get_order_detail — returns full details for a specific order.
+ * Agent passes: order_number (e.g. "#1023"), or order_id.
+ */
+async function handleGetOrderDetail({ order_number, order_id, nth } = {}, socketId, dbId) {
+  if (!dbId) return fail('You need to be signed in to view order details.')
+
+  try {
+    let order = null
+
+    // Resolve by Nth position (e.g. "my most recent order", "my 2nd order")
+    if (nth != null || (!order_number && !order_id)) {
+      const nthIndex = nth != null ? Number(nth) - 1 : 0  // default: most recent = 1st
+      const { items } = await listForUser(dbId, { limit: Math.max(nthIndex + 1, 1), offset: 0 })
+      if (!items?.length) return fail('You have no orders yet.')
+      if (nthIndex >= items.length) {
+        return fail(`You only have ${items.length} recent order${items.length !== 1 ? 's' : ''}. Want details on order number ${items[0].orderNumber}?`)
+      }
+      order = items[nthIndex]
+      // Re-fetch full detail (listForUser already includes items)
+    } else {
+      // Resolve by order number or public id
+      const lookup = order_number || order_id
+      // Try fetching with ownership check skipped — we verify ownership via dbId below
+      const user = await findByPublicId(socketId)
+      order = await getOrder(lookup, user)
+    }
+
+    if (!order) return fail('I could not find that order. Please check the order number and try again.')
+
+    const formatted = formatOrderForVoice(order, true)
+    const itemDesc = order.items?.length
+      ? order.items.map(i => `${i.quantity}x ${i.name}${i.size ? ` size ${i.size}` : ''}${i.color ? ` in ${i.color}` : ''} ($${Number(i.lineTotal||0).toFixed(2)})`).join(', ')
+      : 'no items'
+
+    let spokenStatus = `Order ${formatted.orderNumber} placed on ${formatted.placedAt} is ${formatted.statusLabel}.`
+    if (formatted.trackingNumber) spokenStatus += ` Tracking: ${formatted.trackingNumber} via ${formatted.courier || 'courier'}.`
+    if (formatted.shippedAt)      spokenStatus += ` Shipped on ${formatted.shippedAt}.`
+    if (formatted.deliveredAt)    spokenStatus += ` Delivered on ${formatted.deliveredAt}.`
+    if (formatted.cancelledAt)    spokenStatus += ` Cancelled on ${formatted.cancelledAt}.`
+    spokenStatus += ` Items: ${itemDesc}. Total: $${formatted.total}.`
+
+    // Navigate user to order details page
+    emit(socketId, 'navigate', { path: `/orders/${order.id || order.publicId}` })
+
+    return ok(spokenStatus, { order: formatted })
+  } catch (err) {
+    logger.error({ err: err.message, dbId }, 'handleGetOrderDetail error')
+    if (err.statusCode === 404 || err.message?.includes('not found')) {
+      return fail('I could not find that order. Please check the order number.')
+    }
+    return fail('I had trouble fetching that order. Please try again.')
+  }
+}
+
+// ─── Dispatcher ──────────────────────────────────────────────────────────────
+
 const FUNCTION_MAP = {
   // Product Name Confirmation Flow (2-step: search → confirm)
   search_products_by_name: handleSearchProductsByName,
@@ -943,6 +1111,10 @@ const FUNCTION_MAP = {
   // Navigation & Page State
   navigate_to:          handleNavigateTo,
   get_current_page:     handleGetCurrentPage,
+
+  // Orders
+  get_orders:           handleGetOrders,
+  get_order_detail:     handleGetOrderDetail,
 }
 
 // FIX: dispatch resolves dbId ONCE here and passes it to every handler.

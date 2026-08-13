@@ -3,9 +3,21 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchCategories } from '../../store/categoriesSlice';
 
+/* Arrow points EAST by default, rotates to NORTH-EAST on card hover */
 const ArrowRight = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 18 15 12 9 6" />
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="transition-transform duration-500 ease-out group-hover:-rotate-45"
+  >
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
   </svg>
 );
 
@@ -27,14 +39,13 @@ function getImageSrc(img) {
 }
 
 const CATEGORY_IMAGES = [
-  'https://images.pexels.com/photos/1456733/pexels-photo-1456733.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
-  'https://images.pexels.com/photos/12969390/pexels-photo-12969390.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
-  'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
-  'https://images.pexels.com/photos/3261069/pexels-photo-3261069.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200',
+  'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1608231387042-66d1773070a5?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1560769629-975ec94e6a86?q=80&w=1200&auto=format&fit=crop',
 ];
 
 function CategoryCard({ category, idx }) {
-  const [hovered, setHovered] = React.useState(false);
   const image = getImageSrc(category.image) || CATEGORY_IMAGES[idx % CATEGORY_IMAGES.length];
   const bg = GRADIENTS[idx % GRADIENTS.length];
   const displayName = (category.name || 'CATEGORY').toUpperCase();
@@ -42,44 +53,67 @@ function CategoryCard({ category, idx }) {
   return (
     <Link
       to={`/products?category=${category.slug || category.id}`}
-      className="category-card flex-1 min-h-[320px] group rounded-2xl overflow-hidden shadow-sm block"
+      className="group relative w-full h-[380px] sm:h-[420px] rounded-2xl overflow-hidden block border-0 outline-none shadow-sm hover:shadow-2xl transition-all duration-500 isolate [transform:translateZ(0)]"
       style={{ background: bg }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
-      {/* Image */}
-      <div className="relative h-[260px] flex items-center justify-center overflow-hidden p-4">
+      {/* 100% Full-bleed Image Container */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden">
         <img
           src={image}
           alt={displayName}
-          className={`h-full w-auto object-contain transition-all duration-500 ${
-            hovered ? 'scale-110 -translate-y-2' : 'scale-100'
-          }`}
+          className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"
           onError={(e) => {
-            e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
+            e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80';
           }}
           loading="lazy"
           decoding="async"
         />
+        {/* Subtle Dark Vignette Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-500 group-hover:from-black/85" />
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between px-6 py-5 bg-white/70 backdrop-blur-md">
+      {/* Top Glassmorphic Badge */}
+      <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+        <span className="text-[10px] font-bold tracking-widest text-white/90 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border-0 uppercase">
+          0{idx + 1}
+        </span>
+        <span className="text-[9px] font-semibold tracking-widest text-white/90 bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border-0 uppercase">
+          {category.productCount ? `${category.productCount}+ STYLES` : 'AVAILABLE NOW'}
+        </span>
+      </div>
+
+      {/* Default Title on Image (fades out when white panel slides up) */}
+      <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 z-10 transition-all duration-500 ease-out group-hover:opacity-0 group-hover:-translate-y-2">
+        <span className="text-[9px] text-white/70 font-semibold uppercase tracking-widest block mb-0.5">
+          {category.description ? category.description.slice(0, 20) : 'FEATURED'}
+        </span>
+        <h3
+          className="font-black text-white uppercase leading-tight"
+          style={{ fontSize: 'clamp(1.1rem, 2vw, 1.4rem)' }}
+        >
+          {displayName}
+        </h3>
+      </div>
+
+      {/* White Footer Panel — slides UP from bottom on hover */}
+      <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 z-20 flex items-end justify-between bg-white/95 backdrop-blur-md border-0 transform translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]">
         <div>
-          <span className="text-[9px] text-gray-500 font-semibold uppercase tracking-widest block mb-0.5">
-            {category.description ? category.description.slice(0, 20) : 'Featured'}
+          <span className="text-[9px] text-gray-600 font-semibold uppercase tracking-widest block mb-0.5">
+            {category.description ? category.description.slice(0, 20) : 'FEATURED'}
           </span>
           <h3
             className="font-black text-[#111111] uppercase leading-tight"
-            style={{ fontSize: 'clamp(1.2rem, 2.5vw, 1.6rem)' }}
+            style={{ fontSize: 'clamp(1.1rem, 2vw, 1.4rem)' }}
           >
             {displayName}
           </h3>
-          <span className="text-[9px] text-gray-400 font-medium mt-1 block">
+          <span className="text-[9px] text-gray-500 font-medium mt-1 block">
             {category.productCount ? `${category.productCount}+ styles` : 'Available now'}
           </span>
         </div>
-        <button className="w-9 h-9 rounded-full bg-[#111111] text-white flex items-center justify-center hover:bg-[#4C64F4] transition-all duration-300 hover:scale-110 shadow-md">
+
+        {/* Action Button with rotating arrow */}
+        <button className="w-9 h-9 rounded-full bg-[#111111] text-white border-0 outline-none flex items-center justify-center group-hover:bg-[#4C64F4] transition-all duration-300 group-hover:scale-110 shadow-md shrink-0">
           <ArrowRight />
         </button>
       </div>
@@ -89,11 +123,17 @@ function CategoryCard({ category, idx }) {
 
 function CategorySkeleton() {
   return (
-    <div className="flex-1 min-h-[320px] rounded-2xl overflow-hidden shadow-sm animate-pulse bg-gray-200">
-      <div className="h-[260px] bg-gray-300" />
-      <div className="px-6 py-5 bg-white/70">
-        <div className="h-3 w-20 bg-gray-300 rounded mb-2" />
-        <div className="h-6 w-32 bg-gray-300 rounded" />
+    <div className="w-full h-[380px] sm:h-[420px] rounded-2xl overflow-hidden shadow-sm animate-pulse bg-gray-200 relative p-5 flex flex-col justify-between border-0">
+      <div className="flex justify-between items-center">
+        <div className="h-5 w-8 bg-gray-300 rounded-full" />
+        <div className="h-5 w-20 bg-gray-300 rounded-full" />
+      </div>
+      <div className="h-20 bg-white/70 rounded-xl p-4 flex justify-between items-center">
+        <div className="space-y-2">
+          <div className="h-3 w-16 bg-gray-300 rounded" />
+          <div className="h-6 w-28 bg-gray-300 rounded" />
+        </div>
+        <div className="w-9 h-9 rounded-full bg-gray-300" />
       </div>
     </div>
   );
@@ -120,40 +160,30 @@ const Categories = () => {
           >
             CATEGORIES
           </h2>
-          <Link
-            to="/products"
-            className="text-sm font-bold text-[#111111] hover:text-[#4C64F4] transition-colors underline"
-          >
-            View All →
-          </Link>
+            <Link
+              to="/products"
+              className="bg-[#4C64F4] hover:bg-[#3B53E3] text-white text-[13px] font-medium sm:font-[700] tracking-wider uppercase px-6 py-4 rounded-[12px] shadow-sm transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
+              style={{ fontFamily: "'Rubik', sans-serif" }}
+            >
+              Shop New Drops
+            </Link>
         </div>
 
-        {/* Category Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+        {/* 4 Side-by-Side Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {loading
             ? Array.from({ length: 4 }).map((_, i) => <CategorySkeleton key={i} />)
             : displayCategories.length > 0
             ? displayCategories.map((cat, idx) => (
-                <CategoryCard key={cat.id || cat.publicId} category={cat} idx={idx} />
+                <CategoryCard key={cat.id || cat.publicId || idx} category={cat} idx={idx} />
               ))
-            : /* No categories yet — show placeholders */
-              ['Running', 'Lifestyle', 'Formal', 'Sports'].map((name, idx) => (
-                <Link
+            : /* Fallback placeholders when database is empty */
+              ['RUNNING', 'LIFESTYLE', 'FORMAL', 'SPORTS'].map((name, idx) => (
+                <CategoryCard
                   key={name}
-                  to="/products"
-                  className="flex-1 min-h-[320px] rounded-2xl overflow-hidden shadow-sm block"
-                  style={{ background: GRADIENTS[idx] }}
-                >
-                  <div className="h-[260px] flex items-center justify-center">
-                    <span className="text-6xl">👟</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-5 bg-white/70 backdrop-blur-md">
-                    <h3 className="font-black text-[#111111] uppercase text-xl">{name}</h3>
-                    <div className="w-9 h-9 rounded-full bg-[#111111] text-white flex items-center justify-center">
-                      <ArrowRight />
-                    </div>
-                  </div>
-                </Link>
+                  category={{ name, description: 'FEATURED', productCount: 12 }}
+                  idx={idx}
+                />
               ))}
         </div>
       </div>
