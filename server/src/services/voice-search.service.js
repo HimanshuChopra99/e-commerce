@@ -603,6 +603,7 @@ export async function search(input) {
     return {
       type:           'exact',
       product,
+      products:       scoredItems.map(r => r.item),
       size,
       color,
       nameMatchScore: Math.round(top.nameMatchScore * 100),

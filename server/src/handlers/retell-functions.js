@@ -40,6 +40,12 @@ function emit(socketId, type, payload = {}) {
 function ok(message, data = {})     { return { success: true,  message, ...data } }
 function fail(message, extra = {})  { return { success: false, message, ...extra } }
 
+// ─── Per-session candidate store ─────────────────────────────────────────────
+// Maps socketId → [{ name, slug, price, brand }]
+// Populated by handleSearchProductsByName, consumed by handleConfirmProduct.
+// Entries are cleared once the user confirms or starts a new search.
+const pendingCandidates = new Map()
+
 // ─── Variant Helpers ──────────────────────────────────────────────────────────
 
 function normalizeColor(product, rawColor) {
@@ -155,7 +161,7 @@ async function handleSearchProduct(args = {}, socketId) {
     })
   }
 
-  emit(socketId, 'navigate', { path: result.navigateTo })
+  emit(socketId, 'products:override', { products: (result.products || []).slice(0, 6) })
   emit(socketId, 'toast', { message: result.toastMessage || result.message, kind: 'info' })
   return ok(result.message, {
     total:      result.total,
@@ -186,12 +192,19 @@ async function handleAddToCart({ product_id, product_slug, product_name, size, c
       product = await getPublicBySlug(product_slug)
     } else if (product_name) {
       const r = await voiceSearch.search({ query: product_name })
-      if (r.type === 'exact') product = r.product
+      const foundSlug = r.product?.slug || (r.products && r.products[0]?.slug)
+      if (foundSlug) product = await getPublicBySlug(foundSlug)
     } else if (product_id) {
       const r = await voiceSearch.search({ query: product_id })
-      product = r.product || null
+      const foundSlug = r.product?.slug || (r.products && r.products[0]?.slug)
+      if (foundSlug) product = await getPublicBySlug(foundSlug)
     } else if (tracked?.type === 'product' && tracked.slug) {
       product = await getPublicBySlug(tracked.slug)
+    }
+
+    // Ensure full product variants are loaded from database/cache
+    if (product && (!product.variants || !product.variants.length) && product.slug) {
+      product = await getPublicBySlug(product.slug)
     }
 
     if (!product) {
@@ -203,14 +216,16 @@ async function handleAddToCart({ product_id, product_slug, product_name, size, c
     }
 
     // 2. Inherit size/color from page state when agent omits them.
-    // After select_variant fires, the client sends page:update with the chosen
-    // color/size. So add_to_cart {} can read them from here.
     if (tracked?.type === 'product' && tracked.slug === product.slug) {
       if (!size  && tracked.size)  size  = String(tracked.size)
       if (!color && tracked.color) color = tracked.color
     }
 
-    // 3. Validate before findVariant so error messages are specific
+    // 3. Normalize size and color via fuzzy matching against actual variants
+    if (size)  size  = normalizeSize(product, size)  || size
+    if (color) color = normalizeColor(product, color) || color
+
+    // 4. Validate before findVariant so error messages are specific
     const availableSizes  = [...new Set(product.variants?.filter(isVariantInStock).map(v => String(v.size)))].sort((a, b) => Number(a) - Number(b))
     const availableColors = [...new Set(product.variants?.filter(isVariantInStock).map(v => v.color).filter(Boolean))]
 
@@ -221,6 +236,11 @@ async function handleAddToCart({ product_id, product_slug, product_name, size, c
       )
     }
 
+    // Colors available for the chosen size (better targeted error message)
+    const colorsForSize = size
+      ? [...new Set(product.variants?.filter(v => isVariantInStock(v) && String(v.size) === String(size)).map(v => v.color).filter(Boolean))]
+      : availableColors
+
     // FIX: use local findVariant that handles both inStock and available fields
     const variant = findVariantLocal(product, size, color)
 
@@ -229,9 +249,9 @@ async function handleAddToCart({ product_id, product_slug, product_name, size, c
       if (size)  msg += ` in size ${size}`
       if (color) msg += ` in ${color}`
       msg += `.`
-      if (availableSizes.length)  msg += ` Available sizes: ${availableSizes.join(', ')}.`
-      if (availableColors.length) msg += ` Available colors: ${availableColors.join(', ')}.`
-      return fail(msg, { availableSizes, availableColors })
+      if (colorsForSize.length) msg += ` Available colors${size ? ` for size ${size}` : ''}: ${colorsForSize.join(', ')}.`
+      else if (availableSizes.length) msg += ` Available sizes: ${availableSizes.join(', ')}.`
+      return fail(msg, { availableSizes, availableColors: colorsForSize })
     }
 
     // 4. DB write — uses dbId (BIGINT), variant.id is ULID (correct for variantModel.findByPublicId)
@@ -441,13 +461,19 @@ async function handleSelectVariant({ product_slug, product_id, product_name, col
       product = await getPublicBySlug(product_slug)
     } else if (product_name) {
       const r = await voiceSearch.search({ query: product_name })
-      product = r.type === 'exact' ? r.product : null
+      const foundSlug = r.product?.slug || (r.products && r.products[0]?.slug)
+      if (foundSlug) product = await getPublicBySlug(foundSlug)
     } else if (product_id) {
       const r = await voiceSearch.search({ query: product_id })
-      product = r.product || null
+      const foundSlug = r.product?.slug || (r.products && r.products[0]?.slug)
+      if (foundSlug) product = await getPublicBySlug(foundSlug)
     } else if (tracked?.type === 'product' && tracked.slug) {
       product = await getPublicBySlug(tracked.slug)
       source = 'tracked'
+    }
+
+    if (product && (!product.variants || !product.variants.length) && product.slug) {
+      product = await getPublicBySlug(product.slug)
     }
 
     const pageInfo = tracked
@@ -551,10 +577,22 @@ async function handleGetCurrentPage(_, socketId) {
     } catch { /* keep slug */ }
     const selection = [tracked.color, tracked.size && `size ${tracked.size}`].filter(Boolean).join(', ')
     description = `the product page for ${name}${selection ? ` with ${selection} selected` : ''}`
-  } else if (tracked.type === 'catalog') {
-    description = 'the product catalog page'
   } else {
-    description = `the ${tracked.path || tracked.type} page`
+    const p = String(tracked.path || '').toLowerCase().split('?')[0]
+    let pageName = 'the catalog page'
+    if (p === '/' || p === '') pageName = 'the home page'
+    else if (p === '/cart') pageName = 'the shopping cart page'
+    else if (p === '/checkout/payment' || p.startsWith('/checkout')) pageName = 'the checkout page'
+    else if (p === '/products' || tracked.type === 'catalog') pageName = 'the product catalog page'
+    else if (p === '/profile' || p === '/favourites') pageName = 'the profile page'
+    else if (p === '/orders') pageName = 'the order history page'
+    else if (p === '/about') pageName = 'the about page'
+    else if (p === '/contact') pageName = 'the contact page'
+    else if (p === '/login') pageName = 'the login page'
+    else if (p === '/signup') pageName = 'the signup page'
+    else pageName = `the ${tracked.type || 'requested'} page`
+
+    description = pageName
   }
 
   return ok(`The customer is on ${description}.`, {
@@ -651,6 +689,160 @@ async function handleOpenCart(_, socketId) {
   return ok('Opening your cart.')
 }
 
+// ─── Product Name Confirmation Flow ─────────────────────────────────────────
+
+/**
+ * Step 1 — search_products_by_name
+ * Fuzzy-search for a product by spoken name, store the top-3 candidates in
+ * pendingCandidates[socketId], and tell Retell the names to read back.
+ * Does NOT navigate or open anything yet.
+ */
+async function handleSearchProductsByName({ query } = {}, socketId) {
+  if (!query?.trim()) {
+    return fail('I did not catch a product name. Could you say it again?')
+  }
+
+  const result = await voiceSearch.search({ query })
+
+  if (result.type === 'error') return fail(result.message)
+
+  if (result.type === 'not_found') {
+    pendingCandidates.delete(socketId)
+    emit(socketId, 'navigate', { path: `/products?q=${encodeURIComponent(query)}` })
+    return fail(`I couldn't find any shoes matching "${query}". I've opened our search page on your screen.`)
+  }
+
+  // Always collect full list of matching products (up to 4) even if top match is high/exact
+  const rawProducts = Array.isArray(result.products) && result.products.length > 0
+    ? result.products
+    : (result.product ? [result.product] : [])
+
+  if (!rawProducts.length) {
+    pendingCandidates.delete(socketId)
+    emit(socketId, 'navigate', { path: '/products' })
+    return fail(`No matches found for "${query}".`)
+  }
+
+  const candidates = rawProducts.slice(0, 4).map(p => {
+    const score = voiceSearch.calculateNameSimilarity(query, p)
+    return {
+      name:    p.name,
+      slug:    p.slug,
+      price:   p.price,
+      brand:   p.brand,
+      inStock: p.inStock,
+      matchScore: Math.round(score * 100),
+    }
+  })
+
+  // Store so confirm_product can resolve without a second DB round-trip
+  pendingCandidates.set(socketId, candidates)
+
+  // Send exact backend search products directly via socket command in exact order (no URL query params)
+  emit(socketId, 'products:override', { products: rawProducts.slice(0, 4) })
+  emit(socketId, 'toast',    { message: `Showing ${candidates.length} matching shoes on screen`, kind: 'info' })
+
+  const topMatch = candidates[0]
+  const nameList = candidates.map((c, i) => `${i + 1}. ${c.name}`).join(', ')
+  const matchNotice = topMatch.matchScore > 0 ? ` (top match: ${topMatch.name} at ${topMatch.matchScore}% similarity)` : ''
+
+  return ok(
+    `I've displayed the ${candidates.length} matching shoes on your screen${matchNotice}: ${nameList}. Which pair would you like?`,
+    { candidates, count: candidates.length, topMatchConfidence: topMatch.matchScore }
+  )
+}
+
+/**
+ * Step 2 — confirm_product
+ * Resolves the user's spoken selection against the stored candidates for this
+ * session, then performs the requested action: open (default), add_to_cart,
+ * or favourite.
+ */
+async function handleConfirmProduct({ selection, action = 'open', size, color, quantity } = {}, socketId, dbId) {
+  const candidates = pendingCandidates.get(socketId)
+
+  if (!candidates?.length) {
+    return fail('I lost track of the products we were looking at. Could you tell me the name again?')
+  }
+
+  if (!selection?.trim()) {
+    return fail('Which one would you like? You can say the number or part of the name.')
+  }
+
+  const sel = String(selection).toLowerCase().trim()
+
+  // 1. Try ordinal: "first", "1", "second", "2", "third", "3"
+  const ORDINALS = {
+    'first': 0, '1': 0, 'one': 0,
+    'second': 1, '2': 1, 'two': 1,
+    'third': 2, '3': 2, 'three': 2,
+  }
+  let resolved = null
+  if (ORDINALS[sel] !== undefined) {
+    resolved = candidates[ORDINALS[sel]] || null
+  }
+
+  // 2. Try name substring / similarity match
+  if (!resolved) {
+    // Exact substring first
+    resolved = candidates.find(c => c.name.toLowerCase().includes(sel)) || null
+
+    // Fuzzy similarity fallback
+    if (!resolved) {
+      let bestScore = 0
+      for (const c of candidates) {
+        const score = voiceSearch.stringSimilarity(sel, c.name.toLowerCase())
+        // Also check against just the model part (strip brand prefix)
+        const modelPart = c.brand ? c.name.toLowerCase().replace(c.brand.toLowerCase(), '').trim() : c.name.toLowerCase()
+        const modelScore = voiceSearch.stringSimilarity(sel, modelPart)
+        const best = Math.max(score, modelScore)
+        if (best > bestScore && best >= 0.45) {
+          bestScore = best
+          resolved = c
+        }
+      }
+    }
+  }
+
+  if (!resolved) {
+    const nameList = candidates.map((c, i) => `${i + 1}. ${c.name}`).join(', ')
+    return fail(
+      `I'm not sure which one you mean. The options are: ${nameList}. Say the number or part of the name.`,
+      { candidates }
+    )
+  }
+
+  // Clear candidates — session resolved
+  pendingCandidates.delete(socketId)
+
+  console.log(`\n✅ [CONFIRM] Resolved "${selection}" → ${resolved.name} (action: ${action})`)
+
+  // Perform the requested action
+  if (action === 'add_to_cart') {
+    return handleAddToCart(
+      { product_slug: resolved.slug, product_name: resolved.name, size, color, quantity },
+      socketId,
+      dbId
+    )
+  }
+
+  if (action === 'favourite') {
+    return handleToggleFavourite(
+      { product_slug: resolved.slug, product_name: resolved.name, action: 'add' },
+      socketId,
+      dbId
+    )
+  }
+
+  // Default: open product detail page
+  emit(socketId, 'navigate', { path: `/product/${resolved.slug}` })
+  emit(socketId, 'toast',    { message: `Opening ${resolved.name}`, kind: 'info' })
+  return ok(
+    `Opening ${resolved.name} by ${resolved.brand} for $${Number(resolved.price).toFixed(2)} on your screen now!`,
+    { product: resolved }
+  )
+}
+
 // ─── Dispatcher ──────────────────────────────────────────────────────────────
 
 // const FUNCTION_MAP = {
@@ -725,6 +917,10 @@ async function handleOpenCart(_, socketId) {
 // }
 
 const FUNCTION_MAP = {
+  // Product Name Confirmation Flow (2-step: search → confirm)
+  search_products_by_name: handleSearchProductsByName,
+  confirm_product:          handleConfirmProduct,
+
   // Search & Recommendations
   search_product:       handleSearchProduct,
   suggest_product:      handleSuggestProducts,

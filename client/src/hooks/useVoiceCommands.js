@@ -5,9 +5,10 @@ import { getSocket } from '../lib/socket'
 import { hydrateCart } from '../store/cartSlice'
 import { fetchFavourites } from '../store/wishlistSlice'
 import { selectVariant } from '../store/productViewSlice'
+import { setCustomProducts } from '../store/productsSlice'
 import { showToast } from '../lib/toast'
 
-export function useVoiceCommands(isCallActive) {
+export function useVoiceCommands(isCallActive, { onCandidates } = {}) {
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useDispatch()
@@ -17,7 +18,23 @@ export function useVoiceCommands(isCallActive) {
 
       case 'navigate':
         if (payload?.path) {
+          onCandidates?.([])
           navigate(payload.path)
+        }
+        break
+
+      case 'product:candidates':
+        if (Array.isArray(payload?.candidates)) {
+          onCandidates?.(payload.candidates)
+        }
+        break
+
+      case 'products:override':
+        if (Array.isArray(payload?.products)) {
+          dispatch(setCustomProducts(payload.products))
+          if (location.pathname !== '/products') {
+            navigate('/products')
+          }
         }
         break
 
@@ -56,7 +73,7 @@ export function useVoiceCommands(isCallActive) {
       default:
         break
     }
-  }, [navigate, location, dispatch])
+  }, [navigate, location, dispatch, onCandidates])
 
   useEffect(() => {
     if (!isCallActive) return

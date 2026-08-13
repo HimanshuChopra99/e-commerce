@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
-import { fetchProducts, fetchFilters } from '../store/productsSlice';
+import { fetchProducts, fetchFilters, resetCustomList } from '../store/productsSlice';
 import { fetchCategories } from '../store/categoriesSlice';
 import ProductCard from '../components/common/ProductCard';
 import FilterSidebar from '../components/common/FilterSidebar';
@@ -38,7 +38,7 @@ export default function ProductListPage() {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { items, meta, loading, filters: serverFilters } = useSelector((s) => s.products);
+  const { items, meta, loading, filters: serverFilters, isCustomList } = useSelector((s) => s.products);
   const { items: categories } = useSelector((s) => s.categories);
 
   const [sortOpen, setSortOpen] = useState(false);
@@ -54,6 +54,7 @@ export default function ProductListPage() {
   const currentSort    = searchParams.get('sort')      || 'trending';
   const currentPage    = parseInt(searchParams.get('page')     || '1',    10);
   const currentSearch  = searchParams.get('q')         || '';
+  const slugsParam      = searchParams.get('slugs')     || '';
   const rawPriceMin    = searchParams.get('priceMin')  || searchParams.get('minPrice') || '';
   const rawPriceMax    = searchParams.get('priceMax')  || searchParams.get('maxPrice') || '';
   const currentPriceMin = rawPriceMin ? parseInt(rawPriceMin, 10) : undefined;
@@ -146,6 +147,9 @@ export default function ProductListPage() {
   };
 
   const fetchData = useCallback(() => {
+    if (isCustomList && !categoryParam && !genderParam && !sizeParam && !colorParam && !currentSearch && !slugsParam) {
+      return;
+    }
     dispatch(fetchProducts({
       category: categoryParam  || undefined,
       gender:   genderParam    || undefined,
@@ -157,10 +161,11 @@ export default function ProductListPage() {
       minPrice: currentPriceMin,
       maxPrice: currentPriceMax < 1000 ? currentPriceMax : undefined,
       q:        currentSearch  || undefined,
+      slugs:    slugsParam     || undefined,
     }));
   // Stable primitive deps — no new array references every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, categoryParam, genderParam, sizeParam, colorParam, currentSort, currentPage, currentPriceMin, currentPriceMax, currentSearch]);
+  }, [dispatch, isCustomList, categoryParam, genderParam, sizeParam, colorParam, currentSort, currentPage, currentPriceMin, currentPriceMax, currentSearch, slugsParam]);
 
   useEffect(() => {
     fetchData();

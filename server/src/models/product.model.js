@@ -130,8 +130,8 @@ export async function findAll(filters = {}) {
   try {
     const {
       limit = 20, offset = 0, categorySlug, categoryPublicId, gender,
-      minPrice, maxPrice, priceMin, priceMax, size, color, search, status, featured,
-      inStockOnly = false, sort = 'newest', storefront = false,
+      minPrice, maxPrice, priceMin, priceMax, size, color, search, slugs, status, featured,
+      inStockOnly = false, sort, storefront = false,
     } = filters
 
     const effectiveMinPrice = minPrice ?? priceMin
@@ -150,6 +150,15 @@ export async function findAll(filters = {}) {
         where.push('p.status = ?')
         params.push(status)
       }
+    }
+
+    const slugList = typeof slugs === 'string'
+      ? slugs.split(',').map((s) => s.trim()).filter(Boolean)
+      : (Array.isArray(slugs) ? slugs : [])
+
+    if (slugList.length > 0) {
+      where.push(`p.slug IN (${slugList.map(() => '?').join(',')})`)
+      params.push(...slugList)
     }
 
     if (categorySlug) { where.push('c.slug = ?'); params.push(categorySlug) }
@@ -195,7 +204,7 @@ export async function findAll(filters = {}) {
                             AND (v.stock - v.reserved) > 0)`)
     }
 
-    const ORDER = {
+    const ORDER = sort ? ({
       newest: 'p.created_at DESC',
       oldest: 'p.created_at ASC',
       price_asc: 'p.price ASC',
@@ -206,7 +215,7 @@ export async function findAll(filters = {}) {
       name_desc: 'p.name DESC',
       stock_asc: 'p.total_stock ASC',
       stock_desc: 'p.total_stock DESC',
-    }[sort] ?? 'p.created_at DESC'
+    }[sort] ?? 'p.created_at DESC') : (slugList.length > 0 ? 'p.created_at DESC' : 'p.created_at DESC')
 
     const whereSql = `WHERE ${where.join(' AND ')}`
 
@@ -222,7 +231,15 @@ export async function findAll(filters = {}) {
          ${whereSql}`,
         params
       )
-      return { items: rows.map(mapProduct), total: Number(countRow?.total ?? 0) }
+      const mapped = rows.map(mapProduct)
+      if (slugList.length > 0 && !sort) {
+        mapped.sort((a, b) => {
+          const idxA = slugList.indexOf(a.slug)
+          const idxB = slugList.indexOf(b.slug)
+          return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB)
+        })
+      }
+      return { items: mapped, total: Number(countRow?.total ?? 0) }
     }
   } catch { }
 

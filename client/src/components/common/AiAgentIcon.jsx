@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate }       from 'react-router-dom'
 import { DotLottieReact }  from '@lottiefiles/dotlottie-react'
 import { createCall }      from '../../lib/api'
 import { retellClient }    from '../../lib/retell'
@@ -8,7 +9,7 @@ import { useSelector }     from 'react-redux'
 import { useVoiceCommands } from '../../hooks/useVoiceCommands'
 import {
   MicOff, Loader2, Volume2, PhoneCall,
-  AlertCircle, X, Mic,
+  AlertCircle, X, Mic, Tag,
 } from 'lucide-react'
 
 const CALL_STATES = {
@@ -20,6 +21,7 @@ const CALL_STATES = {
 
 const AiAgentIcon = () => {
   const user = useSelector((state) => state.auth?.user)
+  const navigate = useNavigate()
 
   const [callState, setCallState]         = useState(CALL_STATES.IDLE)
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false)
@@ -27,6 +29,7 @@ const AiAgentIcon = () => {
   const [errorMessage, setErrorMessage]   = useState('')
   const [isHovered, setIsHovered]         = useState(false)
   const [showGreeting, setShowGreeting]   = useState(true)
+  const [candidates, setCandidates]       = useState([])
 
   const lottieRef        = useRef(null)
   const processingTimer = useRef(null)
@@ -35,7 +38,7 @@ const AiAgentIcon = () => {
   const isCallActive = callState === CALL_STATES.CONNECTED
 
   // Activate voice command listener when call is active
-  useVoiceCommands(isCallActive)
+  useVoiceCommands(isCallActive, { onCandidates: setCandidates })
 
   const userName = user?.firstName || user?.name || 'there'
 
@@ -43,6 +46,7 @@ const AiAgentIcon = () => {
     setCallState(CALL_STATES.IDLE)
     setIsAgentSpeaking(false)
     setIsProcessing(false)
+    setCandidates([])
     clearTimeout(processingTimer.current)
 
     const socket = getSocket()
@@ -213,6 +217,8 @@ const AiAgentIcon = () => {
           {isProcessing && !isAgentSpeaking && <Loader2 className="w-3.5 h-3.5 text-violet-500 animate-spin" />}
         </div>
       )}
+
+
 
       {/* Main button */}
       <div

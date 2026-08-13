@@ -42,23 +42,27 @@ async function executeRetellSync(state) {
       last_user_action: state.lastAction || 'User interacted with browser',
     }
 
-    const actionText = state.lastAction || 'User interacted with browser'
-    const pageText = formatPageContext(state)
-    const additionalContext = `[LIVE BROWSER UPDATE] Customer location: ${pageText}. Last user action: ${actionText}.`
+    const actionText = state.lastAction || ''
     const shouldTriggerResponse = actionText.includes('[CRITICAL DIRECTIVE]')
 
-    logger.info({ callId: state.callId, dynamicVariables, additionalContext, shouldTriggerResponse }, '[RetellSync] Updating dynamic variables for active call via updateLive')
+    logger.info({ callId: state.callId, dynamicVariables, shouldTriggerResponse }, '[RetellSync] Updating dynamic variables for active call via updateLive')
 
     if (typeof retellClient?.call?.updateLive === 'function') {
-      await retellClient.call.updateLive(state.callId, {
-        call_control: {
-          additional_context: additionalContext,
-          ...(shouldTriggerResponse ? { trigger_response: true } : {}),
-        },
+      const callControl = {}
+      if (shouldTriggerResponse) {
+        callControl.trigger_response = true
+      }
+
+      const payload = {
         fields_to_override: {
           override_dynamic_variables: dynamicVariables,
         },
-      })
+      }
+      if (Object.keys(callControl).length > 0) {
+        payload.call_control = callControl
+      }
+
+      await retellClient.call.updateLive(state.callId, payload)
     } else {
       await retellClient.call.update(state.callId, {
         retell_llm_dynamic_variables: dynamicVariables,
@@ -71,14 +75,25 @@ async function executeRetellSync(state) {
 }
 
 function formatPageContext(state) {
-  if (!state.path) return 'Home page'
+  if (!state || !state.path) return 'Home page'
+  const p = String(state.path).toLowerCase().split('?')[0]
+  if (p === '/' || p === '') return 'Home page'
+  if (p === '/cart') return 'Shopping Cart page'
+  if (p === '/checkout/payment' || p.startsWith('/checkout')) return 'Checkout page'
+  if (p === '/products' || state.type === 'catalog') return 'Product Catalog page'
+  if (p === '/profile' || p === '/favourites' || p === '/wishlist') return 'Customer Profile page'
+  if (p === '/orders') return 'Order History page'
+  if (p.startsWith('/orders/')) return 'Order Details page'
   if (state.type === 'product' && state.productDetails) {
-    return `Product detail page for "${state.productDetails.name || state.slug}" (${state.path})`
+    return `Product page for "${state.productDetails.name || state.slug}"`
   }
-  if (state.type === 'catalog') {
-    return `Product Catalog page (${state.path})`
-  }
-  return `Page: ${state.path}`
+  if (p.startsWith('/product/')) return 'Product Details page'
+  if (p === '/about') return 'About Us page'
+  if (p === '/contact') return 'Contact page'
+  if (p === '/blogs') return 'Blogs page'
+  if (p === '/login') return 'Login page'
+  if (p === '/signup') return 'Signup page'
+  return `${state.type || p.replace(/[^a-z0-9]/gi, ' ')} page`.trim()
 }
 
 function formatFiltersContext(filters) {

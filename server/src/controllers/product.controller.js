@@ -20,6 +20,7 @@ export const list = asyncHandler(async (req, res) => {
     size: req.query.size,
     color: req.query.color,
     search: req.query.q,
+    slugs: req.query.slugs,
     featured: req.query.featured,
     inStockOnly: req.query.inStock,
     sort: req.query.sort,

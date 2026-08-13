@@ -62,6 +62,15 @@ const productsSlice = createSlice({
     clearCurrentProduct: (state) => {
       state.current = null
     },
+    setCustomProducts: (state, action) => {
+      state.items = action.payload || []
+      state.meta = { page: 1, limit: action.payload?.length || 0, total: action.payload?.length || 0, totalPages: 1 }
+      state.loading = false
+      state.isCustomList = true
+    },
+    resetCustomList: (state) => {
+      state.isCustomList = false
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -103,5 +112,5 @@ const productsSlice = createSlice({
   },
 })
 
-export const { clearCurrentProduct } = productsSlice.actions
+export const { clearCurrentProduct, setCustomProducts, resetCustomList } = productsSlice.actions
 export default productsSlice.reducer

@@ -466,6 +466,18 @@ class MemoryStore {
   getProducts(filters = {}) {
     let list = [...this.products]
 
+    if (filters.slugs) {
+      const slugList = typeof filters.slugs === 'string'
+        ? filters.slugs.split(',').map((s) => s.trim()).filter(Boolean)
+        : (Array.isArray(filters.slugs) ? filters.slugs : [])
+      if (slugList.length > 0) {
+        list = list.filter((p) => slugList.includes(p.slug))
+        if (!filters.sort) {
+          list.sort((a, b) => slugList.indexOf(a.slug) - slugList.indexOf(b.slug))
+        }
+      }
+    }
+
     if (filters.categorySlug) {
       list = list.filter((p) => p.category?.slug === filters.categorySlug)
     }
