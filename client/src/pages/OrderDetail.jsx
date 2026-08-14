@@ -75,6 +75,40 @@ const statusConfig = {
   },
 }
 
+// Generates dynamic stamp information with rich metadata
+function getStampConfig(order) {
+  const orderStatus = (order.status || '').toLowerCase()
+  const paymentStatus = (order.paymentStatus || '').toLowerCase()
+
+  const formattedDate = new Date(order.placedAt || order.createdAt)
+    .toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
+    .toUpperCase()
+
+  const refCode = (order.orderNumber || order.id || '').toString().replace('#', '').slice(-6).toUpperCase()
+
+  let text = 'PAID'
+  let color = 'border-emerald-600/90 text-emerald-700 bg-emerald-500/5'
+
+  if (orderStatus === 'cancelled') {
+    text = 'CANCELLED'
+    color = 'border-rose-600/90 text-rose-700 bg-rose-500/5'
+  } else if (orderStatus === 'returned') {
+    text = 'RETURNED'
+    color = 'border-slate-600/90 text-slate-700 bg-slate-500/5'
+  } else if (orderStatus === 'pending' || paymentStatus === 'pending' || paymentStatus === 'unpaid') {
+    text = 'UNPAID'
+    color = 'border-amber-600/90 text-amber-700 bg-amber-500/5'
+  }
+
+  return {
+    text,
+    color,
+    company: 'KICKS STORE',
+    date: formattedDate,
+    ref: refCode,
+  }
+}
+
 export default function OrderDetail() {
   const { id } = useParams()
   const dispatch = useDispatch()
@@ -158,10 +192,37 @@ export default function OrderDetail() {
   }
 
   const status = statusConfig[order.status] || statusConfig.processing
+  const stamp = getStampConfig(order)
   const orderItems = order.items || []
 
   return (
     <div className='min-h-screen bg-white text-slate-900 pb-24 pt-6 sm:pt-10'>
+      {/* REALISTIC RUBBER STAMP SLAM ANIMATION */}
+      <style>{`
+        @keyframes stampSlam {
+          0% {
+            opacity: 0;
+            transform: scale(3.5) rotate(28deg) translateY(-110px);
+          }
+          65% {
+            opacity: 0.95;
+            transform: scale(0.92) rotate(-14deg) translateY(0);
+          }
+          80% {
+            transform: scale(1.08) rotate(-10deg);
+          }
+          100% {
+            opacity: 0.92;
+            transform: scale(1) rotate(-12deg);
+          }
+        }
+
+        .animate-stamp-slam {
+          opacity: 0;
+          animation: stampSlam 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.25s forwards;
+        }
+      `}</style>
+
       <div className='mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-10'>
         {/* HEADER & TOP ACTIONS */}
         <div className='flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end'>
@@ -343,11 +404,24 @@ export default function OrderDetail() {
           {/* RIGHT COLUMN: BILL RECEIPT INVOICE SLIP (Span 1) */}
           <div className='lg:col-span-1 space-y-6'>
             {/* REALISTIC THERMAL RECEIPT SLIP */}
-            <div className='relative mx-auto w-full max-w-sm rounded-t-xl bg-white p-6 pb-8 shadow-xl border border-neutral-200/80 text-neutral-800 font-mono text-xs'>
+            <div className='relative mx-auto w-full max-w-sm rounded-t-xl bg-white p-6 pb-8 shadow-xl border border-neutral-200/80 text-neutral-800 font-mono text-xs overflow-hidden sm:overflow-visible'>
 
-              {/* Tilted "PAID" Rubber Stamp */}
-              <div className='absolute top-7 right-6 z-10 border-2 border-emerald-600 text-emerald-600 px-3 py-1 text-xs font-black uppercase tracking-widest -rotate-12 rounded opacity-85 select-none pointer-events-none shadow-xs'>
-                PAID
+              {/* DETAILED OFFICIAL RUBBER STAMP */}
+              <div
+                className={`animate-stamp-slam absolute top-4 right-3 z-20 p-1 border-2 rounded-md ${stamp.color} select-none pointer-events-none shadow-xs`}
+              >
+                <div className='border border-dashed border-current p-1.5 text-center flex flex-col items-center'>
+                  <span className='text-[7px] font-extrabold uppercase tracking-widest leading-none mb-0.5 opacity-80'>
+                    {stamp.company} · VERIFIED
+                  </span>
+                  <span className='text-base font-black uppercase tracking-widest leading-none py-0.5 px-2'>
+                    {stamp.text}
+                  </span>
+                  <div className='text-[7px] font-bold tracking-wider border-t border-current/30 pt-0.5 mt-0.5 w-full flex justify-between gap-3 opacity-90'>
+                    <span>DATE: {stamp.date}</span>
+                    <span>REF: #{stamp.ref}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Receipt Store Header */}

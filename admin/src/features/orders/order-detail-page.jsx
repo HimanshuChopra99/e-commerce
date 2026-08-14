@@ -12,7 +12,7 @@ import {
   User,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { fetchAdminOrders } from '@/store/adminOrdersSlice'
+import { fetchAdminOrders, updateOrderStatus } from '@/store/adminOrdersSlice'
 import { getOrderById, orders as seedOrders, products as seedProducts } from '@/data/seed'
 import { useCatalogStore } from '@/stores/catalog-store'
 import { formatCurrency, formatDateTime } from '@/config/brand'
@@ -49,6 +49,7 @@ import {
   OrderStatusBadge,
   PaymentStatusBadge,
 } from './components/order-status-badge'
+import { OrderShippingDialog } from './components/order-shipping-dialog'
 
 /** Loading Skeleton shown while fetching order details from database */
 function OrderDetailSkeleton() {
@@ -77,7 +78,6 @@ function OrderDetailSkeleton() {
 function normalizeOrderItems(rawOrder, catalogProducts = []) {
   if (!rawOrder) return []
 
-  // Check all possible property names from various ORMs / MySQL / REST APIs
   let rawItems =
     rawOrder.items ??
     rawOrder.orderItems ??
@@ -86,7 +86,6 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
     rawOrder.line_items ??
     []
 
-  // Handle case where backend returns items as a serialized JSON string
   if (typeof rawItems === 'string') {
     try {
       rawItems = JSON.parse(rawItems)
@@ -95,16 +94,13 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
     }
   }
 
-  // 1. If backend or rawOrder provides valid items, map database SQL column names
   if (Array.isArray(rawItems) && rawItems.length > 0) {
     return rawItems.map((item, idx) => {
       const price = Number(
         item.price ?? item.unit_price ?? item.unitPrice ?? item.unitPriceAmount ?? 0
       )
       const quantity = Number(item.quantity ?? item.qty ?? 1)
-      const lineTotal = Number(
-        item.lineTotal ?? item.line_total ?? price * quantity
-      )
+      const lineTotal = Number(item.lineTotal ?? item.line_total ?? price * quantity)
 
       let img = item.image ?? item.productImage ?? item.product_image
       if (Array.isArray(img)) img = img[0]
@@ -119,12 +115,7 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
       return {
         id: item.id ?? `item-${idx}`,
         productId: item.productId ?? item.product_id ?? item.id ?? `prod-${idx}`,
-        name:
-          item.name ??
-          item.productName ??
-          item.product_name ??
-          item.title ??
-          'KICK Product',
+        name: item.name ?? item.productName ?? item.product_name ?? item.title ?? 'KICK Product',
         sku: item.sku ?? item.productSku ?? item.product_sku ?? 'KICK-SKU',
         image: img || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
         size: item.size ?? '42',
@@ -136,7 +127,6 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
     })
   }
 
-  // 2. Fallback to seedOrders match if available
   const seedMatch = seedOrders.find(
     (so) =>
       String(so.orderNumber) === String(rawOrder.orderNumber || rawOrder.order_number) ||
@@ -146,7 +136,6 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
     return normalizeOrderItems(seedMatch, catalogProducts)
   }
 
-  // 3. Ultimate Fallback: Derive realistic items from actual catalogue products
   const pool = catalogProducts.length > 0 ? catalogProducts : seedProducts
   if (pool && pool.length > 0) {
     const rawIdStr = String(rawOrder.id || rawOrder.orderNumber || rawOrder.order_number || '1')
@@ -210,7 +199,16 @@ export function OrderDetailPage() {
   const [apiOrder, setApiOrder] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Fetch full order detail (including order_items) from backend API endpoint
+  // ── Status update state ──────────────────────────────────────────────────
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [shippingDialogOpen, setShippingDialogOpen] = useState(false)
+
+  // Local status mirror so the UI updates instantly without re-fetching
+  const [localStatus, setLocalStatus] = useState(null)
+  const [localTracking, setLocalTracking] = useState(null)
+  const [localCourier, setLocalCourier] = useState(null)
+
+  // ── Fetch order detail ───────────────────────────────────────────────────
   useEffect(() => {
     let isMounted = true
 
@@ -223,13 +221,9 @@ export function OrderDetailPage() {
         }
         const apiBase = import.meta.env.VITE_API_URL || '/api'
 
-        let res = await fetch(`${apiBase}/admin/orders/${orderId}`, {
-          headers,
-        })
+        let res = await fetch(`${apiBase}/admin/orders/${orderId}`, { headers })
         if (!res.ok) {
-          res = await fetch(`${apiBase}/orders/${orderId}`, {
-            headers,
-          })
+          res = await fetch(`${apiBase}/orders/${orderId}`, { headers })
         }
         if (res.ok) {
           const data = await res.json()
@@ -256,10 +250,7 @@ export function OrderDetailPage() {
     }
 
     loadOrderDetail()
-
-    return () => {
-      isMounted = false
-    }
+    return () => { isMounted = false }
   }, [orderId, dispatch, reduxOrders.length])
 
   if (loading) return <OrderDetailSkeleton />
@@ -299,29 +290,26 @@ export function OrderDetailPage() {
     )
   }
 
-  // Extract and normalize ordered products
   const items = normalizeOrderItems(rawOrder, catalogProducts)
 
-  // Recalculate totals dynamically so items table and totals match seamlessly
   const calculatedSubtotal = items.reduce((sum, i) => sum + i.lineTotal, 0)
   const rawSubtotal = Number(rawOrder.subtotal || rawOrder.sub_total || 0)
   const subtotal = rawSubtotal > 0 ? rawSubtotal : calculatedSubtotal
-
   const shipping = Number(rawOrder.shippingTotal ?? rawOrder.shipping_total ?? rawOrder.shipping ?? 0)
   const discount = Number(rawOrder.discount || 0)
-
   const rawTax = Number(rawOrder.taxTotal ?? rawOrder.tax_total ?? rawOrder.tax ?? 0)
   const tax = rawTax > 0 ? rawTax : Number((subtotal * 0.08).toFixed(2))
-
   const rawTotal = Number(rawOrder.grandTotal ?? rawOrder.grand_total ?? rawOrder.total ?? 0)
   const grandTotal = rawTotal > 0 ? rawTotal : Number((subtotal + shipping + tax - discount).toFixed(2))
 
-  // Normalize top-level order header fields
   const order = {
     ...rawOrder,
     id: rawOrder.id,
     orderNumber: rawOrder.orderNumber || rawOrder.order_number || `#${rawOrder.id}`,
-    status: rawOrder.status || 'pending',
+    // Use local mirrors if set (optimistic UI after status change)
+    status: localStatus ?? rawOrder.status ?? 'pending',
+    trackingNumber: localTracking ?? rawOrder.trackingNumber ?? rawOrder.tracking_number,
+    courier: localCourier ?? rawOrder.courier ?? 'FedEx',
     paymentStatus: rawOrder.paymentStatus || rawOrder.payment_status || 'pending',
     paymentMethod: rawOrder.paymentMethod || rawOrder.payment_method || 'card',
     placedAt: rawOrder.placedAt || rawOrder.placed_at || rawOrder.createdAt,
@@ -336,8 +324,6 @@ export function OrderDetailPage() {
     tax,
     discount,
     total: grandTotal,
-    trackingNumber: rawOrder.trackingNumber || rawOrder.tracking_number,
-    courier: rawOrder.courier || 'FedEx',
     shippingAddress: rawOrder.shippingAddress || {
       line1: rawOrder.shipping_line1 || '100 Main St',
       city: rawOrder.shipping_city || 'New York',
@@ -352,6 +338,42 @@ export function OrderDetailPage() {
   const isCancelled = order.status === 'cancelled'
   const isReturned = order.status === 'returned'
   const currentStep = fulfilmentSteps.indexOf(order.status)
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const doStatusUpdate = async (status, extra = {}) => {
+    setStatusUpdating(true)
+    try {
+      const result = await dispatch(updateOrderStatus({ id: order.id, status, extra }))
+      if (updateOrderStatus.fulfilled.match(result)) {
+        // Optimistically mirror locally so the page reflects the change immediately
+        setLocalStatus(status)
+        if (extra.trackingNumber) setLocalTracking(extra.trackingNumber)
+        if (extra.courier) setLocalCourier(extra.courier)
+        const label = orderStatusLabels.get(status) ?? status
+        toast.success(`Order status updated to "${label}".`)
+      } else {
+        toast.error(result.payload || 'Failed to update status.')
+      }
+    } catch {
+      toast.error('Something went wrong.')
+    } finally {
+      setStatusUpdating(false)
+    }
+  }
+
+  const onStepClick = (step) => {
+    if (step === order.status || statusUpdating) return
+    if (step === 'shipped') {
+      setShippingDialogOpen(true)
+      return
+    }
+    doStatusUpdate(step)
+  }
+
+  const onShippingConfirm = ({ courier, trackingNumber }) => {
+    doStatusUpdate('shipped', { courier, trackingNumber })
+    setShippingDialogOpen(false)
+  }
 
   return (
     <>
@@ -407,7 +429,7 @@ export function OrderDetailPage() {
                 ? 'This order was cancelled.'
                 : isReturned
                 ? 'This order was returned by the customer.'
-                : `Currently ${orderStatusLabels.get(order.status)?.toLowerCase() || order.status}.`}
+                : `Currently ${orderStatusLabels.get(order.status)?.toLowerCase() || order.status}. Click a step below to update.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -428,44 +450,95 @@ export function OrderDetailPage() {
                 </div>
               </div>
             ) : (
-              <ol className='grid gap-4 sm:grid-cols-4'>
-                {fulfilmentSteps.map((step, idx) => {
-                  const meta = orderStatuses.find((s) => s.value === step)
-                  const Icon = meta?.icon ?? Truck
-                  const done = idx <= currentStep
-                  return (
-                    <li key={step} className='flex items-start gap-3'>
-                      <div
-                        className={cn(
-                          'flex size-9 shrink-0 items-center justify-center rounded-full border',
-                          done
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground'
-                        )}
-                      >
-                        <Icon className='size-4' />
-                      </div>
-                      <div className='min-w-0'>
-                        <p
+              <>
+                <ol className='grid gap-4 sm:grid-cols-4'>
+                  {fulfilmentSteps.map((step, idx) => {
+                    const meta = orderStatuses.find((s) => s.value === step)
+                    const Icon = meta?.icon ?? Truck
+                    const done = idx <= currentStep
+                    const isCurrent = step === order.status
+                    const isClickable = !isCurrent && !statusUpdating
+
+                    return (
+                      <li key={step} className='flex items-start gap-3'>
+                        <button
+                          type='button'
+                          disabled={!isClickable}
+                          onClick={() => onStepClick(step)}
+                          title={
+                            isCurrent
+                              ? 'Current status'
+                              : step === 'shipped'
+                              ? `Mark as ${meta?.label} (requires tracking number)`
+                              : `Mark as ${meta?.label}`
+                          }
                           className={cn(
-                            'text-sm font-medium',
-                            !done && 'text-muted-foreground'
+                            'flex size-9 shrink-0 items-center justify-center rounded-full border transition-all',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                            done
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground',
+                            isClickable && !done
+                              ? 'cursor-pointer hover:border-primary/60 hover:bg-primary/10 hover:text-primary'
+                              : '',
+                            isClickable && done && !isCurrent
+                              ? 'cursor-pointer opacity-80 hover:opacity-100'
+                              : '',
+                            !isClickable ? 'cursor-not-allowed opacity-60' : ''
                           )}
                         >
-                          {meta?.label}
-                        </p>
-                        <p className='text-xs text-muted-foreground'>
-                          {idx === currentStep
-                            ? 'Current'
-                            : done
-                            ? 'Completed'
-                            : 'Pending'}
-                        </p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
+                          <Icon className='size-4' />
+                        </button>
+                        <div className='min-w-0'>
+                          <p
+                            className={cn(
+                              'text-sm font-medium',
+                              !done && 'text-muted-foreground'
+                            )}
+                          >
+                            {meta?.label}
+                          </p>
+                          <p className='text-xs text-muted-foreground'>
+                            {isCurrent
+                              ? 'Current'
+                              : done
+                              ? 'Completed'
+                              : 'Click to set'}
+                          </p>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
+
+                {/* Quick-set pill strip for all statuses including cancelled/returned */}
+                <div className='mt-5 flex flex-wrap items-center gap-2 border-t pt-4'>
+                  <span className='text-xs text-muted-foreground'>Set status:</span>
+                  {orderStatuses.map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      type='button'
+                      disabled={statusUpdating || value === order.status}
+                      onClick={() => onStepClick(value)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        value === order.status
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'cursor-pointer border-border bg-background hover:bg-muted',
+                        statusUpdating && 'cursor-not-allowed opacity-50'
+                      )}
+                    >
+                      <Icon className='h-3 w-3' />
+                      {label}
+                      {value === order.status && ' ✓'}
+                    </button>
+                  ))}
+                  {statusUpdating && (
+                    <span className='text-xs text-muted-foreground animate-pulse'>Updating…</span>
+                  )}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -504,28 +577,16 @@ export function OrderDetailPage() {
                                 className='size-10'
                               />
                               <div className='min-w-0'>
-                                <div className='truncate font-medium'>
-                                  {item.name}
-                                </div>
-                                <div className='truncate text-xs text-muted-foreground'>
-                                  {item.sku}
-                                </div>
+                                <div className='truncate font-medium'>{item.name}</div>
+                                <div className='truncate text-xs text-muted-foreground'>{item.sku}</div>
                               </div>
                             </Link>
                           </TableCell>
-                          <TableCell className='text-nowrap'>
-                            UK {item.size}
-                          </TableCell>
+                          <TableCell className='text-nowrap'>UK {item.size}</TableCell>
                           <TableCell>{item.color}</TableCell>
-                          <TableCell className='text-center'>
-                            {item.quantity}
-                          </TableCell>
-                          <TableCell className='text-end text-nowrap'>
-                            {formatCurrency(item.price)}
-                          </TableCell>
-                          <TableCell className='text-end font-medium text-nowrap'>
-                            {formatCurrency(item.lineTotal)}
-                          </TableCell>
+                          <TableCell className='text-center'>{item.quantity}</TableCell>
+                          <TableCell className='text-end text-nowrap'>{formatCurrency(item.price)}</TableCell>
+                          <TableCell className='text-end font-medium text-nowrap'>{formatCurrency(item.lineTotal)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -539,11 +600,7 @@ export function OrderDetailPage() {
                   </div>
                   <div className='flex justify-between'>
                     <span className='text-muted-foreground'>Shipping</span>
-                    <span>
-                      {order.shipping === 0
-                        ? 'Free'
-                        : formatCurrency(order.shipping)}
-                    </span>
+                    <span>{order.shipping === 0 ? 'Free' : formatCurrency(order.shipping)}</span>
                   </div>
                   {order.discount > 0 && (
                     <div className='flex justify-between text-teal-600 dark:text-teal-400'>
@@ -598,9 +655,7 @@ export function OrderDetailPage() {
                   <>
                     <Separator />
                     <Button variant='outline' size='sm' className='w-full' asChild>
-                      <Link to={`/customers/${order.customerId}`}>
-                        View customer profile
-                      </Link>
+                      <Link to={`/customers/${order.customerId}`}>View customer profile</Link>
                     </Button>
                   </>
                 )}
@@ -634,9 +689,7 @@ export function OrderDetailPage() {
                       <button
                         type='button'
                         onClick={() => {
-                          navigator.clipboard?.writeText(
-                            order.trackingNumber ?? ''
-                          )
+                          navigator.clipboard?.writeText(order.trackingNumber ?? '')
                           toast.success('Tracking number copied.')
                         }}
                         className='font-mono font-medium hover:underline'
@@ -666,18 +719,14 @@ export function OrderDetailPage() {
                 </div>
                 <div className='flex items-center justify-between'>
                   <span className='text-muted-foreground'>Amount</span>
-                  <span className='font-semibold'>
-                    {formatCurrency(order.total)}
-                  </span>
+                  <span className='font-semibold'>{formatCurrency(order.total)}</span>
                 </div>
                 {order.deliveredAt && (
                   <>
                     <Separator />
                     <div className='flex items-center justify-between'>
                       <span className='text-muted-foreground'>Delivered</span>
-                      <Badge variant='secondary'>
-                        {formatDateTime(order.deliveredAt)}
-                      </Badge>
+                      <Badge variant='secondary'>{formatDateTime(order.deliveredAt)}</Badge>
                     </div>
                   </>
                 )}
@@ -686,6 +735,15 @@ export function OrderDetailPage() {
           </div>
         </div>
       </Main>
+
+      {/* Shipping dialog — shown when "Shipped" step or pill is clicked */}
+      <OrderShippingDialog
+        open={shippingDialogOpen}
+        onOpenChange={setShippingDialogOpen}
+        orderCount={1}
+        onConfirm={onShippingConfirm}
+        loading={statusUpdating}
+      />
     </>
   )
 }

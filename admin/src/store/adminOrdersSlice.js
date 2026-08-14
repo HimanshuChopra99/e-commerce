@@ -19,14 +19,33 @@ export const fetchAdminOrderById = createAsyncThunk('adminOrders/getOne', async 
   }
 })
 
-export const updateOrderStatus = createAsyncThunk('adminOrders/updateStatus', async ({ id, status }, { rejectWithValue }) => {
-  try {
-    const res = await adminOrdersApi.updateStatus(id, status)
-    return res.data
-  } catch (err) {
-    return rejectWithValue(err.message || 'Failed to update order status')
+/** Single order status update — passes optional extra fields (courier, trackingNumber) */
+export const updateOrderStatus = createAsyncThunk(
+  'adminOrders/updateStatus',
+  async ({ id, status, extra = {} }, { rejectWithValue }) => {
+    try {
+      const res = await adminOrdersApi.updateStatus(id, status, extra)
+      return res.data
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to update order status')
+    }
   }
-})
+)
+
+/** Bulk status update — fires all requests in parallel, each with optional extra fields */
+export const bulkUpdateOrderStatus = createAsyncThunk(
+  'adminOrders/bulkUpdateStatus',
+  async ({ ids, status, extra = {} }, { rejectWithValue }) => {
+    try {
+      const results = await Promise.all(
+        ids.map((id) => adminOrdersApi.updateStatus(id, status, extra).then((r) => r.data))
+      )
+      return results
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to bulk update order status')
+    }
+  }
+)
 
 const adminOrdersSlice = createSlice({
   name: 'adminOrders',
@@ -63,13 +82,46 @@ const adminOrdersSlice = createSlice({
       })
 
       .addCase(updateOrderStatus.fulfilled, (s, a) => {
-        if (s.current && (s.current.id === a.payload.id || s.current.orderNumber === a.payload.orderNumber)) {
+        if (!a.payload) return
+        if (
+          s.current &&
+          (s.current.id === a.payload.id || s.current.orderNumber === a.payload.orderNumber)
+        ) {
           s.current.status = a.payload.status
+          if (a.payload.trackingNumber) s.current.trackingNumber = a.payload.trackingNumber
+          if (a.payload.courier) s.current.courier = a.payload.courier
         }
-        const found = s.items.find((i) => i.id === a.payload.id || i.orderNumber === a.payload.orderNumber)
+        const found = s.items.find(
+          (i) => i.id === a.payload.id || i.orderNumber === a.payload.orderNumber
+        )
         if (found) {
           found.status = a.payload.status
+          if (a.payload.trackingNumber) found.trackingNumber = a.payload.trackingNumber
+          if (a.payload.courier) found.courier = a.payload.courier
         }
+      })
+
+      .addCase(bulkUpdateOrderStatus.fulfilled, (s, a) => {
+        const updated = a.payload || []
+        updated.forEach((payload) => {
+          if (!payload) return
+          const found = s.items.find(
+            (i) => i.id === payload.id || i.orderNumber === payload.orderNumber
+          )
+          if (found) {
+            found.status = payload.status
+            if (payload.trackingNumber) found.trackingNumber = payload.trackingNumber
+            if (payload.courier) found.courier = payload.courier
+          }
+          if (
+            s.current &&
+            (s.current.id === payload.id || s.current.orderNumber === payload.orderNumber)
+          ) {
+            s.current.status = payload.status
+            if (payload.trackingNumber) s.current.trackingNumber = payload.trackingNumber
+            if (payload.courier) s.current.courier = payload.courier
+          }
+        })
       })
   },
 })

@@ -124,8 +124,10 @@ export const adminCategoriesApi = {
 export const adminOrdersApi = {
   list: (params) => get('/admin/orders', params),
   getOne: (id) => get(`/admin/orders/${id}`),
-  updateStatus: (id, status) => patch(`/admin/orders/${id}/status`, { status }),
+  updateStatus: (id, status, extra = {}) =>
+    patch(`/admin/orders/${id}/status`, { status, ...extra }),
 }
+
 
 export const adminCustomersApi = {
   list: (params) => get('/admin/customers', params),
