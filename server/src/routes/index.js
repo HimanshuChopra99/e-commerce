@@ -9,6 +9,7 @@ import adminRoutes from './admin/index.js'
 import customerStateRoutes from './customer-state.routes.js'
 import retellRoutes from './retell.routes.js'
 import { cacheStatus } from '../services/cache.service.js'
+import trackingRoutes from './tracking.routes.js'
 
 const router = Router()
 
@@ -58,6 +59,7 @@ router.use('/products', productRoutes)
 router.use('/categories', categoryRoutes)
 router.use('/orders', orderRoutes)
 router.use('/retell', retellRoutes)
+router.use('/tracking', trackingRoutes)
 
 // ── Admin (guarded inside admin/index.js) ─────────────────────────────
 router.use('/admin', adminRoutes)

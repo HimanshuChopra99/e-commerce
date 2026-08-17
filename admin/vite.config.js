@@ -15,14 +15,24 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    allowedHosts: [
+      'filtrate-chemicals-spiritual.ngrok-free.dev',
+    ],
+
     proxy: {
       '/api': {
         target: 'http://localhost:4000',
         changeOrigin: true,
       },
+
       '/uploads': {
         target: 'http://localhost:4000',
         changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        ws: true,
       },
     },
   },

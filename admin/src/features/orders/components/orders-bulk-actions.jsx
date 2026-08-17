@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { bulkUpdateOrderStatus } from '@/store/adminOrdersSlice'
+import { adminTracker } from '@/services/admin-tracker'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -34,18 +35,17 @@ import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-ta
 import { OrderShippingDialog } from './order-shipping-dialog'
 
 const STATUS_OPTIONS = [
-  { value: 'pending',    label: 'Pending',    icon: Clock,          color: 'text-amber-600' },
-  { value: 'processing', label: 'Processing', icon: PackageCheck,   color: 'text-sky-600' },
-  { value: 'shipped',    label: 'Shipped',    icon: Truck,          color: 'text-violet-600' },
-  { value: 'delivered',  label: 'Delivered',  icon: CircleCheckBig, color: 'text-teal-600' },
-  { value: 'cancelled',  label: 'Cancelled',  icon: CircleX,        color: 'text-destructive' },
-  { value: 'returned',   label: 'Returned',   icon: Undo2,          color: 'text-neutral-500' },
+  { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
+  { value: 'processing', label: 'Processing', icon: PackageCheck, color: 'text-sky-600' },
+  { value: 'shipped', label: 'Shipped', icon: Truck, color: 'text-violet-600' },
+  { value: 'delivered', label: 'Delivered', icon: CircleCheckBig, color: 'text-teal-600' },
+  { value: 'cancelled', label: 'Cancelled', icon: CircleX, color: 'text-destructive' },
+  { value: 'returned', label: 'Returned', icon: Undo2, color: 'text-neutral-500' },
 ]
 
 export function OrdersBulkActions({ table }) {
   const dispatch = useDispatch()
   const [loading, setLoading] = useState(false)
-  const [shippingDialogOpen, setShippingDialogOpen] = useState(false)
 
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const count = selectedRows.length
@@ -59,6 +59,16 @@ export function OrdersBulkActions({ table }) {
     try {
       const result = await dispatch(bulkUpdateOrderStatus({ ids, status, extra }))
       if (bulkUpdateOrderStatus.fulfilled.match(result)) {
+        if (status === 'shipped') {
+          result.payload.forEach((o) => {
+            if (o?.trackingNumber) adminTracker.startTracking(o.trackingNumber)
+          })
+        } else if (status === 'delivered' || status === 'cancelled') {
+          selectedRows.forEach((r) => {
+            if (r.original.trackingNumber) adminTracker.stopTracking(r.original.trackingNumber)
+          })
+        }
+
         table.resetRowSelection()
         toast.success(`${count} order${plural} marked as "${label}".`)
       } else {
@@ -72,16 +82,7 @@ export function OrdersBulkActions({ table }) {
   }
 
   const onStatusSelect = (status) => {
-    if (status === 'shipped') {
-      setShippingDialogOpen(true)
-      return
-    }
     doBulkUpdate(status)
-  }
-
-  const onShippingConfirm = ({ courier, trackingNumber }) => {
-    doBulkUpdate('shipped', { courier, trackingNumber })
-    setShippingDialogOpen(false)
   }
 
   const handleExport = () => {
@@ -230,15 +231,6 @@ export function OrdersBulkActions({ table }) {
           <TooltipContent><p>Export to CSV</p></TooltipContent>
         </Tooltip>
       </BulkActionsToolbar>
-
-      {/* Shipping dialog — opened when "Shipped" is selected */}
-      <OrderShippingDialog
-        open={shippingDialogOpen}
-        onOpenChange={setShippingDialogOpen}
-        orderCount={count}
-        onConfirm={onShippingConfirm}
-        loading={loading}
-      />
     </>
   )
 }

@@ -1,26 +1,139 @@
 import { Server } from 'socket.io'
 import { logger } from '../config/logger.js'
+import { env } from '../config/env.js'
 import { setPageState, setCallId, getPageState } from '../services/session-state.service.js'
 import { syncRetellState } from '../services/retell-sync.service.js'
+import * as trackingService from '../services/tracking.service.js'
+import { haversineMeters } from '../controllers/tracking.controller.js'
 
 let io
 
 export function initSocket(httpServer) {
-  const corsOrigin = process.env.FRONTEND_URL
-    ? [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://127.0.0.1:5173']
-    : ['http://localhost:5173', 'http://127.0.0.1:5173']
+  const allowedOrigins = [
+    ...(env.corsOrigins || []),
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ]
 
   io = new Server(httpServer, {
-    transports: ['websocket'],
-    cors: { origin: corsOrigin, credentials: true },
+    transports: ['websocket', 'polling'],
+    cors: {
+      origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. mobile apps, curl, or same-origin)
+        if (!origin || allowedOrigins.includes(origin)) {
+          return callback(null, true)
+        }
+        return callback(null, true) // In development, allow all origins
+      },
+      credentials: true,
+    },
   })
 
   io.on('connection', (socket) => {
     const userId = socket.handshake.auth?.userId || 'guest'
-    const room   = `user:${userId}`
+    const room = `user:${userId}`
 
     socket.join(room)
     logger.info({ socketId: socket.id, userId, room }, '[Socket] client connected')
+
+    // ── Live Tracking Subscriptions ──────────────────────────────────────────
+    socket.on('tracking:subscribe', (data) => {
+      const trackingNumber = typeof data === 'string' ? data : data?.trackingNumber
+      if (trackingNumber) {
+        const trackingRoom = `tracking:${trackingNumber}`
+        socket.join(trackingRoom)
+        logger.info({ socketId: socket.id, trackingNumber, trackingRoom }, '[Socket] client joined tracking room')
+      }
+    })
+
+    socket.on('tracking:unsubscribe', (data) => {
+      const trackingNumber = typeof data === 'string' ? data : data?.trackingNumber
+      if (trackingNumber) {
+        const trackingRoom = `tracking:${trackingNumber}`
+        socket.leave(trackingRoom)
+        logger.info({ socketId: socket.id, trackingNumber, trackingRoom }, '[Socket] client left tracking room')
+      }
+    })
+
+    // ── Live Geolocation Broadcasting (Admin / Courier) ──────────────────────
+    socket.on('send-location', async (data) => {
+      if (!data) return
+      const latitude = Number.parseFloat(data.latitude ?? data.lat)
+      const longitude = Number.parseFloat(data.longitude ?? data.lng)
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return
+      }
+
+      console.log('Location received:', longitude, latitude)
+
+      const trackingNumbers = Array.isArray(data.trackingNumbers)
+        ? data.trackingNumbers.filter(Boolean)
+        : data.trackingNumber
+          ? [data.trackingNumber]
+          : []
+
+      const at = new Date().toISOString()
+
+      // Broadcast generic receive-location for any global listener
+      io.emit('receive-location', {
+        latitude,
+        longitude,
+        lat: latitude,
+        lng: longitude,
+        trackingNumbers,
+        at,
+      })
+
+      for (const tNum of trackingNumbers) {
+        try {
+          const ping = await trackingService.savePing(tNum, latitude, longitude)
+          const session = await trackingService.getTrackingSession(tNum)
+          const destination = session?.destination ?? {}
+
+          const distanceMeters =
+            Number.isFinite(destination.lat) && Number.isFinite(destination.lng)
+              ? Math.round(haversineMeters(latitude, longitude, destination.lat, destination.lng))
+              : null
+
+          const trackingRoom = `tracking:${tNum}`
+          io.to(trackingRoom).emit('tracking:update', {
+            trackingNumber: tNum,
+            lat: latitude,
+            lng: longitude,
+            latitude,
+            longitude,
+            at: ping?.at || at,
+            distanceMeters,
+            status: session?.status ?? 'active',
+          })
+
+          io.to(trackingRoom).emit('receive-location', {
+            trackingNumber: tNum,
+            lat: latitude,
+            lng: longitude,
+            latitude,
+            longitude,
+            at: ping?.at || at,
+            distanceMeters,
+          })
+
+          if (distanceMeters !== null && distanceMeters <= 1000) {
+            io.to(trackingRoom).emit('tracking:nearby', {
+              trackingNumber: tNum,
+              distanceMeters,
+              at: ping?.at || at,
+            })
+          }
+        } catch (err) {
+          logger.warn({ err: err.message, tNum }, '[Socket] Failed to process send-location for parcel')
+        }
+      }
+    })
 
     socket.on('retell-call-started', (data) => {
       const callId = data?.callId || data?.call_id || null
@@ -94,4 +207,4 @@ export function getIO() {
 export function emitToUser(userId, event, payload) {
   if (!io) return
   io.to(`user:${userId}`).emit(event, payload)
-}
+}

@@ -12,6 +12,8 @@ import * as userModel from '../models/user.model.js'
 import * as cartModel from '../models/cart.model.js'
 import { deleteCached, deleteCachedPattern, getCachedJson, setCachedJson } from './cache.service.js'
 import { memoryStore } from './memory-store.js'
+import geocodeAddress from '../utils/geocode.js'
+import { createTrackingSession } from './tracking.service.js'
 
 const orderCacheKey = (userId, limit, offset) =>
   `customer:${userId}:orders:${limit}:${offset}`
@@ -59,7 +61,7 @@ export async function quote(items) {
         ids
       )
       if (dbRows && dbRows.length > 0) rows = dbRows
-    } catch {}
+    } catch { }
   }
 
   if (!rows.length) {
@@ -464,12 +466,23 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
   if (!allowed.includes(nextStatus)) {
     throw ApiError.badRequest(
       `An order that is "${order.status}" cannot become "${nextStatus}".` +
-        (allowed.length ? ` Allowed: ${allowed.join(', ')}.` : ' This status is final.')
+      (allowed.length ? ` Allowed: ${allowed.join(', ')}.` : ' This status is final.')
     )
   }
 
-  if (nextStatus === 'shipped' && !extra.trackingNumber) {
-    throw ApiError.badRequest('A tracking number is required when marking an order shipped.')
+  if (nextStatus === 'shipped') {
+    if (!extra.trackingNumber) {
+      extra.trackingNumber = `KICK-${(order.orderNumber || order.id || 'ORD').toString().replace('#', '')}-${Date.now()}`
+    }
+    extra.courier = extra.courier || order.courier || 'Delhivery'
+
+    try {
+      const coords = await geocodeAddress(order.shippingAddress)
+      logger.info({ orderId: orderPublicId, trackingNumber: extra.trackingNumber, coords }, 'Creating tracking session on shipping')
+      await createTrackingSession({ ...order, ...extra }, coords)
+    } catch (err) {
+      logger.warn({ err: err.message, orderPublicId }, 'Failed to create tracking session')
+    }
   }
 
   if (isDatabaseConnected()) {
@@ -551,6 +564,14 @@ export async function updateTracking(orderPublicId, { courier, trackingNumber })
   if (!order) throw ApiError.notFound('Order not found.')
 
   await orderModel.updateStatus(order.internalId, order.status, { courier, trackingNumber })
+
+  try {
+    const coords = await geocodeAddress(order.shippingAddress)
+    await createTrackingSession({ ...order, courier, trackingNumber }, coords)
+  } catch (err) {
+    logger.warn({ err: err.message, orderPublicId }, 'Failed to update tracking session')
+  }
+
   await invalidateOrderCache(order.customerInternalId)
   return orderModel.findByPublicId(orderPublicId).then((o) => ({
     ...o,

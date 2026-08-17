@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SkipToMain } from '@/components/skip-to-main'
 import { Toaster } from '@/components/ui/sonner'
+import { LiveTrackerIndicator } from '@/components/live-tracker-indicator'
 
 /**
  * The shell every page renders inside: sidebar on the left, page in <Outlet />.
@@ -33,6 +34,7 @@ export function AppLayout() {
             <Outlet />
           </SidebarInset>
         </SidebarProvider>
+        <LiveTrackerIndicator />
         <Toaster duration={5000} />
       </LayoutProvider>
     </SearchProvider>

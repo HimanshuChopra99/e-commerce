@@ -31,6 +31,7 @@ const Orders = lazy(() => import('./pages/Orders'));
 const OrderDetail = lazy(() => import('./pages/OrderDetail'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Company = lazy(() => import('./pages/Company'));
+const TrackOrder = lazy(() => import('./pages/TrackOrder'))
 
 function RouteFallback() {
   return (
@@ -154,6 +155,7 @@ function App() {
               <Route path="/blogs" element={<Company page="blogs" />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/track/:trackingNumber" element={<TrackOrder />} />
             </Routes>
           </Suspense>
         </main>

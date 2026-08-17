@@ -66,10 +66,7 @@ export const updateOrderStatusSchema = z
     trackingNumber: z.string().trim().max(80).optional().nullable(),
     adminNote: z.string().trim().max(2000).optional().nullable(),
   })
-  .refine((d) => d.status !== 'shipped' || Boolean(d.trackingNumber), {
-    message: 'A tracking number is required when marking an order shipped.',
-    path: ['trackingNumber'],
-  })
+  .refine(() => true)
 
 export const updateTrackingSchema = z.object({
   courier: z.enum(COURIERS),

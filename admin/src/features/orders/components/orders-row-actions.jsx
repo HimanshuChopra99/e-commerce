@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateOrderStatus } from '@/store/adminOrdersSlice'
+import { adminTracker } from '@/services/admin-tracker'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -37,12 +38,12 @@ import {
 import { OrderShippingDialog } from './order-shipping-dialog'
 
 const STATUS_OPTIONS = [
-  { value: 'pending',    label: 'Pending',    icon: Clock,          color: 'text-amber-600' },
-  { value: 'processing', label: 'Processing', icon: PackageCheck,   color: 'text-sky-600' },
-  { value: 'shipped',    label: 'Shipped',    icon: Truck,          color: 'text-violet-600' },
-  { value: 'delivered',  label: 'Delivered',  icon: CircleCheckBig, color: 'text-teal-600' },
-  { value: 'cancelled',  label: 'Cancelled',  icon: CircleX,        color: 'text-destructive' },
-  { value: 'returned',   label: 'Returned',   icon: Undo2,          color: 'text-neutral-500' },
+  { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
+  { value: 'processing', label: 'Processing', icon: PackageCheck, color: 'text-sky-600' },
+  { value: 'shipped', label: 'Shipped', icon: Truck, color: 'text-violet-600' },
+  { value: 'delivered', label: 'Delivered', icon: CircleCheckBig, color: 'text-teal-600' },
+  { value: 'cancelled', label: 'Cancelled', icon: CircleX, color: 'text-destructive' },
+  { value: 'returned', label: 'Returned', icon: Undo2, color: 'text-neutral-500' },
 ]
 
 export function OrdersRowActions({ row }) {
@@ -51,15 +52,22 @@ export function OrdersRowActions({ row }) {
   const dispatch = useDispatch()
 
   const [updatingStatus, setUpdatingStatus] = useState(false)
-  const [shippingDialogOpen, setShippingDialogOpen] = useState(false)
 
-  /** Dispatches the status update — for non-shipped statuses, call directly.
-   *  For 'shipped', open the dialog first (handled via onStatusSelect). */
+  /** Dispatches the status update. Tracking number and courier are auto-generated server-side. */
   const doStatusUpdate = async (status, extra = {}) => {
     setUpdatingStatus(true)
     try {
       const result = await dispatch(updateOrderStatus({ id: order.id, status, extra }))
       if (updateOrderStatus.fulfilled.match(result)) {
+        const updated = result.payload
+        const finalTracking = extra.trackingNumber || updated?.trackingNumber || updated?.tracking_number || order.trackingNumber
+        
+        if (status === 'shipped' && finalTracking) {
+          adminTracker.startTracking(finalTracking)
+        } else if (status === 'delivered' || status === 'cancelled') {
+          if (finalTracking) adminTracker.stopTracking(finalTracking)
+        }
+
         const label = STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status
         toast.success(`Order ${order.orderNumber} marked as "${label}".`)
       } else {
@@ -77,16 +85,7 @@ export function OrdersRowActions({ row }) {
       toast.info(`Order is already "${status}".`)
       return
     }
-    if (status === 'shipped') {
-      setShippingDialogOpen(true)   // open dialog to collect tracking info
-      return
-    }
     doStatusUpdate(status)
-  }
-
-  const onShippingConfirm = ({ courier, trackingNumber }) => {
-    doStatusUpdate('shipped', { courier, trackingNumber })
-    setShippingDialogOpen(false)
   }
 
   return (
@@ -177,14 +176,6 @@ export function OrdersRowActions({ row }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Shipping dialog — shown only when "Shipped" is selected */}
-      <OrderShippingDialog
-        open={shippingDialogOpen}
-        onOpenChange={setShippingDialogOpen}
-        orderCount={1}
-        onConfirm={onShippingConfirm}
-        loading={updatingStatus}
-      />
     </>
   )
 }

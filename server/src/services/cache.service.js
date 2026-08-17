@@ -108,6 +108,10 @@ export function cacheStatus() {
   return client?.status === 'ready' ? 'up' : 'fallback'
 }
 
+export async function getRedisClient() {
+  return await readyClient()
+}
+
 export async function closeCache() {
   if (!client) return
   try {

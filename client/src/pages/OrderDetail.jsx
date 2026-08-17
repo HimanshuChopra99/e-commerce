@@ -272,17 +272,34 @@ export default function OrderDetail() {
           </div>
         </div>
 
-        {/* 1. TOP SECTION: DELIVERY PROGRESS BAR */}
+        {/* 1. TOP SECTION: DELIVERY PROGRESS BAR & TRACK LIVE BUTTON */}
         <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
+          <div className='flex flex-wrap items-center justify-between gap-3'>
             <h2 className='text-xs font-bold uppercase tracking-wider text-slate-500'>
               Shipment Status
             </h2>
-            {order.trackingNumber && (
-              <span className='text-xs font-mono font-medium text-slate-600 bg-slate-50 px-3 py-1 rounded-md border border-slate-200'>
-                {order.courier || 'Tracking'}: {order.trackingNumber}
-              </span>
-            )}
+            <div className='flex flex-wrap items-center gap-2.5'>
+              {/* Live Tracking Button - Shows only when shipped & tracking number exists */}
+              {order.status === 'shipped' && order.trackingNumber && (
+                <Link
+                  to={`/track/${order.trackingNumber}`}
+                  className='inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider shadow-sm shadow-blue-500/20 transition'
+                >
+                  <span className='relative flex size-2'>
+                    <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75'></span>
+                    <span className='relative inline-flex size-2 rounded-full bg-white'></span>
+                  </span>
+                  <Truck className='size-3.5' />
+                  Track Live
+                </Link>
+              )}
+
+              {order.trackingNumber && (
+                <span className='text-xs font-mono font-medium text-slate-600 bg-slate-50 px-3 py-1 rounded-md border border-slate-200'>
+                  {order.courier || 'Tracking'}: {order.trackingNumber}
+                </span>
+              )}
+            </div>
           </div>
           <div className='py-4 px-2 border-y border-slate-100'>
             <OrderProgressStep currentStep={status.stepIndex} />
@@ -391,9 +408,18 @@ export default function OrderDetail() {
                       <span className='text-slate-400'>Tracking Number:</span>
                       <span className='font-mono font-semibold text-slate-900'>{order.trackingNumber || 'Awaiting Pickup'}</span>
                     </p>
-                    <p className='flex justify-between'>
+                    <p className='flex justify-between items-center'>
                       <span className='text-slate-400'>Fulfillment Status:</span>
-                      <span className='font-semibold text-emerald-700'>Insured Package</span>
+                      {order.status === 'shipped' && order.trackingNumber ? (
+                        <Link
+                          to={`/track/${order.trackingNumber}`}
+                          className='font-semibold text-blue-600 hover:underline flex items-center gap-1'
+                        >
+                          Live Radar Active <ExternalLink className='size-3' />
+                        </Link>
+                      ) : (
+                        <span className='font-semibold text-emerald-700'>Insured Package</span>
+                      )}
                     </p>
                   </div>
                 </div>

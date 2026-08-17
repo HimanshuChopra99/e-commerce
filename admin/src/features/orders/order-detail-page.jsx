@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { fetchAdminOrders, updateOrderStatus } from '@/store/adminOrdersSlice'
+import { adminTracker } from '@/services/admin-tracker'
 import { getOrderById, orders as seedOrders, products as seedProducts } from '@/data/seed'
 import { useCatalogStore } from '@/stores/catalog-store'
 import { formatCurrency, formatDateTime } from '@/config/brand'
@@ -208,6 +209,9 @@ export function OrderDetailPage() {
   const [localTracking, setLocalTracking] = useState(null)
   const [localCourier, setLocalCourier] = useState(null)
 
+  // Ref for geolocation watch - MUST be declared unconditionally at top level
+  const watchIdRef = useRef(null)
+
   // ── Fetch order detail ───────────────────────────────────────────────────
   useEffect(() => {
     let isMounted = true
@@ -253,10 +257,8 @@ export function OrderDetailPage() {
     return () => { isMounted = false }
   }, [orderId, dispatch, reduxOrders.length])
 
-  if (loading) return <OrderDetailSkeleton />
-
-  // Priority order: 1. API single fetch -> 2. Redux list store -> 3. Seed fixtures
-  let rawOrder =
+  // Resolve raw order & effective status for top-level geolocation hook
+  const rawOrder =
     apiOrder ||
     reduxOrders.find(
       (o) =>
@@ -274,6 +276,21 @@ export function OrderDetailPage() {
         String(o.orderNumber) === String(orderId)
     )
 
+  const effectiveStatus = localStatus ?? rawOrder?.status ?? 'pending'
+  const effectiveTracking = localTracking ?? rawOrder?.trackingNumber ?? rawOrder?.tracking_number
+
+  // ── Sync with Global Admin Tracker ──────────────────────────────────────
+  useEffect(() => {
+    if (effectiveStatus === 'shipped' && effectiveTracking) {
+      adminTracker.startTracking(effectiveTracking)
+    } else if (effectiveStatus === 'delivered' || effectiveStatus === 'cancelled') {
+      if (effectiveTracking) adminTracker.stopTracking(effectiveTracking)
+    }
+  }, [effectiveStatus, effectiveTracking])
+
+  // ── Conditional UI returns (MUST be below all hook declarations) ────────
+  if (loading) return <OrderDetailSkeleton />
+
   if (!rawOrder) {
     return (
       <>
@@ -290,6 +307,7 @@ export function OrderDetailPage() {
     )
   }
 
+  // ── Derived order values ─────────────────────────────────────────────────
   const items = normalizeOrderItems(rawOrder, catalogProducts)
 
   const calculatedSubtotal = items.reduce((sum, i) => sum + i.lineTotal, 0)
@@ -306,9 +324,8 @@ export function OrderDetailPage() {
     ...rawOrder,
     id: rawOrder.id,
     orderNumber: rawOrder.orderNumber || rawOrder.order_number || `#${rawOrder.id}`,
-    // Use local mirrors if set (optimistic UI after status change)
-    status: localStatus ?? rawOrder.status ?? 'pending',
-    trackingNumber: localTracking ?? rawOrder.trackingNumber ?? rawOrder.tracking_number,
+    status: effectiveStatus,
+    trackingNumber: effectiveTracking,
     courier: localCourier ?? rawOrder.courier ?? 'FedEx',
     paymentStatus: rawOrder.paymentStatus || rawOrder.payment_status || 'pending',
     paymentMethod: rawOrder.paymentMethod || rawOrder.payment_method || 'card',
@@ -345,10 +362,22 @@ export function OrderDetailPage() {
     try {
       const result = await dispatch(updateOrderStatus({ id: order.id, status, extra }))
       if (updateOrderStatus.fulfilled.match(result)) {
-        // Optimistically mirror locally so the page reflects the change immediately
+        const updated = result.payload
+        const finalTracking = extra.trackingNumber || updated?.trackingNumber || updated?.tracking_number || effectiveTracking
         setLocalStatus(status)
-        if (extra.trackingNumber) setLocalTracking(extra.trackingNumber)
-        if (extra.courier) setLocalCourier(extra.courier)
+        if (extra.trackingNumber || updated?.trackingNumber) {
+          setLocalTracking(extra.trackingNumber || updated?.trackingNumber)
+        }
+        if (extra.courier || updated?.courier) {
+          setLocalCourier(extra.courier || updated?.courier)
+        }
+
+        if (status === 'shipped' && finalTracking) {
+          adminTracker.startTracking(finalTracking)
+        } else if (status === 'delivered' || status === 'cancelled') {
+          if (finalTracking) adminTracker.stopTracking(finalTracking)
+        }
+
         const label = orderStatusLabels.get(status) ?? status
         toast.success(`Order status updated to "${label}".`)
       } else {
@@ -363,10 +392,6 @@ export function OrderDetailPage() {
 
   const onStepClick = (step) => {
     if (step === order.status || statusUpdating) return
-    if (step === 'shipped') {
-      setShippingDialogOpen(true)
-      return
-    }
     doStatusUpdate(step)
   }
 
@@ -428,8 +453,8 @@ export function OrderDetailPage() {
               {isCancelled
                 ? 'This order was cancelled.'
                 : isReturned
-                ? 'This order was returned by the customer.'
-                : `Currently ${orderStatusLabels.get(order.status)?.toLowerCase() || order.status}. Click a step below to update.`}
+                  ? 'This order was returned by the customer.'
+                  : `Currently ${orderStatusLabels.get(order.status)?.toLowerCase() || order.status}. Click a step below to update.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -469,8 +494,8 @@ export function OrderDetailPage() {
                             isCurrent
                               ? 'Current status'
                               : step === 'shipped'
-                              ? `Mark as ${meta?.label} (requires tracking number)`
-                              : `Mark as ${meta?.label}`
+                                ? `Mark as ${meta?.label} (requires tracking number)`
+                                : `Mark as ${meta?.label}`
                           }
                           className={cn(
                             'flex size-9 shrink-0 items-center justify-center rounded-full border transition-all',
@@ -502,8 +527,8 @@ export function OrderDetailPage() {
                             {isCurrent
                               ? 'Current'
                               : done
-                              ? 'Completed'
-                              : 'Click to set'}
+                                ? 'Completed'
+                                : 'Click to set'}
                           </p>
                         </div>
                       </li>
@@ -511,7 +536,7 @@ export function OrderDetailPage() {
                   })}
                 </ol>
 
-                {/* Quick-set pill strip for all statuses including cancelled/returned */}
+                {/* Quick-set pill strip */}
                 <div className='mt-5 flex flex-wrap items-center gap-2 border-t pt-4'>
                   <span className='text-xs text-muted-foreground'>Set status:</span>
                   {orderStatuses.map(({ value, label, icon: Icon }) => (
@@ -736,7 +761,7 @@ export function OrderDetailPage() {
         </div>
       </Main>
 
-      {/* Shipping dialog — shown when "Shipped" step or pill is clicked */}
+      {/* Shipping dialog */}
       <OrderShippingDialog
         open={shippingDialogOpen}
         onOpenChange={setShippingDialogOpen}
