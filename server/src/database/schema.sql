@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS users (
   address_state     VARCHAR(80)  DEFAULT NULL,
   address_postal    VARCHAR(20)  DEFAULT NULL,
   address_country   VARCHAR(80)  DEFAULT NULL,
+  address_lat       DECIMAL(10, 8) DEFAULT NULL,
+  address_lng       DECIMAL(11, 8) DEFAULT NULL,
 
   preferred_size    VARCHAR(8)   DEFAULT NULL,
   marketing_opt_in  BOOLEAN      NOT NULL DEFAULT FALSE,
@@ -239,6 +241,8 @@ CREATE TABLE IF NOT EXISTS orders (
   shipping_state   VARCHAR(80)  NOT NULL,
   shipping_postal  VARCHAR(20)  NOT NULL,
   shipping_country VARCHAR(80)  NOT NULL,
+  shipping_lat     DECIMAL(10, 8) DEFAULT NULL,
+  shipping_lng     DECIMAL(11, 8) DEFAULT NULL,
 
   courier         VARCHAR(60) DEFAULT NULL,
   tracking_number VARCHAR(80) DEFAULT NULL,

@@ -23,6 +23,8 @@ export const addressSchema = z.object({
   state: z.string().trim().min(1, 'State is required.').max(80),
   postalCode: z.string().trim().min(1, 'Postal code is required.').max(20),
   country: z.string().trim().min(1, 'Country is required.').max(80),
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
 })
 
 export const registerSchema = z.object({

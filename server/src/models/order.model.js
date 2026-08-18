@@ -34,7 +34,11 @@ export function mapOrder(row) {
       state: row.shipping_state,
       postalCode: row.shipping_postal,
       country: row.shipping_country,
+      lat: row.shipping_lat != null ? Number(row.shipping_lat) : null,
+      lng: row.shipping_lng != null ? Number(row.shipping_lng) : null,
     },
+    shippingLat: row.shipping_lat != null ? Number(row.shipping_lat) : null,
+    shippingLng: row.shipping_lng != null ? Number(row.shipping_lng) : null,
     courier: row.courier,
     trackingNumber: row.tracking_number,
     customerNote: row.customer_note,
@@ -70,6 +74,8 @@ export function mapOrderMemory(mem) {
     currency: mem.currency || 'USD',
     itemCount: mem.items?.length || 0,
     shippingAddress: mem.shippingAddress || null,
+    shippingLat: mem.shippingAddress?.lat ?? mem.shippingLat ?? null,
+    shippingLng: mem.shippingAddress?.lng ?? mem.shippingLng ?? null,
     courier: mem.courier || null,
     trackingNumber: mem.trackingNumber || null,
     customerNote: mem.customerNote || null,
@@ -342,8 +348,8 @@ export async function create(data, conn) {
             subtotal, shipping_total, tax_total, grand_total, currency,
             shipping_name, shipping_phone, shipping_line1, shipping_line2,
             shipping_city, shipping_state, shipping_postal, shipping_country,
-            customer_note)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            shipping_lat, shipping_lng, customer_note)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           data.publicId, data.orderNumber, data.userId ?? null,
           data.customerEmail, data.customerName, data.customerPhone ?? null,
@@ -353,6 +359,7 @@ export async function create(data, conn) {
           data.shippingAddress.line1, data.shippingAddress.line2 ?? null,
           data.shippingAddress.city, data.shippingAddress.state,
           data.shippingAddress.postalCode, data.shippingAddress.country,
+          data.shippingAddress.lat ?? null, data.shippingAddress.lng ?? null,
           data.customerNote ?? null,
         ]
       )

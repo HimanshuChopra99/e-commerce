@@ -477,7 +477,16 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
     extra.courier = extra.courier || order.courier || 'Delhivery'
 
     try {
-      const coords = await geocodeAddress(order.shippingAddress)
+      // Use saved coords first — only geocode when this order predates the
+      // coordinate migration and has none stored.
+      let coords = null
+      if (order.shippingLat != null && order.shippingLng != null) {
+        coords = { lat: Number(order.shippingLat), lng: Number(order.shippingLng) }
+        logger.info({ orderId: orderPublicId }, 'Using saved shipping coords for tracking session')
+      } else {
+        coords = await geocodeAddress(order.shippingAddress)
+        logger.info({ orderId: orderPublicId }, 'Geocoded address for tracking session (coords not pre-saved)')
+      }
       logger.info({ orderId: orderPublicId, trackingNumber: extra.trackingNumber, coords }, 'Creating tracking session on shipping')
       await createTrackingSession({ ...order, ...extra }, coords)
     } catch (err) {
@@ -566,7 +575,13 @@ export async function updateTracking(orderPublicId, { courier, trackingNumber })
   await orderModel.updateStatus(order.internalId, order.status, { courier, trackingNumber })
 
   try {
-    const coords = await geocodeAddress(order.shippingAddress)
+    // Use saved coords first — only geocode as a fallback for legacy orders.
+    let coords = null
+    if (order.shippingLat != null && order.shippingLng != null) {
+      coords = { lat: Number(order.shippingLat), lng: Number(order.shippingLng) }
+    } else {
+      coords = await geocodeAddress(order.shippingAddress)
+    }
     await createTrackingSession({ ...order, courier, trackingNumber }, coords)
   } catch (err) {
     logger.warn({ err: err.message, orderPublicId }, 'Failed to update tracking session')

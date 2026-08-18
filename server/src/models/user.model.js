@@ -12,8 +12,8 @@ import { memoryStore } from '../services/memory-store.js'
 const SAFE_COLUMNS = `
   id, public_id, role, first_name, last_name, email, phone, status,
   email_verified_at, address_line1, address_line2, address_city,
-  address_state, address_postal, address_country, preferred_size,
-  marketing_opt_in, notes, last_login_at, created_at, updated_at
+  address_state, address_postal, address_country, address_lat, address_lng,
+  preferred_size, marketing_opt_in, notes, last_login_at, created_at, updated_at
 `
 
 export function mapUser(row) {
@@ -39,6 +39,8 @@ export function mapUser(row) {
         state: row.address_state,
         postalCode: row.address_postal,
         country: row.address_country,
+        lat: row.address_lat != null ? Number(row.address_lat) : null,
+        lng: row.address_lng != null ? Number(row.address_lng) : null,
       }
       : null,
     preferredSize: row.preferred_size,
@@ -167,8 +169,8 @@ export async function create(data, conn = pool) {
            (public_id, role, first_name, last_name, email, password_hash, phone,
             marketing_opt_in, preferred_size,
             address_line1, address_line2, address_city, address_state,
-            address_postal, address_country)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            address_postal, address_country, address_lat, address_lng)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           data.publicId, data.role ?? 'customer', data.firstName, data.lastName,
           data.email, data.passwordHash, data.phone ?? null,
@@ -176,6 +178,7 @@ export async function create(data, conn = pool) {
           data.address?.line1 ?? null, data.address?.line2 ?? null,
           data.address?.city ?? null, data.address?.state ?? null,
           data.address?.postalCode ?? null, data.address?.country ?? null,
+          data.address?.lat ?? null, data.address?.lng ?? null,
         ]
       )
       const created = await findById(result.insertId)
@@ -218,6 +221,8 @@ const ADDRESS_FIELDS = {
   state: 'address_state',
   postalCode: 'address_postal',
   country: 'address_country',
+  lat: 'address_lat',
+  lng: 'address_lng',
 }
 
 /** Whitelisted update — a client cannot set `role` or `password_hash` here. */
