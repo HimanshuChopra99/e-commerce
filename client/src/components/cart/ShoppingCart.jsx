@@ -12,6 +12,7 @@ import { placeOrder } from '../../store/ordersSlice'
 import { ordersApi } from '../../lib/api'
 import { showToast } from '../../lib/toast'
 import { emitCartVoiceAction } from '../../lib/cartVoiceAction'
+import MapAddressPicker from '../MapAddressPicker'
 
 export default function ShoppingCart() {
   const dispatch = useDispatch()
@@ -96,6 +97,21 @@ export default function ShoppingCart() {
 
   const handleAddressChange = (field, value) => {
     setShippingAddress((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleMapSelect = (geo) => {
+    setShippingAddress((prev) => ({
+      ...prev,
+      lat: geo.lat ?? null,
+      lng: geo.lng ?? null,
+      // Autofill text fields from reverse geocoding; the user can still edit
+      // them manually in the inputs below.
+      ...(geo.line1 ? { line1: geo.line1 } : {}),
+      ...(geo.city ? { city: geo.city } : {}),
+      ...(geo.state ? { state: geo.state } : {}),
+      ...(geo.postalCode ? { postalCode: geo.postalCode } : {}),
+      ...(geo.country ? { country: geo.country } : {}),
+    }))
   }
 
   const handleQuantityChange = async (item, quantity) => {
@@ -190,6 +206,8 @@ export default function ShoppingCart() {
           state: shippingAddress.state,
           postalCode: shippingAddress.postalCode,
           country: shippingAddress.country,
+          lat: shippingAddress.lat ?? null,
+          lng: shippingAddress.lng ?? null,
         },
         paymentMethod,
       }
@@ -488,6 +506,14 @@ export default function ShoppingCart() {
                     value={shippingAddress.country}
                     onChange={(e) => handleAddressChange('country', e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <MapAddressPicker
+                    initialLat={shippingAddress.lat}
+                    initialLng={shippingAddress.lng}
+                    onChange={handleMapSelect}
                   />
                 </div>
               </div>

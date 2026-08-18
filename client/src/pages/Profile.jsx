@@ -27,6 +27,7 @@ import { authApi } from '../lib/api'
 import { showToast } from '../lib/toast'
 import { fetchMyOrders } from '../store/ordersSlice'
 import { selectCartItems } from '../store/cartSlice'
+import MapAddressPicker from '../components/MapAddressPicker'
 import {
   fetchFavourites,
   selectFavouriteProducts,
@@ -40,6 +41,8 @@ const blankAddress = {
   state: '',
   postalCode: '',
   country: '',
+  lat: null,
+  lng: null,
 }
 
 const statusConfig = {
@@ -141,7 +144,9 @@ export default function Profile() {
     setSaving(true)
     setMessage(null)
     try {
-      const hasAddress = Object.values(form.address).some((value) => value.trim())
+      const hasAddress = Object.values(form.address).some(
+        (value) => typeof value === 'string' && value.trim().length > 0
+      )
       const payload = {
         firstName: form.firstName,
         lastName: form.lastName,
@@ -359,6 +364,24 @@ function AccountPanel({ form, setForm, setAddress, user, saving, message, onSubm
         <div className='mt-8 pt-6 border-t border-slate-100'>
           <h3 className='text-base font-semibold text-slate-900'>Default Delivery Address</h3>
           <p className='text-xs text-slate-500 mt-0.5'>Pre-filled automatically during checkout.</p>
+
+          <div className='mt-5 mb-5'>
+            <MapAddressPicker
+              initialLat={form.address.lat}
+              initialLng={form.address.lng}
+              onChange={(geo) => {
+                setAddress('lat', geo.lat ?? null)
+                setAddress('lng', geo.lng ?? null)
+                // Autofill the text fields from reverse geocoding so the user
+                // can still correct them manually below.
+                if (geo.line1) setAddress('line1', geo.line1)
+                if (geo.city) setAddress('city', geo.city)
+                if (geo.state) setAddress('state', geo.state)
+                if (geo.postalCode) setAddress('postalCode', geo.postalCode)
+                if (geo.country) setAddress('country', geo.country)
+              }}
+            />
+          </div>
 
           <div className='mt-5 grid gap-5 sm:grid-cols-2'>
             <InputField
