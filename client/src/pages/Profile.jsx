@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
-  CalendarDays,
   CheckCircle2,
   ChevronRight,
   Heart,
@@ -16,10 +15,6 @@ import {
   Truck,
   UserRound,
   X,
-  Mail,
-  Phone,
-  Building,
-  Globe,
   ExternalLink,
 } from 'lucide-react'
 import { logoutUser, setUser } from '../store/authSlice'
@@ -145,7 +140,7 @@ export default function Profile() {
     setMessage(null)
     try {
       const hasAddress = Object.values(form.address).some(
-        (value) => typeof value === 'string' && value.trim().length > 0
+        (value) => value !== null && typeof value !== 'undefined' && String(value).trim().length > 0
       )
       const payload = {
         firstName: form.firstName,
@@ -325,6 +320,29 @@ function SectionHeader({ title, description, badge }) {
 }
 
 function AccountPanel({ form, setForm, setAddress, user, saving, message, onSubmit }) {
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
+
+  const handleMapConfirm = (geo) => {
+    // Fill the address fields with the picked map location
+    setForm((current) => ({
+      ...current,
+      address: {
+        ...current.address,
+        lat: geo.lat ?? current.address.lat,
+        lng: geo.lng ?? current.address.lng,
+        ...(geo.line1 ? { line1: geo.line1 } : {}),
+        ...(geo.city ? { city: geo.city } : {}),
+        ...(geo.state ? { state: geo.state } : {}),
+        ...(geo.postalCode ? { postalCode: geo.postalCode } : {}),
+        ...(geo.country ? { country: geo.country } : {}),
+      },
+    }))
+    setIsMapModalOpen(false)
+    showToast('Address fields updated from map pin.', 'profile')
+  }
+
+  const hasPin = form.address.lat != null && form.address.lng != null
+
   return (
     <form onSubmit={onSubmit} className='space-y-6'>
       <div className='rounded-xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8'>
@@ -362,40 +380,47 @@ function AccountPanel({ form, setForm, setAddress, user, saving, message, onSubm
         </div>
 
         <div className='mt-8 pt-6 border-t border-slate-100'>
-          <h3 className='text-base font-semibold text-slate-900'>Default Delivery Address</h3>
-          <p className='text-xs text-slate-500 mt-0.5'>Pre-filled automatically during checkout.</p>
-
-          <div className='mt-5 mb-5'>
-            <MapAddressPicker
-              initialLat={form.address.lat}
-              initialLng={form.address.lng}
-              onChange={(geo) => {
-                setAddress('lat', geo.lat ?? null)
-                setAddress('lng', geo.lng ?? null)
-                // Autofill the text fields from reverse geocoding so the user
-                // can still correct them manually below.
-                if (geo.line1) setAddress('line1', geo.line1)
-                if (geo.city) setAddress('city', geo.city)
-                if (geo.state) setAddress('state', geo.state)
-                if (geo.postalCode) setAddress('postalCode', geo.postalCode)
-                if (geo.country) setAddress('country', geo.country)
-              }}
-            />
+          <div className='flex items-center justify-between'>
+            <div>
+              <h3 className='text-base font-semibold text-slate-900'>Default Delivery Address</h3>
+              <p className='text-xs text-slate-500 mt-0.5'>Pre-filled automatically during checkout.</p>
+            </div>
+            
+            {/* BUTTON TO CHOOSE ADDRESS ON MAP */}
+            <button
+              type='button'
+              onClick={() => setIsMapModalOpen(true)}
+              className='inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition shadow-xs'
+            >
+              <MapPin className='size-3.5 text-white' />
+              {hasPin ? 'Change Pin on Map' : 'Choose Address on Map'}
+            </button>
           </div>
 
+          {/* STATUS BADGE FOR SAVED PIN */}
+          {hasPin && (
+            <div className='mt-3 inline-flex items-center gap-2 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs text-emerald-700 font-medium'>
+              <CheckCircle2 className='size-3.5 text-emerald-600' />
+              <span>
+                Exact Doorstep Pin Selected ({Number(form.address.lat).toFixed(4)}, {Number(form.address.lng).toFixed(4)})
+              </span>
+            </div>
+          )}
+
+          {/* ADDRESS INPUT FIELDS */}
           <div className='mt-5 grid gap-5 sm:grid-cols-2'>
             <InputField
               label='Address Line 1'
               value={form.address.line1}
               onChange={(e) => setAddress('line1', e.target.value)}
-              placeholder='123 Main Street'
+              placeholder='123 Main Street / House No.'
               className='sm:col-span-2'
             />
             <InputField
               label='Address Line 2 (Optional)'
               value={form.address.line2}
               onChange={(e) => setAddress('line2', e.target.value)}
-              placeholder='Apartment, suite, unit'
+              placeholder='Apartment, suite, unit, sector'
               className='sm:col-span-2'
             />
             <InputField
@@ -443,6 +468,34 @@ function AccountPanel({ form, setForm, setAddress, user, saving, message, onSubm
           )}
         </div>
       </div>
+
+      {/* MAP PICKER MODAL OVERLAY */}
+      {isMapModalOpen && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs'>
+          <div className='relative w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl border border-slate-200'>
+            <div className='flex items-center justify-between pb-4 mb-4 border-b border-slate-100'>
+              <div className='flex items-center gap-2'>
+                <MapPin className='size-5 text-rose-500' />
+                <h3 className='text-base font-bold text-slate-900'>Select Your Location on Map</h3>
+              </div>
+              <button
+                type='button'
+                onClick={() => setIsMapModalOpen(false)}
+                className='text-slate-400 hover:text-slate-600 p-1 rounded-md'
+              >
+                <X className='size-5' />
+              </button>
+            </div>
+
+            <MapAddressPicker
+              initialLat={form.address.lat}
+              initialLng={form.address.lng}
+              onConfirm={handleMapConfirm}
+              onCancel={() => setIsMapModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </form>
   )
 }
@@ -460,7 +513,6 @@ function InputField({ label, disabled, className = '', ...props }) {
   )
 }
 
-/* UPDATED ORDERS PANEL: MATCHES /orders EXACTLY */
 function OrdersPanel({ orders, loading, error }) {
   return (
     <div className='rounded-xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8'>
