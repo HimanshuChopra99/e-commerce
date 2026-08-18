@@ -50,6 +50,24 @@ export function initSocket(httpServer) {
       }
     })
 
+    // ── Add this inside io.on('connection', (socket) => { ... }) ──
+
+socket.on('send-delivery-completed', async (data) => {
+  const trackingNumber = typeof data === 'string' ? data : data?.trackingNumber
+  if (!trackingNumber) return
+
+  try {
+    // ✅ Use completeSession instead of updateStatus
+    await trackingService.completeSession(trackingNumber)
+
+    const trackingRoom = `tracking:${trackingNumber}`
+    io.to(trackingRoom).emit('tracking:completed', { trackingNumber })
+
+    logger.info({ socketId: socket.id, trackingNumber }, '[Socket] Parcel marked as delivered')
+  } catch (err) {
+    logger.warn({ err: err.message, trackingNumber }, '[Socket] Failed to mark completed')
+  }
+})
     socket.on('tracking:unsubscribe', (data) => {
       const trackingNumber = typeof data === 'string' ? data : data?.trackingNumber
       if (trackingNumber) {
@@ -207,4 +225,4 @@ export function getIO() {
 export function emitToUser(userId, event, payload) {
   if (!io) return
   io.to(`user:${userId}`).emit(event, payload)
-}
+}

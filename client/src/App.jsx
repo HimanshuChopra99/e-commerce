@@ -31,7 +31,7 @@ const Orders = lazy(() => import('./pages/Orders'));
 const OrderDetail = lazy(() => import('./pages/OrderDetail'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Company = lazy(() => import('./pages/Company'));
-const TrackOrder = lazy(() => import('./pages/TrackOrder'))
+const TrackOrder = lazy(() => import('./pages/TrackOrder'));
 
 function RouteFallback() {
   return (
@@ -44,7 +44,7 @@ function RouteFallback() {
   );
 }
 
-function App() {
+function AppRoutes() {
   const dispatch = useDispatch();
   const cartCount = useSelector(selectCartCount);
   const userId = useSelector((state) => state.auth.user?.id);
@@ -106,63 +106,89 @@ function App() {
   };
 
   return (
-    <Router>
+    <>
       <ScrollToTop />
       <PageTracker />
       <AuthExpiredHandler />
-      <div className="bg-[#EAE9E5] text-ink min-h-screen flex flex-col relative">
-        <Navbar
-          onOpenSearch={() => setIsSearchOpen(true)}
-          onOpenMobile={() => setIsMobileOpen(true)}
-          onSelectLink={handleLinkSelect}
-          cartCount={cartCount}
+
+      <Routes>
+        {/* ── Fullscreen standalone route — no Navbar / Footer / padding ── */}
+        <Route
+          path="/track/:trackingNumber"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <TrackOrder />
+            </Suspense>
+          }
         />
 
-        <SearchOverlay
-          isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
-          onSelectProduct={handleSearchSelectProduct}
-          onSelectTag={handleSearchSelectTag}
+        {/* ── All other routes — normal layout with Navbar & Footer ── */}
+        <Route
+          path="*"
+          element={
+            <div className="bg-[#EAE9E5] text-ink min-h-screen flex flex-col relative">
+              <Navbar
+                onOpenSearch={() => setIsSearchOpen(true)}
+                onOpenMobile={() => setIsMobileOpen(true)}
+                onSelectLink={handleLinkSelect}
+                cartCount={cartCount}
+              />
+
+              <SearchOverlay
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                onSelectProduct={handleSearchSelectProduct}
+                onSelectTag={handleSearchSelectTag}
+              />
+
+              <MobileDrawer
+                isOpen={isMobileOpen}
+                onClose={() => setIsMobileOpen(false)}
+                onSelectLink={handleLinkSelect}
+              />
+
+              {currentToast && (
+                <Toast
+                  key={currentToast.id}
+                  toast={currentToast}
+                  onDismiss={() => setToastQueue((queue) => queue.filter((item) => item.id !== currentToast.id))}
+                />
+              )}
+
+              <main className="flex-1 pt-20 md:pt-24 w-full">
+                <Suspense fallback={<RouteFallback />}>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/products" element={<Product />} />
+                    <Route path="/product/:id" element={<ProductView />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/checkout/payment" element={<Payment />} />
+                    <Route path="/orders" element={<Orders />} />
+                    <Route path="/orders/:id" element={<OrderDetail />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/about" element={<Company page="about" />} />
+                    <Route path="/contact" element={<Company page="contact" />} />
+                    <Route path="/blogs" element={<Company page="blogs" />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                  </Routes>
+                </Suspense>
+              </main>
+
+              <Footer />
+              <AiAgentIcon />
+            </div>
+          }
         />
+      </Routes>
+    </>
+  );
+}
 
-        <MobileDrawer
-          isOpen={isMobileOpen}
-          onClose={() => setIsMobileOpen(false)}
-          onSelectLink={handleLinkSelect}
-        />
-
-        {currentToast && (
-          <Toast
-            key={currentToast.id}
-            toast={currentToast}
-            onDismiss={() => setToastQueue((queue) => queue.filter((item) => item.id !== currentToast.id))}
-          />
-        )}
-
-        <main className="flex-1 pt-20 md:pt-24 w-full">
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/products" element={<Product />} />
-              <Route path="/product/:id" element={<ProductView />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout/payment" element={<Payment />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/orders/:id" element={<OrderDetail />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/about" element={<Company page="about" />} />
-              <Route path="/contact" element={<Company page="contact" />} />
-              <Route path="/blogs" element={<Company page="blogs" />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/track/:trackingNumber" element={<TrackOrder />} />
-            </Routes>
-          </Suspense>
-        </main>
-
-        <Footer />
-        <AiAgentIcon />
-      </div>
+function App() {
+  return (
+    <Router>
+      <AppRoutes />
     </Router>
   );
 }

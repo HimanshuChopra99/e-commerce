@@ -1,25 +1,13 @@
-/**
- * TrackOrder.jsx
- * Place at: client/src/pages/TrackOrder.jsx
- *
- * Route: /track/:trackingNumber
- * Shows a live Leaflet map with:
- *   - Static red pin  → delivery destination
- *   - Moving blue pin → admin/partner live location (via Socket.io)
- *   - Dynamic route   → Google Maps style path from partner to destination
- */
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { MapPin, Package, CheckCircle2, Truck, AlertCircle } from 'lucide-react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { MapPin, Package, CheckCircle2, Truck, AlertCircle, X } from 'lucide-react'
 import { io } from 'socket.io-client'
 
 // Leaflet Imports
 import 'leaflet/dist/leaflet.css'
-import 'leaflet-routing-machine/dist/leaflet-routing-machine.css'
 import L from 'leaflet'
-import 'leaflet-routing-machine' // Top-level ESM import for Vite
 
-// ── Fix Leaflet's broken default icon paths in Vite ──────────────────
+// ── Fix Leaflet default icon paths in Vite ──────────────────────────
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -29,6 +17,7 @@ L.Icon.Default.mergeOptions({
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
 const SOCKET_URL = API_BASE.replace('/api', '')
+const LOCATIONIQ_KEY = import.meta.env.VITE_LOCATIONIQ_API_KEY || ''
 
 // ── Custom Modern Map Icons ──────────────────────────────────────────
 const destinationIcon = L.divIcon({
@@ -70,47 +59,77 @@ const partnerIcon = L.divIcon({
   popupAnchor: [0, -22],
 })
 
-// Helper to initialize or update Google-Maps style path
-const updateRoutePath = (map, startLatLng, endLatLng, routingControlRef) => {
+// ── Helper to fetch & draw real road route ────────────────────────────
+async function updateRoadRoute(map, startLatLng, endLatLng, polylineRef) {
   if (!map || !startLatLng || !endLatLng) return
 
-  const waypoints = [
-    L.latLng(startLatLng[0], startLatLng[1]),
-    L.latLng(endLatLng[0], endLatLng[1]),
-  ]
+  const [startLat, startLng] = startLatLng
+  const [endLat, endLng] = endLatLng
 
-  if (routingControlRef.current) {
-    // Dynamically update path when truck moves
-    routingControlRef.current.setWaypoints(waypoints)
-  } else if (L.Routing) {
-    // Initialize Routing Control
-    routingControlRef.current = L.Routing.control({
-      waypoints,
-      lineOptions: {
-        styles: [
-          { color: '#1E40AF', opacity: 0.25, weight: 9 }, // Soft outer shadow
-          { color: '#2563EB', opacity: 1, weight: 5 },    // Main blue path
-        ],
-        extendToWaypoints: true,
-        missingRouteTolerance: 0,
-      },
-      createMarker: () => null, // Hide default routing markers; custom markers used instead
-      addWaypoints: false,
-      draggableWaypoints: false,
-      fitSelectedRoutes: false,
-      show: false, // Hide turn-by-turn text box
-    }).addTo(map)
+  if (!Number.isFinite(startLat) || !Number.isFinite(startLng) || !Number.isFinite(endLat) || !Number.isFinite(endLng)) {
+    return
+  }
+
+  const drawFallbackLine = () => {
+    const coords = [
+      [startLat, startLng],
+      [endLat, endLng],
+    ]
+    if (polylineRef.current) {
+      polylineRef.current.setLatLngs(coords)
+    } else {
+      polylineRef.current = L.polyline(coords, {
+        color: '#2563EB',
+        weight: 4,
+        dashArray: '6, 8',
+        opacity: 0.7,
+      }).addTo(map)
+    }
+  }
+
+  if (!LOCATIONIQ_KEY) {
+    drawFallbackLine()
+    return
+  }
+
+  try {
+    const url = `https://us1.locationiq.com/v1/directions/driving/${startLng},${startLat};${endLng},${endLat}?key=${LOCATIONIQ_KEY}&geometries=geojson&overview=full`
+
+    const response = await fetch(url)
+    const data = await response.json()
+
+    if (data.code === 'Ok' && data.routes?.[0]?.geometry?.coordinates) {
+      const roadPath = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng])
+
+      if (polylineRef.current) {
+        polylineRef.current.setLatLngs(roadPath)
+      } else {
+        polylineRef.current = L.polyline(roadPath, {
+          color: '#2563EB',
+          weight: 5,
+          opacity: 0.9,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }).addTo(map)
+      }
+    } else {
+      drawFallbackLine()
+    }
+  } catch (err) {
+    console.warn('Road routing fetch failed, falling back to direct line:', err)
+    drawFallbackLine()
   }
 }
 
 export default function TrackOrder() {
   const { trackingNumber } = useParams()
+  const navigate = useNavigate()
 
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const destinationMarkerRef = useRef(null)
   const partnerMarkerRef = useRef(null)
-  const routingControlRef = useRef(null)
+  const routePolylineRef = useRef(null)
   const socketRef = useRef(null)
   const nearbyShownRef = useRef(false)
 
@@ -120,6 +139,15 @@ export default function TrackOrder() {
   const [status, setStatus] = useState('active')
   const [nearbyBanner, setNearbyBanner] = useState(false)
   const [partnerOnline, setPartnerOnline] = useState(false)
+
+  // Close tracking overlay handler
+  const handleClose = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      navigate('/orders')
+    }
+  }
 
   // ── 1. Fetch session on mount ───────────────────────────────────────
   useEffect(() => {
@@ -150,13 +178,12 @@ export default function TrackOrder() {
     const dest = session.destination
     const curr = session.current
 
-    // Center on destination if partner not yet located, else partner
     const center =
-      curr.lat && curr.lng
+      curr?.lat && curr?.lng
         ? [curr.lat, curr.lng]
-        : dest.lat && dest.lng
+        : dest?.lat && dest?.lng
         ? [dest.lat, dest.lng]
-        : [20.5937, 78.9629] // India center fallback
+        : [20.5937, 78.9629]
 
     const map = L.map(mapRef.current, {
       center,
@@ -169,26 +196,25 @@ export default function TrackOrder() {
       maxZoom: 19,
     }).addTo(map)
 
-    // Destination marker — static red pin
-    if (dest.lat && dest.lng) {
+    // Destination marker
+    if (dest?.lat && dest?.lng) {
       destinationMarkerRef.current = L.marker([dest.lat, dest.lng], { icon: destinationIcon })
         .addTo(map)
         .bindPopup(`<b>📍 Delivery Address</b><br/>${dest.address || ''}`)
     }
 
-    // Partner marker — blue truck, only if we have a last known position
-    if (curr.lat && curr.lng) {
+    // Partner marker
+    if (curr?.lat && curr?.lng) {
       partnerMarkerRef.current = L.marker([curr.lat, curr.lng], { icon: partnerIcon })
         .addTo(map)
         .bindPopup('<b>🚚 Delivery Partner</b><br/>Live location')
       setPartnerOnline(true)
     }
 
-    // Draw dynamic route if both destination and current locations exist
-    if (dest.lat && dest.lng && curr.lat && curr.lng) {
-      updateRoutePath(map, [curr.lat, curr.lng], [dest.lat, dest.lng], routingControlRef)
+    // Draw dynamic route line
+    if (dest?.lat && dest?.lng && curr?.lat && curr?.lng) {
+      updateRoadRoute(map, [curr.lat, curr.lng], [dest.lat, dest.lng], routePolylineRef)
 
-      // Fit map to show both markers
       map.fitBounds(
         L.latLngBounds(
           [dest.lat, dest.lng],
@@ -196,6 +222,11 @@ export default function TrackOrder() {
         ).pad(0.3)
       )
     }
+
+    // Force recalculate full screen tile layout
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 200)
 
     mapInstanceRef.current = map
   }, [session])
@@ -216,7 +247,6 @@ export default function TrackOrder() {
       socket.emit('tracking:subscribe', { trackingNumber })
     })
 
-    // Re-subscribe on reconnect so we never miss updates after a drop
     socket.on('reconnect', () => {
       socket.emit('tracking:subscribe', { trackingNumber })
     })
@@ -230,7 +260,6 @@ export default function TrackOrder() {
       const map = mapInstanceRef.current
       if (!map) return
 
-      // Smooth marker movement
       if (partnerMarkerRef.current) {
         partnerMarkerRef.current.setLatLng([lat, lng])
       } else {
@@ -239,10 +268,9 @@ export default function TrackOrder() {
           .bindPopup('<b>🚚 Delivery Partner</b><br/>Live location')
       }
 
-      // 🔄 Dynamic Route Update: Update path live as partner moves
       const dest = session.destination
       if (dest?.lat && dest?.lng) {
-        updateRoutePath(map, [lat, lng], [dest.lat, dest.lng], routingControlRef)
+        updateRoadRoute(map, [lat, lng], [dest.lat, dest.lng], routePolylineRef)
       }
     })
 
@@ -272,14 +300,20 @@ export default function TrackOrder() {
     }
   }, [])
 
-  // ── Render ──────────────────────────────────────────────────────────
+  // ── Render States ──────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className='min-h-screen bg-[#EAE9E5] flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='w-12 h-12 border-4 border-[#1E1E1E] border-t-transparent rounded-full animate-spin mx-auto mb-4' />
-          <p className='text-sm font-bold text-gray-500'>Loading tracking info…</p>
+      <div className="fixed inset-0 z-[9999] bg-[#EAE9E5] flex items-center justify-center">
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-2 rounded-full bg-white shadow hover:bg-gray-100 text-gray-700 transition-colors z-10"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[#1E1E1E] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-bold text-gray-500">Loading tracking info…</p>
         </div>
       </div>
     )
@@ -287,11 +321,23 @@ export default function TrackOrder() {
 
   if (error) {
     return (
-      <div className='min-h-screen bg-[#EAE9E5] flex items-center justify-center p-4'>
-        <div className='text-center max-w-sm'>
-          <AlertCircle className='w-12 h-12 text-red-500 mx-auto mb-4' />
-          <h2 className='text-xl font-bold text-[#1E1E1E] mb-2'>Tracking not found</h2>
-          <p className='text-gray-500 text-sm'>{error}</p>
+      <div className="fixed inset-0 z-[9999] bg-[#EAE9E5] flex items-center justify-center p-4">
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-2 rounded-full bg-white shadow hover:bg-gray-100 text-gray-700 transition-colors z-10"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        <div className="text-center max-w-sm">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-[#1E1E1E] mb-2">Tracking not found</h2>
+          <p className="text-gray-500 text-sm mb-4">{error}</p>
+          <button
+            onClick={handleClose}
+            className="bg-[#1E1E1E] text-white px-5 py-2 rounded-xl text-xs font-semibold"
+          >
+            Go Back
+          </button>
         </div>
       </div>
     )
@@ -299,99 +345,121 @@ export default function TrackOrder() {
 
   if (status === 'completed') {
     return (
-      <div className='min-h-screen bg-[#EAE9E5] flex items-center justify-center p-4'>
-        <div className='text-center max-w-sm'>
-          <div className='w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6'>
-            <CheckCircle2 className='w-10 h-10 text-green-600' />
+      <div className="fixed inset-0 z-[9999] bg-[#EAE9E5] flex items-center justify-center p-4">
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-2 rounded-full bg-white shadow hover:bg-gray-100 text-gray-700 transition-colors z-10"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        <div className="text-center max-w-sm">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-10 h-10 text-green-600" />
           </div>
-          <h2 className='text-2xl font-bold text-[#1E1E1E] mb-2'>Order Delivered!</h2>
-          <p className='text-gray-500 text-sm mb-6'>
-            Your order {session?.orderNumber} has been delivered successfully.
+          <h2 className="text-2xl font-bold text-[#1E1E1E] mb-2">Order Delivered!</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            Your order #{session?.orderNumber} has been delivered successfully.
           </p>
-          <a
-            href='/orders'
-            className='inline-block bg-[#1E1E1E] text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#333] transition-colors'
+          <button
+            onClick={handleClose}
+            className="inline-block bg-[#1E1E1E] text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#333] transition-colors"
           >
-            View My Orders
-          </a>
+            Close Tracking
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className='min-h-screen bg-[#EAE9E5] flex flex-col'>
-      {/* CSS to hide default Leaflet Routing instruction text panel */}
-      <style>{`
-        .leaflet-routing-container {
-          display: none !important;
-        }
-      `}</style>
+    <div className="fixed inset-0 z-[9999] bg-[#EAE9E5] w-screen h-screen flex flex-col overflow-hidden">
+      {/* Top Header with Close (X) Button */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3 shrink-0 z-20 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <Truck className="w-5 h-5 text-blue-600 shrink-0" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold text-[#1E1E1E]">Live Tracking</h1>
+              {partnerOnline && (
+                <span className="flex items-center gap-1 text-[10px] text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block" />
+                  Live
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 text-xs text-gray-500 mt-0.5">
+              {/* Top line on mobile: Order Number + Tracking Number side-by-side */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-medium sm:font-normal text-gray-800 sm:text-gray-500">
+                  Order #{session?.orderNumber}
+                </span>
+                <span className="text-gray-300">•</span>
+                <span className="font-mono text-gray-500 text-[11px] sm:text-xs">
+                  {trackingNumber}
+                </span>
+              </div>
 
-      {/* Header */}
-      <div className='bg-white border-b border-gray-200 px-4 py-4'>
-        <div className='max-w-2xl mx-auto'>
-          <div className='flex items-center gap-3 mb-1'>
-            <Truck className='w-5 h-5 text-blue-600' />
-            <h1 className='text-lg font-bold text-[#1E1E1E]'>Live Tracking</h1>
-            {partnerOnline && (
-              <span className='flex items-center gap-1 text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full'>
-                <span className='w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block' />
-                Live
-              </span>
-            )}
-          </div>
-          <div className='flex items-center gap-4 text-xs text-gray-500'>
-            <span>Order {session?.orderNumber}</span>
-            <span>•</span>
-            <span>{session?.courier}</span>
-            <span>•</span>
-            <span className='font-mono'>{trackingNumber}</span>
-          </div>
-        </div>
-      </div>
+              <span className="hidden sm:inline text-gray-300">•</span>
 
-      {/* Nearby banner */}
-      {nearbyBanner && (
-        <div className='bg-blue-600 text-white text-center py-3 px-4 text-sm font-semibold animate-pulse'>
-          🚚 Your delivery partner is less than 1km away!
-        </div>
-      )}
-
-      {/* Map */}
-      <div className='flex-1 relative'>
-        <div ref={mapRef} style={{ height: '100%', minHeight: '500px', width: '100%' }} />
-
-        {/* Legend */}
-        <div className='absolute bottom-4 left-4 bg-white rounded-xl shadow-lg p-3 text-xs space-y-2 z-[1000]'>
-          <div className='flex items-center gap-2'>
-            <div className='w-3 h-3 rounded-full bg-red-500' />
-            <span className='text-gray-600'>Delivery address</span>
-          </div>
-          <div className='flex items-center gap-2'>
-            <div className='w-3 h-3 rounded-full bg-blue-500' />
-            <span className='text-gray-600'>Delivery partner</span>
-          </div>
-        </div>
-
-        {/* Destination card */}
-        <div className='absolute top-4 right-4 bg-white rounded-xl shadow-lg p-3 max-w-xs z-[1000]'>
-          <div className='flex items-start gap-2'>
-            <MapPin className='w-4 h-4 text-red-500 mt-0.5 shrink-0' />
-            <div>
-              <p className='text-xs font-semibold text-[#1E1E1E] mb-0.5'>Delivering to</p>
-              <p className='text-xs text-gray-500 leading-relaxed'>{session?.destination?.address}</p>
+              {/* Bottom line on mobile: Courier / Delivery partner */}
+              <div className="text-gray-500 text-[11px] sm:text-xs">
+                {session?.courier}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* No partner yet overlay */}
+        {/* Close Button */}
+        <button
+          onClick={handleClose}
+          className="p-2.5 rounded-full hover:bg-gray-100 text-gray-700 transition-colors shrink-0"
+          title="Close Tracking"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Nearby banner */}
+      {nearbyBanner && (
+        <div className="bg-blue-600 text-white text-center py-2.5 px-4 text-xs sm:text-sm font-semibold animate-pulse shrink-0 z-20">
+          🚚 Your delivery partner is less than 1km away!
+        </div>
+      )}
+
+      {/* Map Area — Takes 100% Remaining Height */}
+      <div className="flex-1 relative w-full h-full overflow-hidden">
+        <div ref={mapRef} className="w-full h-full" style={{ height: '100%', width: '100%' }} />
+
+        {/* Legend */}
+        <div className="absolute bottom-6 left-4 bg-white/95 backdrop-blur rounded-xl shadow-lg p-3 text-xs space-y-2 z-[1000]">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <span className="text-gray-700 font-medium">Delivery address</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <span className="text-gray-700 font-medium">Delivery partner</span>
+          </div>
+        </div>
+
+        {/* Destination Info Floating Card */}
+        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur rounded-xl shadow-lg p-3 max-w-xs z-[1000]">
+          <div className="flex items-start gap-2">
+            <MapPin className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-[#1E1E1E] mb-0.5">Delivering to</p>
+              <p className="text-xs text-gray-500 leading-relaxed">{session?.destination?.address}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Offline / Waiting Partner Overlay */}
         {!partnerOnline && (
-          <div className='absolute inset-0 flex items-end justify-center pb-20 pointer-events-none z-[999]'>
-            <div className='bg-white rounded-xl shadow-lg px-4 py-3 text-center max-w-xs mx-4'>
-              <Package className='w-6 h-6 text-gray-400 mx-auto mb-1' />
-              <p className='text-xs font-semibold text-gray-700'>Partner location pending</p>
-              <p className='text-xs text-gray-400 mt-0.5'>Map will update when partner starts delivery</p>
+          <div className="absolute inset-0 flex items-end justify-center pb-16 pointer-events-none z-[999]">
+            <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg px-4 py-3 text-center max-w-xs mx-4">
+              <Package className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+              <p className="text-xs font-semibold text-gray-700">Partner location pending</p>
+              <p className="text-xs text-gray-400 mt-0.5">Map will update when partner starts delivery</p>
             </div>
           </div>
         )}

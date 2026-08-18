@@ -36,6 +36,8 @@ export default function ShoppingCart() {
     state: user?.address?.state || '',
     postalCode: user?.address?.postalCode || '',
     country: user?.address?.country || 'USA',
+    lat: user?.address?.lat || null,
+    lng: user?.address?.lng || null,
   })
 
   const cartSignature = cartItems
