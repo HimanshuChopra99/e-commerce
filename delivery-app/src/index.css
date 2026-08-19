@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #6b38d4;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Manrope', sans-serif;
+  background-color: #f8f9fa;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+/* Material Symbols base */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.icon-fill {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Hide scrollbar utility for tabs */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* App shell - phone-like frame on desktop */
+.phone-shell {
+  max-width: 420px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+  background: #f8f9fa;
+  box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+}
+
+@media (min-width: 768px) {
+  .phone-shell {
+    min-height: 100dvh;
+  }
+}
+
+/* Custom checkbox toggle */
+.toggle-checkbox {
+  transition: transform 0.3s ease-in-out;
+}
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #8b5cf6;
+}
+.toggle-checkbox:checked + .toggle-label {
+  background-color: #8b5cf6;
+}
+
+/* Animation delay helpers */
+.anim-delay-100 {
+  animation-delay: 100ms;
+}
+.anim-delay-200 {
+  animation-delay: 200ms;
+}
+
+/* Live map truck pulse */
+@keyframes livePulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Leaflet container */
+.leaflet-container {
+  font-family: 'Manrope', sans-serif;
+  background: #eef1ef;
+  outline: none;
+}
+.leaflet-control-zoom a {
+  color: #494454 !important;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 12px;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* ===== Completion overlay animations ===== */
+@keyframes compFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.anim-comp-fade { animation: compFadeIn 0.35s ease-out forwards; }
+
+@keyframes compPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.anim-comp-pop { animation: compPop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) forwards; }
+
+@keyframes compRing {
+  0% { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.anim-comp-ring { animation: compRing 0.9s ease-out forwards; }
+.anim-comp-ring-delay { animation: compRing 0.9s ease-out 0.15s forwards; }
+
+@keyframes compCheckDraw {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+.anim-comp-check { animation: compCheckDraw 0.4s ease-out 0.2s backwards; }
+
+@keyframes compBounceUp {
+  0% { transform: translateY(18px); opacity: 0; }
+  60% { transform: translateY(-4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.anim-comp-up { animation: compBounceUp 0.5s ease-out forwards; }
+.anim-comp-up-delay1 { animation: compBounceUp 0.5s ease-out 0.25s backwards; }
+.anim-comp-up-delay2 { animation: compBounceUp 0.5s ease-out 0.4s backwards; }
+
+@keyframes compParticle {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+.comp-particle {
+  position: absolute;
+  border-radius: 9999px;
+  animation: compParticle 0.9s ease-out forwards;
+}
+
+/* Success screen staggered entrance */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim-success { animation: fadeSlideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Gradient shimmer for the earnings highlight */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
