@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   ArrowLeft,
+  Check,
   Copy,
   Mail,
   MapPin,
@@ -51,6 +52,8 @@ import {
   PaymentStatusBadge,
 } from './components/order-status-badge'
 import { OrderShippingDialog } from './components/order-shipping-dialog'
+import { useAdminOrderSocket } from '@/hooks/use-admin-order-socket'
+import { AdminLiveMap } from '@/components/admin-live-map'
 
 /** Loading Skeleton shown while fetching order details from database */
 function OrderDetailSkeleton() {
@@ -276,8 +279,44 @@ export function OrderDetailPage() {
         String(o.orderNumber) === String(orderId)
     )
 
-  const effectiveStatus = localStatus ?? rawOrder?.status ?? 'pending'
-  const effectiveTracking = localTracking ?? rawOrder?.trackingNumber ?? rawOrder?.tracking_number
+  const rawEffectiveStatus = localStatus ?? rawOrder?.status ?? 'pending'
+  const rawEffectiveTracking = localTracking ?? rawOrder?.trackingNumber ?? rawOrder?.tracking_number
+
+  // ── Real-time socket subscription for this order ─────────────────────────
+  const rawOrderId = rawOrder?.id || rawOrder?.publicId || rawOrder?.public_id
+  const { partnerPos, phase: livePhase, liveStatus: socketStatus } = useAdminOrderSocket({
+    orderId: rawOrderId,
+    trackingNumber: rawEffectiveTracking,
+    initialStatus: rawEffectiveStatus,
+  })
+
+  const effectiveStatus = socketStatus ?? rawEffectiveStatus
+  const effectiveTracking = rawEffectiveTracking
+
+  // ── Live Geolocation for Warehouse ──────────────────────────────────────
+  const [warehouseGeo, setWarehouseGeo] = useState(null)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude
+          const lng = pos.coords.longitude
+          setWarehouseGeo({ lat, lng })
+          // Broadcast to server if connected
+          const socket = adminTracker.socket
+          if (socket && socket.connected) {
+            socket.emit('admin:set_warehouse_location', {
+              lat,
+              lng,
+              address: 'KICKS Main Hub',
+            })
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 6000 }
+      )
+    }
+  }, [])
 
   // ── Sync with Global Admin Tracker ──────────────────────────────────────
   useEffect(() => {
@@ -356,8 +395,16 @@ export function OrderDetailPage() {
   const isReturned = order.status === 'returned'
   const currentStep = fulfilmentSteps.indexOf(order.status)
 
+  const DRIVER_DRIVEN_STATUSES = ['assigned', 'shipping', 'delivered']
+
   // ── Handlers ─────────────────────────────────────────────────────────────
   const doStatusUpdate = async (status, extra = {}) => {
+    // If order is ready_for_pickup or assigned or shipping, prevent admin from manually triggering driver-only statuses
+    if (DRIVER_DRIVEN_STATUSES.includes(status) && (order.status === 'ready_for_pickup' || order.status === 'assigned' || order.status === 'shipping')) {
+      toast.info(`"${orderStatusLabels.get(status) || status}" is updated automatically by the delivery partner.`)
+      return
+    }
+
     setStatusUpdating(true)
     try {
       const result = await dispatch(updateOrderStatus({ id: order.id, status, extra }))
@@ -392,6 +439,10 @@ export function OrderDetailPage() {
 
   const onStepClick = (step) => {
     if (step === order.status || statusUpdating) return
+    if (DRIVER_DRIVEN_STATUSES.includes(step)) {
+      toast.info(`"${orderStatusLabels.get(step) || step}" is updated automatically by the delivery partner.`)
+      return
+    }
     doStatusUpdate(step)
   }
 
@@ -454,7 +505,7 @@ export function OrderDetailPage() {
                 ? 'This order was cancelled.'
                 : isReturned
                   ? 'This order was returned by the customer.'
-                  : `Currently ${orderStatusLabels.get(order.status)?.toLowerCase() || order.status}. Click a step below to update.`}
+                  : `Currently ${orderStatusLabels.get(order.status)?.toLowerCase() || order.status}. Delivery partner steps update automatically.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -476,32 +527,37 @@ export function OrderDetailPage() {
               </div>
             ) : (
               <>
-                <ol className='grid gap-4 sm:grid-cols-4'>
+                <ol className='grid gap-4 sm:grid-cols-6'>
                   {fulfilmentSteps.map((step, idx) => {
                     const meta = orderStatuses.find((s) => s.value === step)
                     const Icon = meta?.icon ?? Truck
                     const done = idx <= currentStep
+                    const isPast = idx < currentStep
                     const isCurrent = step === order.status
-                    const isClickable = !isCurrent && !statusUpdating
+                    const isDriverManaged = DRIVER_DRIVEN_STATUSES.includes(step)
+                    const isClickable = !isCurrent && !statusUpdating && !isDriverManaged
+
+                    const driverTooltip =
+                      step === 'assigned'
+                        ? 'Updated automatically when delivery partner accepts order'
+                        : step === 'shipping'
+                        ? 'Updated automatically when delivery partner picks up order'
+                        : step === 'delivered'
+                        ? 'Updated automatically when delivery partner delivers order'
+                        : `Mark as ${meta?.label}`
 
                     return (
-                      <li key={step} className='flex items-start gap-3'>
+                      <li key={step} className='flex items-start gap-2.5'>
                         <button
                           type='button'
                           disabled={!isClickable}
                           onClick={() => onStepClick(step)}
-                          title={
-                            isCurrent
-                              ? 'Current status'
-                              : step === 'shipped'
-                                ? `Mark as ${meta?.label} (requires tracking number)`
-                                : `Mark as ${meta?.label}`
-                          }
+                          title={isDriverManaged ? driverTooltip : (isCurrent ? 'Current status' : `Mark as ${meta?.label}`)}
                           className={cn(
                             'flex size-9 shrink-0 items-center justify-center rounded-full border transition-all',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                             done
-                              ? 'border-primary bg-primary text-primary-foreground'
+                              ? 'border-primary bg-primary text-primary-foreground font-bold shadow-sm'
                               : 'bg-muted text-muted-foreground',
                             isClickable && !done
                               ? 'cursor-pointer hover:border-primary/60 hover:bg-primary/10 hover:text-primary'
@@ -509,10 +565,14 @@ export function OrderDetailPage() {
                             isClickable && done && !isCurrent
                               ? 'cursor-pointer opacity-80 hover:opacity-100'
                               : '',
-                            !isClickable ? 'cursor-not-allowed opacity-60' : ''
+                            !isClickable ? 'cursor-not-allowed opacity-75' : ''
                           )}
                         >
-                          <Icon className='size-4' />
+                          {isPast ? (
+                            <Check className='size-4 text-primary-foreground' strokeWidth={2.8} />
+                          ) : (
+                            <Icon className={cn('size-4', isCurrent && 'animate-pulse')} />
+                          )}
                         </button>
                         <div className='min-w-0'>
                           <p
@@ -526,9 +586,11 @@ export function OrderDetailPage() {
                           <p className='text-xs text-muted-foreground'>
                             {isCurrent
                               ? 'Current'
-                              : done
-                                ? 'Completed'
-                                : 'Click to set'}
+                              : isPast
+                                ? '✓ Completed'
+                                : isDriverManaged
+                                  ? 'Driver managed'
+                                  : 'Click to set'}
                           </p>
                         </div>
                       </li>
@@ -538,27 +600,36 @@ export function OrderDetailPage() {
 
                 {/* Quick-set pill strip */}
                 <div className='mt-5 flex flex-wrap items-center gap-2 border-t pt-4'>
-                  <span className='text-xs text-muted-foreground'>Set status:</span>
-                  {orderStatuses.map(({ value, label, icon: Icon }) => (
-                    <button
-                      key={value}
-                      type='button'
-                      disabled={statusUpdating || value === order.status}
-                      onClick={() => onStepClick(value)}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                        value === order.status
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'cursor-pointer border-border bg-background hover:bg-muted',
-                        statusUpdating && 'cursor-not-allowed opacity-50'
-                      )}
-                    >
-                      <Icon className='h-3 w-3' />
-                      {label}
-                      {value === order.status && ' ✓'}
-                    </button>
-                  ))}
+                  <span className='text-xs text-muted-foreground'>Admin actions:</span>
+                  {orderStatuses.map(({ value, label, icon: Icon }) => {
+                    const isDriverManaged = DRIVER_DRIVEN_STATUSES.includes(value)
+                    const isDisabled = statusUpdating || value === order.status || isDriverManaged
+
+                    return (
+                      <button
+                        key={value}
+                        type='button'
+                        disabled={isDisabled}
+                        onClick={() => onStepClick(value)}
+                        title={isDriverManaged ? `"${label}" is managed automatically by the delivery partner.` : `Set status to ${label}`}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                          value === order.status
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : isDriverManaged
+                              ? 'cursor-not-allowed border-dashed border-border bg-muted/40 text-muted-foreground opacity-60'
+                              : 'cursor-pointer border-border bg-background hover:bg-muted',
+                          isDisabled && value !== order.status && 'cursor-not-allowed opacity-50'
+                        )}
+                      >
+                        <Icon className='h-3 w-3' />
+                        {label}
+                        {value === order.status && ' ✓'}
+                        {isDriverManaged && value !== order.status && ' (Driver)'}
+                      </button>
+                    )
+                  })}
                   {statusUpdating && (
                     <span className='text-xs text-muted-foreground animate-pulse'>Updating…</span>
                   )}
@@ -567,6 +638,47 @@ export function OrderDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Live Delivery Map — shown when order is assigned or in shipping */}
+        {(effectiveStatus === 'assigned' || effectiveStatus === 'shipping') && (
+          <Card className="border-blue-200 dark:border-blue-900 shadow-sm">
+            <CardHeader className='pb-3'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <CardTitle className='flex items-center gap-2'>
+                    <span className='h-2 w-2 animate-pulse rounded-full bg-blue-600' />
+                    Live Delivery Map
+                  </CardTitle>
+                  <CardDescription>
+                    {effectiveStatus === 'assigned'
+                      ? 'Delivery partner accepted the order and is heading to warehouse for pickup.'
+                      : 'Delivery partner picked up the order and is on the way to the customer.'}
+                  </CardDescription>
+                </div>
+                {livePhase && (
+                  <span
+                    className='inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-white'
+                    style={{ background: livePhase === 'to_warehouse' ? '#2563eb' : '#10b981' }}
+                  >
+                    {livePhase === 'to_warehouse' ? '📦 Phase 1 — Pickup' : '🛵 Phase 2 — Delivery'}
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className='pt-0'>
+              <AdminLiveMap
+                partnerPos={partnerPos}
+                phase={livePhase}
+                shippingAddress={order.shippingAddress}
+                pickupAddress={{
+                  lat: warehouseGeo?.lat ?? rawOrder?.pickupLat ?? rawOrder?.pickup_lat ?? 30.7333,
+                  lng: warehouseGeo?.lng ?? rawOrder?.pickupLng ?? rawOrder?.pickup_lng ?? 76.7794,
+                  address: rawOrder?.pickupAddress || rawOrder?.pickup_address || 'KICKS Main Hub',
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <div className='grid gap-6 lg:grid-cols-3'>
           {/* Items + summary */}
@@ -684,6 +796,32 @@ export function OrderDetailPage() {
                     </Button>
                   </>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Warehouse Hub (Pickup Location) */}
+            <Card className='border-blue-100 dark:border-blue-900/40'>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                  <span className='h-2 w-2 rounded-full bg-blue-600' />
+                  Warehouse Location (Pickup Hub)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-2 text-sm'>
+                <div className='flex items-start gap-2.5'>
+                  <span className='text-xl shrink-0'>🏪</span>
+                  <div className='min-w-0'>
+                    <p className='font-semibold text-foreground'>
+                      {rawOrder?.pickupAddress || rawOrder?.pickup_address || 'KICKS Main Hub'}
+                    </p>
+                    <p className='text-xs text-muted-foreground mt-0.5'>
+                      GPS: {Number(warehouseGeo?.lat ?? rawOrder?.pickupLat ?? rawOrder?.pickup_lat ?? 30.7333).toFixed(4)}, {Number(warehouseGeo?.lng ?? rawOrder?.pickupLng ?? rawOrder?.pickup_lng ?? 76.7794).toFixed(4)}
+                    </p>
+                    <span className='inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full'>
+                      ● Current Warehouse Location
+                    </span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

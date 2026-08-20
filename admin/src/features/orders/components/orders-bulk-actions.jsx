@@ -37,8 +37,7 @@ import { OrderShippingDialog } from './order-shipping-dialog'
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
   { value: 'processing', label: 'Processing', icon: PackageCheck, color: 'text-sky-600' },
-  { value: 'shipped', label: 'Shipped', icon: Truck, color: 'text-violet-600' },
-  { value: 'delivered', label: 'Delivered', icon: CircleCheckBig, color: 'text-teal-600' },
+  { value: 'ready_for_pickup', label: 'Ready for Pickup', icon: PackageCheck, color: 'text-orange-600' },
   { value: 'cancelled', label: 'Cancelled', icon: CircleX, color: 'text-destructive' },
   { value: 'returned', label: 'Returned', icon: Undo2, color: 'text-neutral-500' },
 ]

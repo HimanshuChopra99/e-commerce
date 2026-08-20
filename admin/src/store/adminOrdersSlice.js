@@ -60,6 +60,29 @@ const adminOrdersSlice = createSlice({
     clearCurrentAdminOrder: (state) => {
       state.current = null
     },
+    orderStatusUpdated: (state, action) => {
+      const { orderId, status, trackingNumber, partnerName } = action.payload || {}
+      if (!orderId || !status) return
+
+      const matches = (o) =>
+        String(o.id) === String(orderId) ||
+        String(o.publicId) === String(orderId) ||
+        String(o.public_id) === String(orderId) ||
+        String(o.orderNumber) === String(orderId) ||
+        String(o.order_number) === String(orderId)
+
+      const item = state.items.find(matches)
+      if (item) {
+        item.status = status
+        if (trackingNumber) item.trackingNumber = trackingNumber
+        if (partnerName) item.courier = partnerName
+      }
+      if (state.current && matches(state.current)) {
+        state.current.status = status
+        if (trackingNumber) state.current.trackingNumber = trackingNumber
+        if (partnerName) state.current.courier = partnerName
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -126,5 +149,5 @@ const adminOrdersSlice = createSlice({
   },
 })
 
-export const { clearCurrentAdminOrder } = adminOrdersSlice.actions
+export const { clearCurrentAdminOrder, orderStatusUpdated } = adminOrdersSlice.actions
 export default adminOrdersSlice.reducer

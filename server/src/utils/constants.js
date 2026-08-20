@@ -55,7 +55,8 @@ export const CATEGORY_COLORS = Object.freeze([
 ])
 
 export const ORDER_STATUS = Object.freeze([
-  'pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned',
+  'pending', 'processing', 'ready_for_pickup', 'assigned',
+  'shipping', 'delivered', 'cancelled', 'returned',
 ])
 
 export const PAYMENT_STATUS = Object.freeze([
@@ -74,17 +75,19 @@ export const COURIERS = Object.freeze([
  * Which order status may follow which.
  * Enforced in order.service.js — an invalid jump returns 400.
  *
- *   pending -> processing -> shipped -> delivered -> returned
+ *   pending -> processing -> ready_for_pickup -> assigned -> shipping -> delivered -> returned
  *      |            |
  *      +------------+--> cancelled  (terminal)
  */
 export const ORDER_TRANSITIONS = Object.freeze({
-  pending: ['processing', 'cancelled'],
-  processing: ['shipped', 'cancelled'],
-  shipped: ['delivered', 'returned'],
-  delivered: ['returned'],
-  cancelled: [],
-  returned: [],
+  pending:           ['processing', 'cancelled'],
+  processing:        ['ready_for_pickup', 'cancelled'],
+  ready_for_pickup:  ['assigned'],
+  assigned:          ['shipping'],
+  shipping:          ['delivered', 'returned'],
+  delivered:         ['returned'],
+  cancelled:         [],
+  returned:          [],
 })
 
 /** Loyalty tiers, derived from lifetime spend — never stored. */
@@ -99,3 +102,6 @@ export function tierForSpend(spend) {
   const n = Number(spend) || 0
   return TIER_THRESHOLDS.find((t) => n >= t.min).tier
 }
+
+export const DELIVERY_PARTNER_ROLE = 'delivery_partner'
+

@@ -8,6 +8,8 @@
  * live location transmission continues uninterrupted.
  */
 import { io } from 'socket.io-client'
+import { store } from '../store'
+import { orderStatusUpdated } from '../store/adminOrdersSlice'
 
 const STORAGE_KEY = 'kick_admin_active_trackings'
 
@@ -61,7 +63,50 @@ class AdminTracker {
 
     this.socket.on('connect', () => {
       console.log('[AdminTracker] Socket connected:', this.socket.id)
+      this.socket.emit('admin:join')
+
+      // Sync Admin's current location as Warehouse location
+      if (typeof window !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (this.socket && this.socket.connected) {
+              this.socket.emit('admin:set_warehouse_location', {
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                address: 'KICKS Main Hub',
+              })
+            }
+          },
+          () => {},
+          { enableHighAccuracy: true, timeout: 5000 }
+        )
+      }
+
       this._notifyListeners()
+    })
+
+    this.socket.on('order:status_changed', ({ orderId, status, partnerName }) => {
+      console.log('[AdminTracker] order:status_changed', { orderId, status, partnerName })
+      store.dispatch(orderStatusUpdated({ orderId, status, partnerName }))
+    })
+
+    this.socket.on('order:phase_changed', ({ orderId, phase, trackingNumber }) => {
+      console.log('[AdminTracker] order:phase_changed', { orderId, phase, trackingNumber })
+      const status =
+        phase === 'delivered'
+          ? 'delivered'
+          : phase === 'to_customer' || phase === 'shipping'
+          ? 'shipping'
+          : 'assigned'
+      store.dispatch(orderStatusUpdated({ orderId, status, trackingNumber }))
+    })
+
+    this.socket.on('order:shipping', ({ orderId, trackingNumber }) => {
+      store.dispatch(orderStatusUpdated({ orderId, status: 'shipping', trackingNumber }))
+    })
+
+    this.socket.on('order:delivered', ({ orderId }) => {
+      store.dispatch(orderStatusUpdated({ orderId, status: 'delivered' }))
     })
 
     this.socket.on('disconnect', (reason) => {

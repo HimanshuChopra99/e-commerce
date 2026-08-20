@@ -10,6 +10,7 @@ import customerStateRoutes from './customer-state.routes.js'
 import retellRoutes from './retell.routes.js'
 import { cacheStatus } from '../services/cache.service.js'
 import trackingRoutes from './tracking.routes.js'
+import deliveryPartnerRoutes from './delivery-partner.routes.js'
 
 const router = Router()
 
@@ -63,5 +64,8 @@ router.use('/tracking', trackingRoutes)
 
 // ── Admin (guarded inside admin/index.js) ─────────────────────────────
 router.use('/admin', adminRoutes)
+
+// ── Delivery Partner ──────────────────────────────────────────────────
+router.use('/delivery-partner', deliveryPartnerRoutes)
 
 export default router

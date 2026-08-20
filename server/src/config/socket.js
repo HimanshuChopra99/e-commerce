@@ -8,6 +8,30 @@ import { haversineMeters } from '../controllers/tracking.controller.js'
 
 let io
 
+// Current warehouse / hub location — updated dynamically from admin's location or default
+let currentWarehouseLocation = {
+  lat: 30.7333,
+  lng: 76.7794,
+  address: 'KICKS Main Hub',
+  updatedAt: new Date().toISOString(),
+}
+
+export function getWarehouseLocation() {
+  return currentWarehouseLocation
+}
+
+export function setWarehouseLocation(coords) {
+  if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+    currentWarehouseLocation = {
+      lat: Number(coords.lat),
+      lng: Number(coords.lng),
+      address: coords.address || 'KICKS Main Hub',
+      updatedAt: new Date().toISOString(),
+    }
+  }
+  return currentWarehouseLocation
+}
+
 export function initSocket(httpServer) {
   const allowedOrigins = [
     ...(env.corsOrigins || []),
@@ -50,24 +74,132 @@ export function initSocket(httpServer) {
       }
     })
 
+    // ── Delivery Partner Pool ─────────────────────────────────────────────
+
+    // Partner goes online: joins the order broadcast room
+    socket.on('delivery:go_online', (data) => {
+      const partnerPublicId = data?.partnerPublicId
+      if (!partnerPublicId) return
+      socket.join('delivery:pool')
+      socket.join(`delivery:partner:${partnerPublicId}`)
+      logger.info({ socketId: socket.id, partnerPublicId }, '[Socket] delivery partner online')
+    })
+
+    // Partner goes offline
+    socket.on('delivery:go_offline', (data) => {
+      const partnerPublicId = data?.partnerPublicId
+      socket.leave('delivery:pool')
+      if (partnerPublicId) socket.leave(`delivery:partner:${partnerPublicId}`)
+      logger.info({ socketId: socket.id, partnerPublicId }, '[Socket] delivery partner offline')
+    })
+
+    // Partner accepted an order: leave pool room, join private nav room
+    socket.on('delivery:join_nav', (data) => {
+      const { trackingNumber, partnerPublicId } = data || {}
+      if (!trackingNumber) return
+      socket.leave('delivery:pool')
+      socket.join(`delivery:nav:${trackingNumber}`)
+      if (partnerPublicId) socket.leave(`delivery:partner:${partnerPublicId}`)
+      logger.info({ socketId: socket.id, trackingNumber }, '[Socket] delivery partner joined nav room')
+    })
+
+    // Partner finished delivery: leave nav room
+    socket.on('delivery:leave_nav', (data) => {
+      const { trackingNumber } = data || {}
+      if (trackingNumber) socket.leave(`delivery:nav:${trackingNumber}`)
+      logger.info({ socketId: socket.id, trackingNumber }, '[Socket] delivery partner left nav room')
+    })
+
+    // Global current warehouse location (updated dynamically by admin or geocoding)
+    socket.emit('warehouse:location', currentWarehouseLocation)
+
+    // Admin sets/updates the real warehouse location (e.g., from Admin browser GPS)
+    socket.on('admin:set_warehouse_location', (data) => {
+      if (data && Number.isFinite(data.lat) && Number.isFinite(data.lng)) {
+        currentWarehouseLocation = {
+          lat: Number(data.lat),
+          lng: Number(data.lng),
+          address: data.address || 'KICKS Main Hub',
+          updatedAt: new Date().toISOString(),
+        }
+        io.emit('warehouse:location_updated', currentWarehouseLocation)
+        logger.info({ currentWarehouseLocation }, '[Socket] warehouse location updated')
+      }
+    })
+
+    socket.on('warehouse:get_location', () => {
+      socket.emit('warehouse:location', currentWarehouseLocation)
+    })
+
+    // Admin joins the admin room to receive real-time order status updates
+    socket.on('admin:join', () => {
+      socket.join('admin_room')
+      logger.info({ socketId: socket.id }, '[Socket] admin joined admin_room')
+    })
+
+    // ── Phase 1 GPS: partner broadcasts location before pickup (no tracking# yet) ──
+    socket.on('delivery:partner_location', (data) => {
+      const { orderId, lat, lng, phase } = data || {}
+      if (!lat || !lng) return
+
+      const payload = { orderId, lat, lng, phase: phase || 'to_warehouse', at: new Date().toISOString() }
+
+      // Broadcast to admin room so admin can see partner heading to warehouse
+      io.to('admin_room').emit('delivery:partner_location', payload)
+
+      // Also broadcast to per-order room (if admin has subscribed to it)
+      if (orderId) {
+        io.to(`order:${orderId}`).emit('delivery:partner_location', payload)
+      }
+
+      logger.debug({ socketId: socket.id, orderId, lat, lng, phase }, '[Socket] Phase-1 partner location')
+    })
+
+    // ── Admin subscribes to a specific order's live updates ──────────────────────
+    socket.on('admin:watch_order', (data) => {
+      const orderId = typeof data === 'string' ? data : data?.orderId
+      if (orderId) {
+        socket.join(`order:${orderId}`)
+        logger.info({ socketId: socket.id, orderId }, '[Socket] admin watching order')
+      }
+    })
+
+    socket.on('admin:unwatch_order', (data) => {
+      const orderId = typeof data === 'string' ? data : data?.orderId
+      if (orderId) {
+        socket.leave(`order:${orderId}`)
+        logger.info({ socketId: socket.id, orderId }, '[Socket] admin stopped watching order')
+      }
+    })
+
+    // ── Phase transition notification (delivery partner emits when phase changes) ─
+    socket.on('order:phase_changed', (data) => {
+      const { orderId, phase, trackingNumber } = data || {}
+      if (!orderId) return
+      const payload = { orderId, phase, trackingNumber, at: new Date().toISOString() }
+      io.to('admin_room').emit('order:phase_changed', payload)
+      if (orderId) io.to(`order:${orderId}`).emit('order:phase_changed', payload)
+      logger.info({ socketId: socket.id, orderId, phase }, '[Socket] order phase changed')
+    })
+
     // ── Add this inside io.on('connection', (socket) => { ... }) ──
 
-socket.on('send-delivery-completed', async (data) => {
-  const trackingNumber = typeof data === 'string' ? data : data?.trackingNumber
-  if (!trackingNumber) return
+    socket.on('send-delivery-completed', async (data) => {
+      const trackingNumber = typeof data === 'string' ? data : data?.trackingNumber
+      if (!trackingNumber) return
 
-  try {
-    // ✅ Use completeSession instead of updateStatus
-    await trackingService.completeSession(trackingNumber)
+      try {
+        // ✅ Use completeSession instead of updateStatus
+        await trackingService.completeSession(trackingNumber)
 
-    const trackingRoom = `tracking:${trackingNumber}`
-    io.to(trackingRoom).emit('tracking:completed', { trackingNumber })
+        const trackingRoom = `tracking:${trackingNumber}`
+        io.to(trackingRoom).emit('tracking:completed', { trackingNumber })
 
-    logger.info({ socketId: socket.id, trackingNumber }, '[Socket] Parcel marked as delivered')
-  } catch (err) {
-    logger.warn({ err: err.message, trackingNumber }, '[Socket] Failed to mark completed')
-  }
-})
+        logger.info({ socketId: socket.id, trackingNumber }, '[Socket] Parcel marked as delivered')
+      } catch (err) {
+        logger.warn({ err: err.message, trackingNumber }, '[Socket] Failed to mark completed')
+      }
+    })
     socket.on('tracking:unsubscribe', (data) => {
       const trackingNumber = typeof data === 'string' ? data : data?.trackingNumber
       if (trackingNumber) {

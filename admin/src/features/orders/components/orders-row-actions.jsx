@@ -40,8 +40,10 @@ import { OrderShippingDialog } from './order-shipping-dialog'
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
   { value: 'processing', label: 'Processing', icon: PackageCheck, color: 'text-sky-600' },
-  { value: 'shipped', label: 'Shipped', icon: Truck, color: 'text-violet-600' },
-  { value: 'delivered', label: 'Delivered', icon: CircleCheckBig, color: 'text-teal-600' },
+  { value: 'ready_for_pickup', label: 'Ready for Pickup', icon: PackageCheck, color: 'text-orange-600' },
+  { value: 'assigned', label: 'Assigned (Driver)', icon: User, color: 'text-blue-600', driverManaged: true },
+  { value: 'shipping', label: 'Shipping (Driver)', icon: Truck, color: 'text-violet-600', driverManaged: true },
+  { value: 'delivered', label: 'Delivered (Driver)', icon: CircleCheckBig, color: 'text-teal-600', driverManaged: true },
   { value: 'cancelled', label: 'Cancelled', icon: CircleX, color: 'text-destructive' },
   { value: 'returned', label: 'Returned', icon: Undo2, color: 'text-neutral-500' },
 ]
@@ -128,11 +130,11 @@ export function OrdersRowActions({ row }) {
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
               <DropdownMenuSubContent className='w-44'>
-                {STATUS_OPTIONS.map(({ value, label, icon: Icon, color }) => (
+                {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, driverManaged }) => (
                   <DropdownMenuItem
                     key={value}
                     className='gap-2'
-                    disabled={order.status === value || updatingStatus}
+                    disabled={order.status === value || updatingStatus || driverManaged}
                     onClick={() => onStatusSelect(value)}
                   >
                     <Icon className={`h-3.5 w-3.5 ${color}`} />

@@ -1,26 +1,70 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import Icon from '../components/Icon'
 import { selectCompletedOrder } from '../store/slices/orderSlice'
+import { setOnline } from '../store/slices/appSlice'
+import { getSocket } from '../lib/socket'
 
 export default function OrderComplete() {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
   const reduxCompletedOrder = useSelector(selectCompletedOrder)
+  const authPartner = useSelector((s) => s.app.partner)
 
-  // Data recovery: Checks location state first, then Redux fallback
-  const order = location.state?.order || reduxCompletedOrder
+  // Data recovery: Checks location state first, then Redux fallback, then localStorage
+  const order = useMemo(() => {
+    if (location.state?.order) return location.state.order
+    if (reduxCompletedOrder) return reduxCompletedOrder
+    try {
+      const raw = localStorage.getItem('dp_completed_order')
+      if (raw) return JSON.parse(raw)
+    } catch {}
+    return null
+  }, [location.state, reduxCompletedOrder])
 
-  // Safe normalized fallback data
-  const orderId = order?.id || 'ORD-8924A'
-  const payout = order?.payout || order?.amount || '$12.50'
-  const duration = order?.duration || order?.eta || '15 min'
-  const distance = order?.distance || '2.4 mi'
-  const pickupLabel = order?.pickup?.label || order?.store || 'Bistro Cafe Downtown'
-  const pickupAddress = order?.pickup?.address || '124 Main Street'
-  const dropoffLabel = order?.dropoff?.label || 'Tech Campus Bldg 4'
-  const dropoffAddress = order?.dropoff?.address || order?.address || '400 Silicon Blvd'
+  // Safe normalized dynamic fallback data
+  const orderNumber = order?.orderNumber || order?.order_number || (order?.id ? String(order.id).replace('#', '') : '1001')
+  const customerName = order?.customerName || order?.customer || order?.shippingAddress?.customerName || 'Customer'
+  const itemCount = order?.itemCount ?? order?.items?.length ?? 1
+
+  // Dynamic Payout calculation
+  const payout = useMemo(() => {
+    if (typeof order?.payout === 'number') {
+      return `$${order.payout.toFixed(2)}`
+    }
+    if (order?.payout && typeof order?.payout === 'string') {
+      return order.payout.startsWith('$') ? order.payout : `$${order.payout}`
+    }
+    if (order?.total != null) {
+      const amt = Number(order.total) * 0.08
+      return `$${Math.max(8.5, amt).toFixed(2)}`
+    }
+    return '$12.50'
+  }, [order])
+
+  const totalValue = useMemo(() => {
+    if (order?.total != null) return `$${Number(order.total).toFixed(2)}`
+    return '$120.00'
+  }, [order])
+
+  const duration = order?.duration || order?.eta || '12 min'
+  const distance = order?.distance || '2.8 km'
+
+  const pickupLabel = order?.pickupAddress || order?.pickup?.label || 'KICKS Main Hub'
+  const pickupAddress = order?.pickupAddress || 'Warehouse Central Hub, Sector 17'
+
+  const dropoffLabel = customerName ? `${customerName}` : 'Customer Location'
+  const dropoffAddress = [
+    order?.shippingAddress?.line1,
+    order?.shippingAddress?.city,
+    order?.shippingAddress?.state,
+  ].filter(Boolean).join(', ') || order?.dropoffAddress || 'Customer Delivery Address'
+
+  const deliveredTime = useMemo(() => {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }, [])
 
   const stats = [
     { label: 'Duration', value: duration, icon: 'schedule' },
@@ -62,11 +106,11 @@ export default function OrderComplete() {
 
           {/* Status Tag */}
           <div 
-            className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 px-3 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase shadow-2xs mb-2 anim-slide"
+            className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-3 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase shadow-2xs mb-2 anim-slide"
             style={{ animationDelay: '0.08s' }}
           >
-            <Icon name="check_circle" fill className="text-[14px] text-emerald-600" />
-            <span>Delivered Successfully</span>
+            <Icon name="check_circle" fill className="text-[14px] text-emerald-600 dark:text-emerald-400" />
+            <span>Delivered at {deliveredTime}</span>
           </div>
 
           <h1 
@@ -79,7 +123,7 @@ export default function OrderComplete() {
             className="text-body-md text-on-surface-variant font-medium mt-0.5 anim-slide"
             style={{ animationDelay: '0.16s' }}
           >
-            Order #{orderId} · Great work! 🎉
+            Order #{orderNumber} · Great work! 🎉
           </p>
         </div>
 
@@ -106,7 +150,7 @@ export default function OrderComplete() {
             </div>
 
             <p className="text-label-sm text-white/80 mt-0.5 font-medium">
-              Successfully credited for this trip
+              Successfully credited for order #{orderNumber}
             </p>
           </div>
         </div>
@@ -140,25 +184,30 @@ export default function OrderComplete() {
             <div className="flex items-center gap-1.5">
               <Icon name="route" className="text-[16px] text-primary" />
               <h2 className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
-                Route Details
+                Trip Details
               </h2>
             </div>
-            <span className="text-[10px] font-bold text-primary bg-primary-fixed px-2 py-0.5 rounded-md">
-              Completed
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-md">
+                {itemCount} {itemCount === 1 ? 'Item' : 'Items'}
+              </span>
+              <span className="text-[10px] font-bold text-primary bg-primary-fixed px-2 py-0.5 rounded-md">
+                Delivered
+              </span>
+            </div>
           </div>
 
           <div className="relative pl-7 py-0.5">
             {/* Smooth Connecting Line */}
-            <div className="absolute left-[11px] top-2.5 bottom-2.5 w-[2px] bg-gradient-to-b from-outline-variant/60 via-primary/50 to-primary" />
+            <div className="absolute left-[11px] top-2.5 bottom-2.5 w-[2px] bg-gradient-to-b from-blue-400 via-primary/50 to-emerald-500" />
 
             {/* Pickup Node */}
             <div className="relative mb-4">
-              <div className="absolute -left-[27px] top-0.5 w-5 h-5 rounded-full bg-surface-container border-2 border-surface-container-lowest flex items-center justify-center z-10 shadow-2xs">
-                <Icon name="storefront" className="text-[11px] text-on-surface-variant" />
+              <div className="absolute -left-[27px] top-0.5 w-5 h-5 rounded-full bg-blue-50 border-2 border-blue-500 flex items-center justify-center z-10 shadow-2xs">
+                <Icon name="storefront" className="text-[11px] text-blue-600 font-bold" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-wider">Pickup</span>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Pickup Warehouse</span>
                 <span className="text-body-md font-bold text-on-surface truncate">{pickupLabel}</span>
                 <span className="text-label-sm text-on-surface-variant truncate mt-0.5">{pickupAddress}</span>
               </div>
@@ -166,15 +215,21 @@ export default function OrderComplete() {
 
             {/* Drop-off Node */}
             <div className="relative">
-              <div className="absolute -left-[27px] top-0.5 w-5 h-5 rounded-full bg-primary border-2 border-surface-container-lowest flex items-center justify-center z-10 shadow-2xs">
-                <Icon name="check" className="text-[11px] text-on-primary font-bold" />
+              <div className="absolute -left-[27px] top-0.5 w-5 h-5 rounded-full bg-emerald-500 border-2 border-surface-container-lowest flex items-center justify-center z-10 shadow-2xs">
+                <Icon name="check" className="text-[11px] text-white font-bold" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Drop-off</span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Drop-off Destination</span>
                 <span className="text-body-md font-bold text-on-surface truncate">{dropoffLabel}</span>
                 <span className="text-label-sm text-on-surface-variant truncate mt-0.5">{dropoffAddress}</span>
               </div>
             </div>
+          </div>
+
+          {/* Customer & Order Metadata Footer */}
+          <div className="flex items-center justify-between pt-2 border-t border-surface-container-high/40 text-label-sm text-on-surface-variant">
+            <span>Customer: <strong className="text-on-surface font-semibold">{customerName}</strong></span>
+            <span>Value: <strong className="text-on-surface font-semibold">{totalValue}</strong></span>
           </div>
         </div>
 
@@ -183,10 +238,18 @@ export default function OrderComplete() {
       {/* ===== 5. ACTION BUTTON ===== */}
       <div className="pt-3 anim-slide" style={{ animationDelay: '0.4s' }}>
         <button
-          onClick={() => navigate('/orders')}
-          className="w-full h-12 bg-primary hover:bg-surface-tint active:scale-[0.98] text-on-primary font-bold text-label-lg rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+          onClick={() => {
+            dispatch(setOnline(true))
+            const socket = getSocket()
+            const partner = order?.deliveryPartner || order?.partner || authPartner
+            if (partner?.publicId) {
+              socket.emit('delivery:go_online', { partnerPublicId: partner.publicId })
+            }
+            navigate('/orders')
+          }}
+          className="w-full h-12 bg-primary hover:bg-surface-tint active:scale-[0.98] text-on-primary font-bold text-label-lg rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
         >
-          <span>Back to Orders</span>
+          <span>Back to Available Orders</span>
           <Icon name="arrow_forward" className="text-[18px]" />
         </button>
       </div>

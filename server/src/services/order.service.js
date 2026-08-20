@@ -14,6 +14,8 @@ import { deleteCached, deleteCachedPattern, getCachedJson, setCachedJson } from 
 import { memoryStore } from './memory-store.js'
 import geocodeAddress from '../utils/geocode.js'
 import { createTrackingSession } from './tracking.service.js'
+import { getIO, getWarehouseLocation } from '../config/socket.js'
+import * as dpModel from '../models/delivery-partner.model.js'
 
 const orderCacheKey = (userId, limit, offset) =>
   `customer:${userId}:orders:${limit}:${offset}`
@@ -470,6 +472,62 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
     )
   }
 
+  // ── ready_for_pickup: broadcast to all delivery partners ────────────
+  if (nextStatus === 'ready_for_pickup') {
+    const io = getIO()
+    if (io) {
+      const warehouse = getWarehouseLocation()
+      const wLat = warehouse?.lat ?? 30.7333
+      const wLng = warehouse?.lng ?? 76.7794
+      const sLat = Number(order.shippingAddress?.lat ?? order.shippingLat)
+      const sLng = Number(order.shippingAddress?.lng ?? order.shippingLng)
+
+      let distanceStr = '2.8 km'
+      let etaStr = '12 min'
+      if (Number.isFinite(sLat) && Number.isFinite(sLng)) {
+        const R = 6371 // km
+        const dLat = (sLat - wLat) * (Math.PI / 180)
+        const dLon = (sLng - wLng) * (Math.PI / 180)
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(wLat * (Math.PI / 180)) * Math.cos(sLat * (Math.PI / 180)) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        const roadKm = Math.max(0.5, R * c * 1.3)
+        distanceStr = roadKm < 1 ? `${Math.round(roadKm * 1000)} m` : `${roadKm.toFixed(1)} km`
+        const mins = Math.max(5, Math.round(roadKm * 2.2 + 3))
+        etaStr = `${mins} min`
+      }
+
+      io.to('delivery:pool').emit('order:ready_for_pickup', {
+        orderId: orderPublicId,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        pickupAddress: warehouse?.address || 'KICKS Main Hub',
+        pickupLat: wLat,
+        pickupLng: wLng,
+        dropoffAddress: [
+          order.shippingAddress?.city,
+          order.shippingAddress?.state,
+        ].filter(Boolean).join(', ') || 'Customer Location',
+        // Full shipping address for map routing
+        shippingAddress: {
+          lat: Number.isFinite(sLat) ? sLat : null,
+          lng: Number.isFinite(sLng) ? sLng : null,
+          city: order.shippingAddress?.city ?? null,
+          state: order.shippingAddress?.state ?? null,
+          line1: order.shippingAddress?.line1 ?? null,
+        },
+        itemCount: order.itemCount ?? 1,
+        total: order.total,
+        payout: Number((Number(order.total || 0) * 0.08).toFixed(2)) || 10,
+        distance: distanceStr,
+        eta: etaStr,
+        status: 'ready_for_pickup',
+      })
+    }
+  }
+
   if (nextStatus === 'shipped') {
     if (!extra.trackingNumber) {
       extra.trackingNumber = `KICK-${(order.orderNumber || order.id || 'ORD').toString().replace('#', '')}-${Date.now()}`
@@ -491,6 +549,78 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
       await createTrackingSession({ ...order, ...extra }, coords)
     } catch (err) {
       logger.warn({ err: err.message, orderPublicId }, 'Failed to create tracking session')
+    }
+  }
+
+  if (nextStatus === 'assigned' && extra.deliveryPartnerId) {
+    // already handled atomically in acceptOrderByPartner — nothing extra needed here
+  }
+
+  if (nextStatus === 'shipping') {
+    // Partner picked up. Create/resume tracking session if not already active.
+    if (!extra.trackingNumber) {
+      extra.trackingNumber = `KICK-${(order.orderNumber || order.id || 'ORD').toString().replace('#', '')}-${Date.now()}`
+    }
+    try {
+      let coords = null
+      if (order.shippingLat != null && order.shippingLng != null) {
+        coords = { lat: Number(order.shippingLat), lng: Number(order.shippingLng) }
+      } else {
+        coords = await geocodeAddress(order.shippingAddress)
+      }
+      await createTrackingSession({ ...order, ...extra }, coords)
+    } catch (err) {
+      logger.warn({ err: err.message, orderPublicId }, 'Failed to create tracking session on pickup')
+    }
+
+    const io = getIO()
+    if (io) {
+      // Notify admin
+      io.to('admin_room').emit('order:shipping', {
+        orderId: orderPublicId,
+        trackingNumber: extra.trackingNumber,
+      })
+      // Notify customer
+      if (order.customerId) {
+        io.to(`user:${order.customerId}`).emit('order:shipping', {
+          orderId: orderPublicId,
+          trackingNumber: extra.trackingNumber,
+        })
+      }
+    }
+  }
+
+  if (nextStatus === 'delivered') {
+    if (order.trackingNumber) {
+      try {
+        await import('./tracking.service.js').then(t => t.completeSession(order.trackingNumber))
+      } catch (err) {
+        logger.warn({ err: err.message }, 'Failed to complete tracking session on delivery')
+      }
+    }
+    const io = getIO()
+    if (io) {
+      io.to('admin_room').emit('order:delivered', { orderId: orderPublicId })
+      if (order.customerId) {
+        io.to(`user:${order.customerId}`).emit('order:delivered', { orderId: orderPublicId })
+      }
+    }
+  }
+
+  // ── Global real-time status broadcast to admin and order watchers ───────────
+  const io = getIO()
+  if (io) {
+    const statusPayload = {
+      orderId: orderPublicId,
+      status: nextStatus,
+      trackingNumber: extra.trackingNumber || order.trackingNumber,
+      partnerName: extra.courier || order.courier,
+      at: new Date().toISOString(),
+    }
+    io.to('admin_room').emit('order:status_changed', statusPayload)
+    io.to(`order:${orderPublicId}`).emit('order:status_changed', statusPayload)
+    if (order.customerId) {
+      io.to(`user:${order.customerId}`).emit('order:status_changed', statusPayload)
     }
   }
 

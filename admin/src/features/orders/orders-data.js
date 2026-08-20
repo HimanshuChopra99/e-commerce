@@ -1,6 +1,8 @@
 import {
   Clock,
   PackageCheck,
+  PackageSearch,
+  UserCheck,
   Truck,
   CircleCheckBig,
   CircleX,
@@ -11,6 +13,7 @@ import {
   Banknote,
   Landmark,
 } from 'lucide-react'
+
 export const orderStatuses = [
   {
     label: 'Pending',
@@ -23,8 +26,18 @@ export const orderStatuses = [
     icon: PackageCheck,
   },
   {
-    label: 'Shipped',
-    value: 'shipped',
+    label: 'Ready for Pickup',
+    value: 'ready_for_pickup',
+    icon: PackageSearch,
+  },
+  {
+    label: 'Assigned',
+    value: 'assigned',
+    icon: UserCheck,
+  },
+  {
+    label: 'Shipping',
+    value: 'shipping',
     icon: Truck,
   },
   {
@@ -43,6 +56,7 @@ export const orderStatuses = [
     icon: Undo2,
   },
 ]
+
 export const orderStatusStyles = new Map([
   [
     'pending',
@@ -52,6 +66,9 @@ export const orderStatusStyles = new Map([
     'processing',
     'bg-sky-100/50 text-sky-900 dark:text-sky-200 border-sky-300/60',
   ],
+  ['ready_for_pickup', 'bg-orange-100/50 text-orange-900 dark:text-orange-200 border-orange-300/60'],
+  ['assigned',         'bg-blue-100/50 text-blue-900 dark:text-blue-200 border-blue-300/60'],
+  ['shipping',         'bg-violet-100/50 text-violet-900 dark:text-violet-200 border-violet-300/60'],
   [
     'shipped',
     'bg-violet-100/50 text-violet-900 dark:text-violet-200 border-violet-300/60',
@@ -66,9 +83,11 @@ export const orderStatusStyles = new Map([
   ],
   ['returned', 'bg-neutral-300/40 border-neutral-400/50'],
 ])
+
 export const orderStatusLabels = new Map(
   orderStatuses.map((s) => [s.value, s.label])
 )
+
 export const paymentStatuses = [
   {
     label: 'Paid',
@@ -87,6 +106,7 @@ export const paymentStatuses = [
     value: 'refunded',
   },
 ]
+
 export const paymentStatusStyles = new Map([
   [
     'paid',
@@ -102,6 +122,7 @@ export const paymentStatusStyles = new Map([
   ],
   ['refunded', 'bg-neutral-300/40 border-neutral-400/50'],
 ])
+
 export const paymentMethods = [
   {
     label: 'Card',
@@ -129,10 +150,14 @@ export const paymentMethods = [
     icon: Landmark,
   },
 ]
+
 export const paymentMethodLabels = new Map(
   paymentMethods.map((p) => [p.value, p.label])
 )
+
 export const couriers = ['BlueDart', 'Delhivery', 'FedEx', 'DHL', 'DTDC']
 
 /** Steps shown in the order timeline, in fulfilment order. */
-export const fulfilmentSteps = ['pending', 'processing', 'shipped', 'delivered']
+export const fulfilmentSteps = [
+  'pending', 'processing', 'ready_for_pickup', 'assigned', 'shipping', 'delivered'
+]

@@ -41,6 +41,7 @@ export function mapOrder(row) {
     shippingLng: row.shipping_lng != null ? Number(row.shipping_lng) : null,
     courier: row.courier,
     trackingNumber: row.tracking_number,
+    deliveryPartnerId: row.delivery_partner_id ?? null,
     customerNote: row.customer_note,
     adminNote: row.admin_note,
     placedAt: row.placed_at,
@@ -400,7 +401,9 @@ export async function setPaymentIntent(orderInternalId, intentId, conn = pool) {
 }
 
 const STATUS_TIMESTAMP = {
-  shipped: 'shipped_at',
+  ready_for_pickup: 'updated_at',
+  assigned: 'updated_at',
+  shipping: 'shipped_at',
   delivered: 'delivered_at',
   cancelled: 'cancelled_at',
 }

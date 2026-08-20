@@ -503,6 +503,19 @@ export async function seedDatabase() {
     logger.info(`Admin created: ${ADMIN_EMAIL}`)
   }
 
+  // 1b. Ensure Delivery Partner User
+  const DP_EMAIL = 'partner@kick.com'
+  const [dpCheck] = await pool.query('SELECT id FROM delivery_partners WHERE email = ?', [DP_EMAIL])
+  if (!dpCheck.length) {
+    const hash = await bcrypt.hash('Password123!', env.bcryptRounds)
+    await pool.query(
+      `INSERT INTO delivery_partners (public_id, first_name, last_name, email, password_hash, phone, vehicle_type, is_online, status)
+       VALUES (?, 'John', 'Rider', ?, ?, '+1 555-0999', 'bike', 0, 'active')`,
+      [publicId(), DP_EMAIL, hash]
+    )
+    logger.info(`Delivery Partner created: ${DP_EMAIL}`)
+  }
+
   // 2. Ensure 25+ Customer Users
   const customerNames = [
     ['Priya', 'Sharma'], ['Rahul', 'Verma'], ['Alex', 'Johnson'], ['Sarah', 'Smith'],
