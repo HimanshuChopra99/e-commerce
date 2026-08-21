@@ -17,7 +17,7 @@ const schema = z.object({
   // Comma-separated list of origins allowed to call the API with cookies.
   CORS_ORIGINS: z
     .string()
-    .default('http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://localhost:5174'),
+    .default('http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175'),
 
   DB_HOST: z.string().default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().default(3306),

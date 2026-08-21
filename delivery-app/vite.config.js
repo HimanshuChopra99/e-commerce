@@ -7,5 +7,20 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5175,
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
 })

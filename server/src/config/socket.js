@@ -8,6 +8,12 @@ import { haversineMeters } from '../controllers/tracking.controller.js'
 
 let io
 
+// Grace-period timers: partnerPublicId → NodeJS Timeout
+// We wait a short window before marking a partner offline on disconnect
+// so that a page-refresh / brief network hiccup doesn't flip their status.
+const offlineTimers = new Map()
+const OFFLINE_GRACE_MS = 8000 // 8 seconds
+
 // Current warehouse / hub location — updated dynamically from admin's location or default
 let currentWarehouseLocation = {
   lat: 30.7333,
@@ -76,20 +82,66 @@ export function initSocket(httpServer) {
 
     // ── Delivery Partner Pool ─────────────────────────────────────────────
 
-    // Partner goes online: joins the order broadcast room
-    socket.on('delivery:go_online', (data) => {
+    // Partner goes online: joins the order broadcast room + persists to DB
+    socket.on('delivery:go_online', async (data) => {
       const partnerPublicId = data?.partnerPublicId
       if (!partnerPublicId) return
+
+      // Cancel any pending offline timer for this partner (they reconnected)
+      if (offlineTimers.has(partnerPublicId)) {
+        clearTimeout(offlineTimers.get(partnerPublicId))
+        offlineTimers.delete(partnerPublicId)
+        logger.info({ partnerPublicId }, '[Socket] cancelled pending offline timer — partner reconnected')
+      }
+
       socket.join('delivery:pool')
       socket.join(`delivery:partner:${partnerPublicId}`)
+      socket.data.partnerPublicId = partnerPublicId
+
+      // Persist is_online so the admin dashboard reflects it (real data)
+      try {
+        const { findByPublicId, setOnlineStatus } = await import('../models/delivery-partner.model.js')
+        const partner = await findByPublicId(partnerPublicId)
+        if (partner) {
+          const updated = await setOnlineStatus(partner.internalId, true)
+          io.to('admin_room').emit('delivery:partner_online_status', {
+            partnerPublicId: updated.publicId,
+            isOnline: true,
+            at: new Date().toISOString(),
+          })
+        }
+      } catch (err) {
+        logger.warn({ err: err.message, partnerPublicId }, '[Socket] failed to persist online status')
+      }
       logger.info({ socketId: socket.id, partnerPublicId }, '[Socket] delivery partner online')
     })
 
     // Partner goes offline
-    socket.on('delivery:go_offline', (data) => {
+    socket.on('delivery:go_offline', async (data) => {
       const partnerPublicId = data?.partnerPublicId
       socket.leave('delivery:pool')
       if (partnerPublicId) socket.leave(`delivery:partner:${partnerPublicId}`)
+
+      // Clear any pending grace-period timer — this is an explicit offline request
+      if (partnerPublicId && offlineTimers.has(partnerPublicId)) {
+        clearTimeout(offlineTimers.get(partnerPublicId))
+        offlineTimers.delete(partnerPublicId)
+      }
+
+      try {
+        const { findByPublicId, setOnlineStatus } = await import('../models/delivery-partner.model.js')
+        const partner = await findByPublicId(partnerPublicId)
+        if (partner) {
+          const updated = await setOnlineStatus(partner.internalId, false)
+          io.to('admin_room').emit('delivery:partner_online_status', {
+            partnerPublicId: updated.publicId,
+            isOnline: false,
+            at: new Date().toISOString(),
+          })
+        }
+      } catch (err) {
+        logger.warn({ err: err.message, partnerPublicId }, '[Socket] failed to persist offline status')
+      }
       logger.info({ socketId: socket.id, partnerPublicId }, '[Socket] delivery partner offline')
     })
 
@@ -138,7 +190,7 @@ export function initSocket(httpServer) {
     })
 
     // ── Phase 1 GPS: partner broadcasts location before pickup (no tracking# yet) ──
-    socket.on('delivery:partner_location', (data) => {
+    socket.on('delivery:partner_location', async (data) => {
       const { orderId, lat, lng, phase } = data || {}
       if (!lat || !lng) return
 
@@ -150,6 +202,18 @@ export function initSocket(httpServer) {
       // Also broadcast to per-order room (if admin has subscribed to it)
       if (orderId) {
         io.to(`order:${orderId}`).emit('delivery:partner_location', payload)
+      }
+
+      // Persist latest lat/lng to DB so admin detail page always has current coords
+      const partnerPublicId = socket.data?.partnerPublicId
+      if (partnerPublicId) {
+        try {
+          const { findByPublicId, updateLocation } = await import('../models/delivery-partner.model.js')
+          const partner = await findByPublicId(partnerPublicId)
+          if (partner) await updateLocation(partner.internalId, lat, lng)
+        } catch (err) {
+          logger.warn({ err: err.message, partnerPublicId }, '[Socket] failed to persist phase-1 location')
+        }
       }
 
       logger.debug({ socketId: socket.id, orderId, lat, lng, phase }, '[Socket] Phase-1 partner location')
@@ -220,6 +284,18 @@ export function initSocket(httpServer) {
       }
 
       console.log('Location received:', longitude, latitude)
+
+      // Persist to DB so admin can always query partner's latest location
+      const partnerPublicId = socket.data?.partnerPublicId
+      if (partnerPublicId) {
+        try {
+          const { findByPublicId, updateLocation } = await import('../models/delivery-partner.model.js')
+          const partner = await findByPublicId(partnerPublicId)
+          if (partner) await updateLocation(partner.internalId, latitude, longitude)
+        } catch (err) {
+          logger.warn({ err: err.message, partnerPublicId }, '[Socket] failed to persist send-location to DB')
+        }
+      }
 
       const trackingNumbers = Array.isArray(data.trackingNumbers)
         ? data.trackingNumbers.filter(Boolean)
@@ -343,6 +419,34 @@ export function initSocket(httpServer) {
     })
 
     socket.on('disconnect', (reason) => {
+      // If a delivery partner was online and drops the connection, mark them offline
+      // — but only after a grace period so that a page-refresh / brief hiccup
+      // doesn't permanently flip their status before they reconnect.
+      const partnerPublicId = socket.data?.partnerPublicId
+      if (partnerPublicId) {
+        // Don't double-schedule if a timer is already running for this partner
+        if (!offlineTimers.has(partnerPublicId)) {
+          const timer = setTimeout(async () => {
+            offlineTimers.delete(partnerPublicId)
+            try {
+              const { findByPublicId, setOnlineStatus } = await import('../models/delivery-partner.model.js')
+              const partner = await findByPublicId(partnerPublicId)
+              if (partner) {
+                const updated = await setOnlineStatus(partner.internalId, false)
+                io.to('admin_room').emit('delivery:partner_online_status', {
+                  partnerPublicId: updated.publicId,
+                  isOnline: false,
+                  at: new Date().toISOString(),
+                })
+              }
+            } catch (err) {
+              logger.warn({ err: err.message, partnerPublicId }, '[Socket] failed to persist offline on disconnect')
+            }
+            logger.info({ partnerPublicId }, '[Socket] delivery partner marked offline after grace period')
+          }, OFFLINE_GRACE_MS)
+          offlineTimers.set(partnerPublicId, timer)
+        }
+      }
       logger.info({ socketId: socket.id, userId, reason }, '[Socket] client disconnected')
     })
   })

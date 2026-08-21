@@ -5,6 +5,7 @@ import adminProductsReducer from './adminProductsSlice'
 import adminOrdersReducer from './adminOrdersSlice'
 import adminCustomersReducer from './adminCustomersSlice'
 import adminCategoriesReducer from './adminCategoriesSlice'
+import adminDeliveryPartnersReducer from './adminDeliveryPartnersSlice'
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     adminOrders: adminOrdersReducer,
     adminCustomers: adminCustomersReducer,
     adminCategories: adminCategoriesReducer,
+    adminDeliveryPartners: adminDeliveryPartnersReducer,
   },
 })
 

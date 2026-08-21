@@ -10,6 +10,7 @@ router.post('/login', controller.login)
 
 // Protected
 router.get('/me', authenticateDeliveryPartner, requireDeliveryPartner, controller.me)
+router.patch('/me/online', authenticateDeliveryPartner, requireDeliveryPartner, controller.setOnline)
 router.get('/orders/available', authenticateDeliveryPartner, requireDeliveryPartner, controller.getAvailableOrders)
 router.post('/orders/:orderId/accept', authenticateDeliveryPartner, requireDeliveryPartner, controller.acceptOrder)
 router.post('/orders/:orderId/pickup', authenticateDeliveryPartner, requireDeliveryPartner, controller.markPickedUp)

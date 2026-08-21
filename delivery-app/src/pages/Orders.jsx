@@ -9,7 +9,7 @@ import {
   acceptOrderSuccess,
   orderTakenAway,
 } from '../store/slices/orderSlice'
-import { getSocket } from '../lib/socket'
+import { setOnline } from '../store/slices/appSlice'
 import { api } from '../lib/api'
 
 export default function Orders() {
@@ -17,6 +17,7 @@ export default function Orders() {
   const navigate = useNavigate()
   const token    = useSelector((s) => s.app.token)
   const partner  = useSelector((s) => s.app.partner)
+  const online   = useSelector((s) => s.app.online)
   const orders   = useSelector(selectAvailableOrders)
   const [loading, setLoading] = useState(false)
 
@@ -36,12 +37,8 @@ export default function Orders() {
     }
   }, [token, dispatch])
 
-  // On mount: ensure delivery partner is joined to pool & fetch latest orders
+  // On mount: fetch latest available orders (server only returns them when online)
   useEffect(() => {
-    const socket = getSocket()
-    if (partner?.publicId) {
-      socket.emit('delivery:go_online', { partnerPublicId: partner.publicId })
-    }
     fetchOrders()
   }, [partner, fetchOrders])
 
@@ -50,11 +47,8 @@ export default function Orders() {
       const order = await api.post(`/delivery-partner/orders/${orderId}/accept`, {}, token)
       dispatch(acceptOrderSuccess(order))
 
-      // Leave pool during active delivery
-      const socket = getSocket()
-      if (partner?.publicId) {
-        socket.emit('delivery:go_offline', { partnerPublicId: partner.publicId })
-      }
+      // Leave the pool during active delivery (also persists offline in DB).
+      dispatch(setOnline(false))
 
       navigate('/tracking')
     } catch (err) {
@@ -90,6 +84,15 @@ export default function Orders() {
       </header>
 
       <main className="flex-1 w-full max-w-md mx-auto pb-28 px-margin-mobile flex flex-col gap-md pt-sm relative z-10">
+        {/* Offline notice */}
+        {!online && (
+          <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-2xl p-md text-center">
+            <Icon name="wifi_off" className="text-2xl mx-auto mb-1" />
+            <p className="text-body-lg font-semibold">You're offline</p>
+            <p className="text-body-md">Go online on the Home screen to see available orders.</p>
+          </div>
+        )}
+
         {/* Orders list */}
         <div className="flex flex-col gap-sm">
           {!orders || orders.length === 0 ? (

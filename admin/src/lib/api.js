@@ -133,3 +133,13 @@ export const adminCustomersApi = {
   list: (params) => get('/admin/customers', params),
   getOne: (id) => get(`/admin/customers/${id}`),
 }
+
+export const adminDeliveryPartnersApi = {
+  list: (params) => get('/admin/delivery-partners', params),
+  getOne: (id) => get(`/admin/delivery-partners/${id}`),
+  listOrders: (id, params) => get(`/admin/delivery-partners/${id}/orders`, params),
+  create: (body) => post('/admin/delivery-partners', body),
+  update: (id, body) => patch(`/admin/delivery-partners/${id}`, body),
+  updateStatus: (id, status) => patch(`/admin/delivery-partners/${id}/status`, { status }),
+  remove: (id) => del(`/admin/delivery-partners/${id}`),
+}

@@ -22,6 +22,11 @@ export async function acceptOrder(orderPublicId, partnerPublicId) {
   const partner = await dpModel.findByPublicId(partnerPublicId)
   if (!partner) throw ApiError.notFound('Delivery partner not found.')
 
+  // Only online partners may accept orders.
+  if (!partner.isOnline) {
+    throw ApiError.forbidden('You must be online to accept orders.')
+  }
+
   // THE RACE CONDITION GUARD — atomic compare-and-swap
   const [result] = await pool.query(
     `UPDATE orders

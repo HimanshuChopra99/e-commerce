@@ -108,6 +108,44 @@ export const updateCustomerStatusSchema = z.object({
   status: z.enum(['active', 'blocked']),
 })
 
+/* --------------------------- Delivery partners --------------------------- */
+
+const VEHICLE_TYPES = ['bike', 'scooter', 'car']
+
+export const deliveryPartnerQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  q: z.string().trim().max(120).optional(),
+  status: z.enum(['active', 'blocked']).optional(),
+  vehicleType: z.enum(VEHICLE_TYPES).optional(),
+  sort: z
+    .enum(['created_desc', 'created_asc', 'name_asc'])
+    .default('created_desc'),
+})
+
+export const createDeliveryPartnerSchema = z.object({
+  firstName: z.string().trim().min(1, 'First name is required.').max(60),
+  lastName: z.string().trim().min(1, 'Last name is required.').max(60),
+  email: z.string().trim().toLowerCase().email('Enter a valid email address.').max(160),
+  password: z.string().min(8, 'Password must be at least 8 characters.').max(72),
+  phone: z.string().trim().max(24).optional().nullable(),
+  vehicleType: z.enum(VEHICLE_TYPES).default('bike'),
+})
+
+export const updateDeliveryPartnerSchema = z.object({
+  firstName: z.string().trim().min(1).max(60).optional(),
+  lastName: z.string().trim().min(1).max(60).optional(),
+  email: z.string().trim().toLowerCase().email('Enter a valid email address.').max(160).optional(),
+  phone: z.string().trim().max(24).nullable().optional(),
+  vehicleType: z.enum(VEHICLE_TYPES).optional(),
+  status: z.enum(['active', 'blocked']).optional(),
+  password: z.string().min(8, 'Password must be at least 8 characters.').max(72).optional(),
+})
+
+export const updateDeliveryPartnerStatusSchema = z.object({
+  status: z.enum(['active', 'blocked']),
+})
+
 /** Reusable :param validator. */
 export const idParamSchema = z.object({
   id: z.string().trim().min(1, 'Missing id.').max(64),

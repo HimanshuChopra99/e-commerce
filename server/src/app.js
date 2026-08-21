@@ -33,6 +33,7 @@ export function createApp() {
       origin(origin, callback) {
         // No Origin header = curl, server-to-server, mobile app.
         if (!origin) return callback(null, true)
+        if (!env.isProd) return callback(null, true)
         if (env.corsOrigins.includes(origin)) return callback(null, true)
         callback(new Error('NOT_ALLOWED_BY_CORS'))
       },

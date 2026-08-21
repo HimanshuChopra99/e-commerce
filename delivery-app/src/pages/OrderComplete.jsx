@@ -4,14 +4,12 @@ import { useSelector, useDispatch } from 'react-redux'
 import Icon from '../components/Icon'
 import { selectCompletedOrder } from '../store/slices/orderSlice'
 import { setOnline } from '../store/slices/appSlice'
-import { getSocket } from '../lib/socket'
 
 export default function OrderComplete() {
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useDispatch()
   const reduxCompletedOrder = useSelector(selectCompletedOrder)
-  const authPartner = useSelector((s) => s.app.partner)
 
   // Data recovery: Checks location state first, then Redux fallback, then localStorage
   const order = useMemo(() => {
@@ -41,19 +39,19 @@ export default function OrderComplete() {
       const amt = Number(order.total) * 0.08
       return `$${Math.max(8.5, amt).toFixed(2)}`
     }
-    return '$12.50'
+    return '—'
   }, [order])
 
   const totalValue = useMemo(() => {
     if (order?.total != null) return `$${Number(order.total).toFixed(2)}`
-    return '$120.00'
+    return '—'
   }, [order])
 
-  const duration = order?.duration || order?.eta || '12 min'
-  const distance = order?.distance || '2.8 km'
+  const duration = order?.duration || order?.eta || '—'
+  const distance = order?.distance || '—'
 
   const pickupLabel = order?.pickupAddress || order?.pickup?.label || 'KICKS Main Hub'
-  const pickupAddress = order?.pickupAddress || 'Warehouse Central Hub, Sector 17'
+  const pickupAddress = order?.pickupAddress || ''
 
   const dropoffLabel = customerName ? `${customerName}` : 'Customer Location'
   const dropoffAddress = [
@@ -239,12 +237,8 @@ export default function OrderComplete() {
       <div className="pt-3 anim-slide" style={{ animationDelay: '0.4s' }}>
         <button
           onClick={() => {
+            // Go back online — the socket hook persists it to the DB + joins the pool.
             dispatch(setOnline(true))
-            const socket = getSocket()
-            const partner = order?.deliveryPartner || order?.partner || authPartner
-            if (partner?.publicId) {
-              socket.emit('delivery:go_online', { partnerPublicId: partner.publicId })
-            }
             navigate('/orders')
           }}
           className="w-full h-12 bg-primary hover:bg-surface-tint active:scale-[0.98] text-on-primary font-bold text-label-lg rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"

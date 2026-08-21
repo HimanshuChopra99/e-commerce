@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/async-handler.js'
 import { ok, created } from '../utils/api-response.js'
+import { ApiError } from '../utils/api-error.js'
 import * as dpService from '../services/delivery-partner.service.js'
 import * as deliveryOrderService from '../services/delivery-order.service.js'
 import * as dpModel from '../models/delivery-partner.model.js'
@@ -17,9 +18,56 @@ export const login = asyncHandler(async (req, res) => {
   ok(res, result)
 })
 
+/**
+ * The currently authenticated partner, plus live delivery stats and
+ * their recent deliveries — everything the app needs on the Home,
+ * Earnings and Profile screens. Real DB data, no mock.
+ */
 export const me = asyncHandler(async (req, res) => {
   const partner = await dpModel.findByPublicId(req.deliveryPartner.publicId)
-  ok(res, partner)
+  if (!partner) throw ApiError.notFound('Delivery partner not found.')
+
+  const [stats, recent] = await Promise.all([
+    dpModel.getStats(partner.internalId),
+    dpModel.findOrders(partner.internalId, { limit: 10 }),
+  ])
+
+  ok(res, {
+    ...partner,
+    stats,
+    recentOrders: recent.items.map((o) => ({
+      id: o.id || o.publicId,
+      orderNumber: o.orderNumber || o.order_number,
+      status: o.status,
+      total: o.grandTotal ?? o.grand_total ?? o.total ?? 0,
+      payout: Number((Number(o.grandTotal ?? o.grand_total ?? o.total ?? 0) * 0.08).toFixed(2)) || 10,
+      placedAt: o.placedAt || o.placed_at,
+      customerName: o.customerName || o.customer?.name,
+      itemCount: o.itemCount ?? o.items?.length ?? 1,
+    })),
+  })
+})
+
+/**
+ * Toggle the partner's online/offline status. Persisted to the DB so the
+ * admin dashboard reflects it, and gating order visibility for this partner.
+ */
+export const setOnline = asyncHandler(async (req, res) => {
+  const isOnline = Boolean(req.body?.isOnline)
+  const updated = await dpModel.setOnlineStatus(req.deliveryPartner.internalId, isOnline)
+
+  // Broadcast live to the admin dashboard
+  const { getIO } = await import('../config/socket.js')
+  const io = getIO()
+  if (io) {
+    io.to('admin_room').emit('delivery:partner_online_status', {
+      partnerPublicId: updated.publicId,
+      isOnline: updated.isOnline,
+      at: new Date().toISOString(),
+    })
+  }
+
+  ok(res, updated)
 })
 
 function computeDistanceAndEta(lat1, lon1, lat2, lon2) {
@@ -41,6 +89,11 @@ function computeDistanceAndEta(lat1, lon1, lat2, lon2) {
 }
 
 export const getAvailableOrders = asyncHandler(async (req, res) => {
+  // Offline partners must not see orders.
+  if (!req.deliveryPartner.isOnline) {
+    return ok(res, [])
+  }
+
   const { items } = await orderModel.findAll({ status: 'ready_for_pickup', limit: 50 })
   const warehouse = getWarehouseLocation()
   const wLat = warehouse?.lat ?? 30.7333

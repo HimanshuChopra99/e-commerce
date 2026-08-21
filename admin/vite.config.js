@@ -15,14 +15,20 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    allowedHosts: [
-      'filtrate-chemicals-spiritual.ngrok-free.dev',
-    ],
+    // Allow any host in dev so the preview tunnel (e2b/ngrok) can reach Vite.
+    allowedHosts: true,
 
     proxy: {
       '/api': {
         target: 'http://localhost:4000',
         changeOrigin: true,
+        configure(proxy) {
+          // Drop the Origin header so the API treats dev-proxied requests as
+          // server-to-server (its CORS allowlist is for the real origins only).
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin')
+          })
+        },
       },
 
       '/uploads': {

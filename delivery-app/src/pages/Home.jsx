@@ -2,7 +2,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import Icon from '../components/Icon'
 import MapBackground from '../components/MapBackground'
 import { setOnline } from '../store/slices/appSlice'
-import { recentActivity, earningsBars } from '../data/mockData'
 
 function TopAppBar() {
   return (
@@ -25,6 +24,8 @@ function StatusToggle() {
   const online = useSelector((s) => s.app.online)
   const dispatch = useDispatch()
 
+  // Persistence (DB + socket room) is handled by useDeliverySocket,
+  // which reacts to the `online` value changing.
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-sm shadow-[0px_4px_20px_0px_rgba(0,0,0,0.04)] flex flex-row items-center justify-between border border-surface-container-highest">
       <div className="flex items-center space-x-sm ml-xs">
@@ -61,10 +62,17 @@ function StatusToggle() {
   )
 }
 
+function formatMoney(n) {
+  const v = Number(n) || 0
+  return `$${v.toFixed(2)}`
+}
+
 function StatsBento() {
+  const stats = useSelector((s) => s.app.stats) || {}
+
   return (
     <section className="grid grid-cols-2 gap-sm">
-      {/* Today's earnings with mini bar chart */}
+      {/* Today's earnings */}
       <div className="col-span-2 bg-surface-container-lowest rounded-2xl p-md shadow-[0px_4px_20px_0px_rgba(0,0,0,0.04)] flex flex-col justify-between border border-surface-container-highest relative overflow-hidden">
         <div className="flex flex-row items-center justify-between z-10 relative">
           <div className="flex items-center space-x-sm">
@@ -73,25 +81,10 @@ function StatsBento() {
             </div>
             <div>
               <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">Today's Earnings</p>
-              <p className="text-display-lg text-on-surface font-bold">$124.50</p>
+              <p className="text-display-lg text-on-surface font-bold">{formatMoney(stats.earningsToday)}</p>
             </div>
           </div>
           <Icon name="chevron_right" className="text-outline" />
-        </div>
-        <div className="flex items-end justify-between space-x-1 mt-md h-12 z-10 relative opacity-70">
-          {earningsBars.map((h, i) => (
-            <div
-              key={i}
-              className={`w-full rounded-t-sm ${
-                i === earningsBars.length - 2
-                  ? 'bg-primary h-full'
-                  : i < earningsBars.length - 2
-                  ? 'bg-primary/20'
-                  : 'bg-surface-container'
-              }`}
-              style={{ height: `${h}%` }}
-            ></div>
-          ))}
         </div>
       </div>
 
@@ -102,18 +95,18 @@ function StatsBento() {
         </div>
         <div>
           <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">Deliveries</p>
-          <p className="text-headline-lg-mobile text-on-surface font-bold">14</p>
+          <p className="text-headline-lg-mobile text-on-surface font-bold">{stats.deliveredCount ?? 0}</p>
         </div>
       </div>
 
-      {/* Hours online */}
+      {/* In transit */}
       <div className="bg-surface-container-lowest rounded-2xl p-md shadow-[0px_4px_20px_0px_rgba(0,0,0,0.04)] flex flex-col justify-between border border-surface-container-highest">
         <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-sm">
           <Icon name="schedule" fill />
         </div>
         <div>
-          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">Hours Online</p>
-          <p className="text-headline-lg-mobile text-on-surface font-bold">5.2</p>
+          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">In Transit</p>
+          <p className="text-headline-lg-mobile text-on-surface font-bold">{stats.inTransitCount ?? 0}</p>
         </div>
       </div>
     </section>
@@ -142,18 +135,28 @@ function MapPreview() {
 }
 
 function RecentActivity() {
+  const orders = useSelector((s) => s.app.recentOrders) || []
+
+  if (orders.length === 0) {
+    return (
+      <section>
+        <h3 className="text-headline-md text-on-surface mb-sm">Recent Activity</h3>
+        <div className="bg-surface-container-lowest rounded-xl p-lg text-center border border-surface-container-highest">
+          <p className="text-body-md text-on-surface-variant">No deliveries yet.</p>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section>
       <div className="flex justify-between items-end mb-sm">
         <h3 className="text-headline-md text-on-surface">Recent Activity</h3>
-        <a className="text-label-sm text-primary hover:text-primary/80 transition-colors" href="#!">
-          See All
-        </a>
       </div>
       <div className="space-y-xs">
-        {recentActivity.map((a) => (
+        {orders.slice(0, 6).map((a) => (
           <div
-            key={a.order}
+            key={a.id || a.orderNumber}
             className="bg-surface-container-lowest rounded-xl p-md shadow-sm border border-surface-container-highest flex justify-between items-center"
           >
             <div className="flex items-center space-x-sm">
@@ -161,16 +164,16 @@ function RecentActivity() {
                 <Icon name="check_circle" />
               </div>
               <div>
-                <p className="text-body-lg text-on-surface font-semibold">Order {a.order}</p>
-                <p className="text-body-md text-on-surface-variant text-sm">
-                  {a.time} • {a.miles}
+                <p className="text-body-lg text-on-surface font-semibold">Order {a.orderNumber}</p>
+                <p className="text-body-md text-on-surface-variant text-sm capitalize">
+                  {a.status}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-body-lg text-on-surface font-bold">{a.amount}</p>
+              <p className="text-body-lg text-on-surface font-bold">{formatMoney(a.payout)}</p>
               <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 tracking-wide uppercase mt-1">
-                {a.status}
+                {a.status === 'delivered' ? 'Delivered' : a.status}
               </span>
             </div>
           </div>
@@ -181,6 +184,9 @@ function RecentActivity() {
 }
 
 export default function Home() {
+  const partner = useSelector((s) => s.app.partner)
+  const firstName = partner?.firstName || 'Partner'
+
   return (
     <div className="min-h-screen bg-background text-on-background pb-28">
       <TopAppBar />
@@ -188,7 +194,7 @@ export default function Home() {
         {/* Welcome */}
         <section className="flex flex-col space-y-md">
           <div>
-            <h2 className="text-headline-lg-mobile text-on-surface">Good morning, Partner</h2>
+            <h2 className="text-headline-lg-mobile text-on-surface">Good morning, {firstName}</h2>
             <p className="text-body-md text-on-surface-variant">Ready to hit the road?</p>
           </div>
           <StatusToggle />

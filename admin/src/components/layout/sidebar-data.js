@@ -4,6 +4,7 @@ import {
   ShoppingCart,
   Users,
   LayoutGrid,
+  Bike,
 } from 'lucide-react'
 
 /**
@@ -21,6 +22,7 @@ export const navGroups = [
       { title: 'Orders', url: '/orders', icon: ShoppingCart },
       { title: 'Customers', url: '/customers', icon: Users },
       { title: 'Categories', url: '/categories', icon: LayoutGrid },
+      { title: 'Delivery Partners', url: '/delivery-partners', icon: Bike },
     ],
   },
 ]

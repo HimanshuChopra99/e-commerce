@@ -15,6 +15,8 @@ import { CustomersPage } from '@/features/customers/customers-page'
 import { CustomerDetailPage } from '@/features/customers/customer-detail-page'
 import { CategoriesPage } from '@/features/categories/categories-page'
 import { CategoryDetailPage } from '@/features/categories/category-detail-page'
+import { DeliveryPartnersPage } from '@/features/delivery-partners/delivery-partners-page'
+import { DeliveryPartnerDetailPage } from '@/features/delivery-partners/delivery-partner-detail-page'
 
 export const router = createBrowserRouter([
   {
@@ -44,6 +46,9 @@ export const router = createBrowserRouter([
 
           { path: 'categories', element: <CategoriesPage /> },
           { path: 'categories/:categoryId', element: <CategoryDetailPage /> },
+
+          { path: 'delivery-partners', element: <DeliveryPartnersPage /> },
+          { path: 'delivery-partners/:deliveryPartnerId', element: <DeliveryPartnerDetailPage /> },
 
           { path: '*', element: <NotFoundError /> },
         ],

@@ -25,8 +25,27 @@ export async function register({ firstName, lastName, email, password, phone, ve
   return { partner, accessToken }
 }
 
+/**
+ * Admin-facing create: registers a partner account without issuing a JWT.
+ * Hashes the password and enforces email uniqueness, mirroring `register`.
+ */
+export async function createPartner({ firstName, lastName, email, password, phone, vehicleType }) {
+  const normalEmail = normalizeEmail(email)
+  if (await dpModel.emailExists(normalEmail)) {
+    throw ApiError.conflict('A delivery partner with that email already exists.')
+  }
+  const passwordHash = await bcrypt.hash(password, env.bcryptRounds ?? 12)
+  return dpModel.create({
+    firstName,
+    lastName,
+    email: normalEmail,
+    passwordHash,
+    phone,
+    vehicleType,
+  })
+}
+
 export async function login({ email, password }) {
-  console.log("s fghwvduw")
   const normalEmail = normalizeEmail(email)
   const partner = await dpModel.findByEmail(normalEmail)
   if (!partner) throw ApiError.unauthorized('Invalid email or password.')

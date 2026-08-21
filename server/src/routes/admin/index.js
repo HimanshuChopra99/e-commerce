@@ -5,6 +5,7 @@ import productRoutes from './product.routes.js'
 import categoryRoutes from './category.routes.js'
 import orderRoutes from './order.routes.js'
 import customerRoutes from './customer.routes.js'
+import deliveryPartnerRoutes from './delivery-partner.routes.js'
 
 const router = Router()
 
@@ -24,5 +25,6 @@ router.use('/products', productRoutes)
 router.use('/categories', categoryRoutes)
 router.use('/orders', orderRoutes)
 router.use('/customers', customerRoutes)
+router.use('/delivery-partners', deliveryPartnerRoutes)
 
 export default router
