@@ -487,9 +487,32 @@ NODE_ENV=production npm start --prefix server
 
 ---
 
+## 🙌 Credits
+ 
+This project was built on the shoulders of excellent open-source work and design resources. Full credit to the original creators.
+ 
+### 🎨 Design
+ 
+| Part | Designer / Source | Link |
+|------|------------------|------|
+| **Customer storefront UI** | Figma Community — *KICKS Shoes Ecommerce Website & Admin MVP* | [View on Figma Community](https://www.figma.com/community/file/1214498651988846999/kicks-shoes-ecommerce-website-and-admin-mvp) |
+| **Admin dashboard UI** | satnaing — *shadcn-admin* | [github.com/satnaing/shadcn-admin](https://github.com/satnaing/shadcn-admin) |
+| **Delivery partner app UI Design** | designed & developed from scratch | [Himanshu Chopra](https://github.com/HimanshuChopra99) |
+ 
+### 💻 Development
+ 
+| Part | Developer |
+|------|-----------|
+| **Customer storefront** (`/client`) — full implementation | [Himanshu Chopra](https://github.com/HimanshuChopra99) |
+| **Backend API** (`/server`) — full implementation | [Himanshu Chopra](https://github.com/HimanshuChopra99) |
+| **Admin dashboard** (`/admin`) — Customized by | [Himanshu Chopra](https://github.com/HimanshuChopra99) |
+| **Delivery partner app** (`/delivery-app`) — full implementation | [Himanshu Chopra](https://github.com/HimanshuChopra99) |
+ 
+---
+
 ## 📄 License
 
-MIT — see individual `LICENSE` files inside `admin/` and `delivery-app/`.
+MIT — see individual `LICENSE` files inside `admin/`
 
 ---
 
