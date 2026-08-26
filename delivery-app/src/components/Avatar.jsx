@@ -5,7 +5,7 @@ export default function Avatar({ name = 'Partner', className = '' }) {
     .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0].toUpperCase())
-    .join('')
+    .join('');
 
   return (
     <div
@@ -13,5 +13,5 @@ export default function Avatar({ name = 'Partner', className = '' }) {
     >
       {initials}
     </div>
-  )
+  );
 }

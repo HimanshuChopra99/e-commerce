@@ -16,7 +16,10 @@ export default function MapBackground({ showRoute = true }) {
       <rect x="300" y="420" width="80" height="90" rx="8" fill="#dce8d8" />
       <rect x="40" y="430" width="70" height="60" rx="8" fill="#dde6e3" />
       {/* Water body */}
-      <path d="M250 40 Q280 90 250 150 Q230 200 260 250 L340 250 Q360 180 330 120 Q310 70 250 40 Z" fill="#dbe9f2" />
+      <path
+        d="M250 40 Q280 90 250 150 Q230 200 260 250 L340 250 Q360 180 330 120 Q310 70 250 40 Z"
+        fill="#dbe9f2"
+      />
 
       {/* Road network (thin white roads with subtle stroke) */}
       <g stroke="#ffffff" strokeWidth="7" strokeLinecap="round" fill="none">
@@ -32,7 +35,14 @@ export default function MapBackground({ showRoute = true }) {
 
       {/* Route line (purple) */}
       {showRoute && (
-        <g stroke="#6b38d4" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85">
+        <g
+          stroke="#6b38d4"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          opacity="0.85"
+        >
           <path d="M64 195 H120 V120 H280 V300 H64 V600" />
         </g>
       )}
@@ -45,5 +55,5 @@ export default function MapBackground({ showRoute = true }) {
         <circle cx="320" cy="420" r="3" />
       </g>
     </svg>
-  )
+  );
 }

@@ -1,23 +1,36 @@
-import { useState } from 'react'
-import PageHeader from '../components/PageHeader'
-import Icon from '../components/Icon'
+import { useState } from 'react';
+import PageHeader from '../components/PageHeader';
+import Icon from '../components/Icon';
 
 const initialMethods = [
-  { id: 1, type: 'card', brand: 'Visa', last4: '4242', expiry: '09/27', primary: true },
-  { id: 2, type: 'bank', bank: 'Chase Bank', account: '•••• 8841', primary: false },
-]
+  {
+    id: 1,
+    type: 'card',
+    brand: 'Visa',
+    last4: '4242',
+    expiry: '09/27',
+    primary: true,
+  },
+  {
+    id: 2,
+    type: 'bank',
+    bank: 'Chase Bank',
+    account: '•••• 8841',
+    primary: false,
+  },
+];
 
 export default function PaymentMethods() {
-  const [methods, setMethods] = useState(initialMethods)
-  const [adding, setAdding] = useState(false)
+  const [methods, setMethods] = useState(initialMethods);
+  const [adding, setAdding] = useState(false);
 
   const setPrimary = (id) => {
-    setMethods((m) => m.map((x) => ({ ...x, primary: x.id === id })))
-  }
+    setMethods((m) => m.map((x) => ({ ...x, primary: x.id === id })));
+  };
 
   const removeMethod = (id) => {
-    setMethods((m) => m.filter((x) => x.id !== id))
-  }
+    setMethods((m) => m.filter((x) => x.id !== id));
+  };
 
   const addCard = () => {
     const card = {
@@ -27,10 +40,10 @@ export default function PaymentMethods() {
       last4: '7788',
       expiry: '12/29',
       primary: methods.length === 0,
-    }
-    setMethods((m) => [...m, card])
-    setAdding(false)
-  }
+    };
+    setMethods((m) => [...m, card]);
+    setAdding(false);
+  };
 
   return (
     <div className="min-h-screen bg-background text-on-background font-body-md antialiased pb-12">
@@ -47,16 +60,24 @@ export default function PaymentMethods() {
               <div className="flex items-center gap-3">
                 <div
                   className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    m.type === 'card' ? 'bg-primary-fixed text-primary' : 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                    m.type === 'card'
+                      ? 'bg-primary-fixed text-primary'
+                      : 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
                   }`}
                 >
-                  <Icon name={m.type === 'card' ? 'credit_card' : 'account_balance'} fill className="text-[20px]" />
+                  <Icon
+                    name={m.type === 'card' ? 'credit_card' : 'account_balance'}
+                    fill
+                    className="text-[20px]"
+                  />
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-body-lg font-bold text-on-surface truncate">
-                      {m.type === 'card' ? `${m.brand} •••• ${m.last4}` : m.bank}
+                      {m.type === 'card'
+                        ? `${m.brand} •••• ${m.last4}`
+                        : m.bank}
                     </p>
                     {m.primary && (
                       <span className="text-[10px] font-bold text-primary bg-primary-fixed px-2 py-0.5 rounded-full shrink-0">
@@ -65,7 +86,9 @@ export default function PaymentMethods() {
                     )}
                   </div>
                   <p className="text-label-sm text-on-surface-variant">
-                    {m.type === 'card' ? `Expires ${m.expiry}` : `Account ${m.account}`}
+                    {m.type === 'card'
+                      ? `Expires ${m.expiry}`
+                      : `Account ${m.account}`}
                   </p>
                 </div>
 
@@ -94,9 +117,14 @@ export default function PaymentMethods() {
         {adding ? (
           <div className="bg-surface-container-lowest rounded-2xl p-4 border border-primary/20 flex flex-col gap-3 anim-success">
             <div>
-              <label className="text-label-sm text-on-surface-variant">Card number</label>
+              <label className="text-label-sm text-on-surface-variant">
+                Card number
+              </label>
               <div className="mt-1 flex items-center gap-2.5 bg-surface-container rounded-xl px-3.5 py-3 border border-surface-container-highest focus-within:ring-2 focus-within:ring-primary/40">
-                <Icon name="credit_card" className="text-[18px] text-on-surface-variant" />
+                <Icon
+                  name="credit_card"
+                  className="text-[18px] text-on-surface-variant"
+                />
                 <input
                   placeholder="1234 5678 9012 3456"
                   className="w-full bg-transparent text-body-md text-on-surface focus:outline-none placeholder:text-on-surface-variant/50"
@@ -128,5 +156,5 @@ export default function PaymentMethods() {
         )}
       </main>
     </div>
-  )
+  );
 }

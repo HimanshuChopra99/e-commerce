@@ -12,7 +12,7 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
-        ...globals.browser,   // fetch, localStorage, navigator, setTimeout, setInterval, clearInterval
+        ...globals.browser, // fetch, localStorage, navigator, setTimeout, setInterval, clearInterval
       },
       parserOptions: {
         ecmaFeatures: { jsx: true },
@@ -24,8 +24,14 @@ export default [
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+      'no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       'no-empty': ['warn', { allowEmptyCatch: true }],
     },
   },

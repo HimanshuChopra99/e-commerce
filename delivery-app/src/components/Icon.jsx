@@ -8,5 +8,5 @@ export default function Icon({ name, fill = false, className = '', style }) {
     >
       {name}
     </span>
-  )
+  );
 }

@@ -1,36 +1,41 @@
-import { useState } from 'react'
-import { useSelector } from 'react-redux'
-import PageHeader from '../components/PageHeader'
-import Icon from '../components/Icon'
-import Avatar from '../components/Avatar'
+import { useState } from 'react';
+import { useSelector } from 'react-redux';
+import PageHeader from '../components/PageHeader';
+import Icon from '../components/Icon';
+import Avatar from '../components/Avatar';
 
 const VEHICLES = [
   { value: 'bike', label: 'Bicycle', icon: 'pedal_bike', desc: 'Eco & Agile' },
-  { value: 'scooter', label: 'Scooter', icon: 'electric_scooter', desc: 'Fast City' },
+  {
+    value: 'scooter',
+    label: 'Scooter',
+    icon: 'electric_scooter',
+    desc: 'Fast City',
+  },
   { value: 'car', label: 'Car', icon: 'directions_car', desc: 'Large Load' },
-]
+];
 
 export default function PersonalDetails() {
-  const partner = useSelector((s) => s.app.partner) || {}
-  const statsData = useSelector((s) => s.app.stats) || {}
+  const partner = useSelector((s) => s.app.partner) || {};
+  const statsData = useSelector((s) => s.app.stats) || {};
 
   const fullName =
     partner.fullName ||
     `${partner.firstName || ''} ${partner.lastName || ''}`.trim() ||
-    'Delivery Partner'
+    'Delivery Partner';
 
-  const [editing, setEditing] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
     firstName: partner.firstName || '',
     lastName: partner.lastName || '',
     email: partner.email || '',
     phone: partner.phone || '',
     vehicleType: partner.vehicleType || 'bike',
-  })
+  });
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const resetForm = () => {
     setForm({
@@ -39,22 +44,22 @@ export default function PersonalDetails() {
       email: partner.email || '',
       phone: partner.phone || '',
       vehicleType: partner.vehicleType || 'bike',
-    })
-    setEditing(false)
-  }
+    });
+    setEditing(false);
+  };
 
   const handleSave = () => {
-    setEditing(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2600)
-  }
+    setEditing(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2600);
+  };
 
   const handleCopyId = () => {
-    const id = partner.publicId || partner.id || 'DP-8834'
-    navigator.clipboard?.writeText(id)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    const id = partner.publicId || partner.id || 'DP-8834';
+    navigator.clipboard?.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="min-h-screen bg-background text-on-background font-body-md antialiased pb-28 select-none">
@@ -93,7 +98,10 @@ export default function PersonalDetails() {
               />
               {/* Online Radar Status Badge */}
               <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-[3px] border-surface-container-lowest flex items-center justify-center shadow-xs">
-                <Icon name="check" className="text-[11px] text-white font-black" />
+                <Icon
+                  name="check"
+                  className="text-[11px] text-white font-black"
+                />
               </span>
             </div>
 
@@ -113,8 +121,15 @@ export default function PersonalDetails() {
               className="mt-1 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-surface-container-high/40 hover:bg-surface-container-high dark:bg-surface-variant/30 text-on-surface-variant text-[11px] font-mono font-medium transition-all active:scale-95"
             >
               <span>ID: {partner.publicId || partner.id || 'DP-8834'}</span>
-              <Icon name={copied ? 'done' : 'content_copy'} className={`text-[12px] ${copied ? 'text-emerald-600' : 'opacity-60'}`} />
-              {copied && <span className="text-emerald-600 font-sans font-semibold">Copied</span>}
+              <Icon
+                name={copied ? 'done' : 'content_copy'}
+                className={`text-[12px] ${copied ? 'text-emerald-600' : 'opacity-60'}`}
+              />
+              {copied && (
+                <span className="text-emerald-600 font-sans font-semibold">
+                  Copied
+                </span>
+              )}
             </button>
 
             {/* Badges Strip */}
@@ -229,19 +244,23 @@ export default function PersonalDetails() {
               </h3>
             </div>
             {!editing && (
-              <span className="text-[11px] text-on-surface-variant/80 font-medium">Locked</span>
+              <span className="text-[11px] text-on-surface-variant/80 font-medium">
+                Locked
+              </span>
             )}
           </div>
 
           <div className="grid grid-cols-3 gap-2.5">
             {VEHICLES.map((v) => {
-              const active = form.vehicleType === v.value
+              const active = form.vehicleType === v.value;
               return (
                 <button
                   key={v.value}
                   type="button"
                   disabled={!editing}
-                  onClick={() => setForm((f) => ({ ...f, vehicleType: v.value }))}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, vehicleType: v.value }))
+                  }
                   className={`relative flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3.5 px-2 border transition-all duration-200 ${
                     active
                       ? 'bg-primary/10 border-primary text-primary shadow-xs ring-1 ring-primary/20'
@@ -253,7 +272,9 @@ export default function PersonalDetails() {
                     className={`text-[22px] ${active ? 'text-primary' : 'text-on-surface-variant'}`}
                   />
                   <div className="flex flex-col items-center">
-                    <span className={`text-label-sm font-bold ${active ? 'text-primary' : 'text-on-surface'}`}>
+                    <span
+                      className={`text-label-sm font-bold ${active ? 'text-primary' : 'text-on-surface'}`}
+                    >
                       {v.label}
                     </span>
                     <span className="text-[10px] text-on-surface-variant/70 font-medium leading-none mt-0.5">
@@ -264,7 +285,7 @@ export default function PersonalDetails() {
                     <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-surface-container-lowest" />
                   )}
                 </button>
-              )
+              );
             })}
           </div>
         </section>
@@ -300,11 +321,19 @@ export default function PersonalDetails() {
         )}
       </main>
     </div>
-  )
+  );
 }
 
 /* Sub-component: Inset modern metadata / input field */
-function Field({ label, icon, value, editing, onChange, placeholder, type = 'text' }) {
+function Field({
+  label,
+  icon,
+  value,
+  editing,
+  onChange,
+  placeholder,
+  type = 'text',
+}) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider pl-1">
@@ -340,5 +369,5 @@ function Field({ label, icon, value, editing, onChange, placeholder, type = 'tex
         )}
       </div>
     </div>
-  )
+  );
 }

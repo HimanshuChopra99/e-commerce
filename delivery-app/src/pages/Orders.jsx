@@ -1,64 +1,68 @@
-import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import Icon from '../components/Icon'
-import OrderCard from '../components/OrderCard'
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import Icon from '../components/Icon';
+import OrderCard from '../components/OrderCard';
 import {
   selectAvailableOrders,
   setAvailableOrders,
   acceptOrderSuccess,
   orderTakenAway,
-} from '../store/slices/orderSlice'
-import { setOnline } from '../store/slices/appSlice'
-import { api } from '../lib/api'
+} from '../store/slices/orderSlice';
+import { setOnline } from '../store/slices/appSlice';
+import { api } from '../lib/api';
 
 export default function Orders() {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const token    = useSelector((s) => s.app.token)
-  const partner  = useSelector((s) => s.app.partner)
-  const online   = useSelector((s) => s.app.online)
-  const orders   = useSelector(selectAvailableOrders)
-  const [loading, setLoading] = useState(false)
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const token = useSelector((s) => s.app.token);
+  const partner = useSelector((s) => s.app.partner);
+  const online = useSelector((s) => s.app.online);
+  const orders = useSelector(selectAvailableOrders);
+  const [loading, setLoading] = useState(false);
 
   // Fetch all currently available (ready_for_pickup) orders from backend
   const fetchOrders = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
+    if (!token) return;
+    setLoading(true);
     try {
-      const data = await api.get('/delivery-partner/orders/available', token)
+      const data = await api.get('/delivery-partner/orders/available', token);
       if (Array.isArray(data)) {
-        dispatch(setAvailableOrders(data))
+        dispatch(setAvailableOrders(data));
       }
     } catch (err) {
-      console.warn('Failed to load available orders:', err)
+      console.warn('Failed to load available orders:', err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [token, dispatch])
+  }, [token, dispatch]);
 
   // On mount: fetch latest available orders (server only returns them when online)
   useEffect(() => {
-    fetchOrders() // eslint-disable-line react-hooks/set-state-in-effect
-  }, [partner, fetchOrders])
+    fetchOrders(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [partner, fetchOrders]);
 
   const handleAccept = async (orderId) => {
     try {
-      const order = await api.post(`/delivery-partner/orders/${orderId}/accept`, {}, token)
-      dispatch(acceptOrderSuccess(order))
+      const order = await api.post(
+        `/delivery-partner/orders/${orderId}/accept`,
+        {},
+        token
+      );
+      dispatch(acceptOrderSuccess(order));
 
       // Leave the pool during active delivery (also persists offline in DB).
-      dispatch(setOnline(false))
+      dispatch(setOnline(false));
 
-      navigate('/tracking')
+      navigate('/tracking');
     } catch (err) {
-      alert(err.message || 'Order could not be accepted')
+      alert(err.message || 'Order could not be accepted');
     }
-  }
+  };
 
   const handleReject = (orderId) => {
-    dispatch(orderTakenAway({ orderId }))
-  }
+    dispatch(orderTakenAway({ orderId }));
+  };
 
   return (
     <div className="min-h-screen bg-background text-on-background font-body-md flex flex-col antialiased">
@@ -89,7 +93,9 @@ export default function Orders() {
           <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-2xl p-md text-center">
             <Icon name="wifi_off" className="text-2xl mx-auto mb-1" />
             <p className="text-body-lg font-semibold">You're offline</p>
-            <p className="text-body-md">Go online on the Home screen to see available orders.</p>
+            <p className="text-body-md">
+              Go online on the Home screen to see available orders.
+            </p>
           </div>
         )}
 
@@ -97,9 +103,16 @@ export default function Orders() {
         <div className="flex flex-col gap-sm">
           {!orders || orders.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-2xl p-lg text-center border border-surface-container-highest">
-              <Icon name="inbox" className="text-outline text-3xl mx-auto mb-sm" />
-              <p className="text-body-lg text-on-surface font-semibold">No orders here</p>
-              <p className="text-body-md text-on-surface-variant">When you accept an order, it will show up here.</p>
+              <Icon
+                name="inbox"
+                className="text-outline text-3xl mx-auto mb-sm"
+              />
+              <p className="text-body-lg text-on-surface font-semibold">
+                No orders here
+              </p>
+              <p className="text-body-md text-on-surface-variant">
+                When you accept an order, it will show up here.
+              </p>
             </div>
           ) : (
             orders.map((order) => (
@@ -114,5 +127,5 @@ export default function Orders() {
         </div>
       </main>
     </div>
-  )
+  );
 }

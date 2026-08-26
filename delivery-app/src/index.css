@@ -34,11 +34,19 @@ body {
   word-wrap: normal;
   direction: ltr;
   -webkit-font-smoothing: antialiased;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
 }
 
 .icon-fill {
-  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
 }
 
 /* Hide scrollbar utility for tabs */
@@ -115,43 +123,97 @@ body {
 
 /* ===== Completion overlay animations ===== */
 @keyframes compFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
-.anim-comp-fade { animation: compFadeIn 0.35s ease-out forwards; }
+.anim-comp-fade {
+  animation: compFadeIn 0.35s ease-out forwards;
+}
 
 @keyframes compPop {
-  0% { transform: scale(0.3); opacity: 0; }
-  60% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
-.anim-comp-pop { animation: compPop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) forwards; }
+.anim-comp-pop {
+  animation: compPop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) forwards;
+}
 
 @keyframes compRing {
-  0% { transform: scale(0.5); opacity: 0.9; }
-  100% { transform: scale(2.6); opacity: 0; }
+  0% {
+    transform: scale(0.5);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
 }
-.anim-comp-ring { animation: compRing 0.9s ease-out forwards; }
-.anim-comp-ring-delay { animation: compRing 0.9s ease-out 0.15s forwards; }
+.anim-comp-ring {
+  animation: compRing 0.9s ease-out forwards;
+}
+.anim-comp-ring-delay {
+  animation: compRing 0.9s ease-out 0.15s forwards;
+}
 
 @keyframes compCheckDraw {
-  from { transform: scale(0); }
-  to { transform: scale(1); }
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
 }
-.anim-comp-check { animation: compCheckDraw 0.4s ease-out 0.2s backwards; }
+.anim-comp-check {
+  animation: compCheckDraw 0.4s ease-out 0.2s backwards;
+}
 
 @keyframes compBounceUp {
-  0% { transform: translateY(18px); opacity: 0; }
-  60% { transform: translateY(-4px); opacity: 1; }
-  100% { transform: translateY(0); opacity: 1; }
+  0% {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
-.anim-comp-up { animation: compBounceUp 0.5s ease-out forwards; }
-.anim-comp-up-delay1 { animation: compBounceUp 0.5s ease-out 0.25s backwards; }
-.anim-comp-up-delay2 { animation: compBounceUp 0.5s ease-out 0.4s backwards; }
+.anim-comp-up {
+  animation: compBounceUp 0.5s ease-out forwards;
+}
+.anim-comp-up-delay1 {
+  animation: compBounceUp 0.5s ease-out 0.25s backwards;
+}
+.anim-comp-up-delay2 {
+  animation: compBounceUp 0.5s ease-out 0.4s backwards;
+}
 
 @keyframes compParticle {
-  0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
 }
 .comp-particle {
   position: absolute;
@@ -161,28 +223,57 @@ body {
 
 /* Success screen staggered entrance */
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.anim-success { animation: fadeSlideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-success {
+  animation: fadeSlideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 
 /* Dialog entrance — fast, smooth pop + fade */
 @keyframes dialogPop {
-  0%   { opacity: 0; transform: scale(0.92) translateY(8px); }
-  60%  { opacity: 1; transform: scale(1.02) translateY(0); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
-.anim-dialog { animation: dialogPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.anim-dialog {
+  animation: dialogPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 /* Fast backdrop fade */
 @keyframes dialogBackdrop {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
-.anim-dialog-backdrop { animation: dialogBackdrop 0.18s ease-out both; }
+.anim-dialog-backdrop {
+  animation: dialogBackdrop 0.18s ease-out both;
+}
 
 /* Gradient shimmer for the earnings highlight */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }

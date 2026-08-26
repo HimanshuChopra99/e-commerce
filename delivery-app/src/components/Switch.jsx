@@ -22,5 +22,5 @@ export default function Switch({ checked, onChange, disabled = false }) {
         style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }}
       />
     </button>
-  )
+  );
 }

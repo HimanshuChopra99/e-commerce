@@ -1,7 +1,7 @@
-import { useDispatch, useSelector } from 'react-redux'
-import Icon from '../components/Icon'
-import MapBackground from '../components/MapBackground'
-import { setOnline } from '../store/slices/appSlice'
+import { useDispatch, useSelector } from 'react-redux';
+import Icon from '../components/Icon';
+import MapBackground from '../components/MapBackground';
+import { setOnline } from '../store/slices/appSlice';
 
 function TopAppBar() {
   return (
@@ -10,19 +10,21 @@ function TopAppBar() {
         <button className="text-on-surface dark:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full p-2 transition-all duration-200 active:opacity-70 flex items-center justify-center">
           <Icon name="menu" />
         </button>
-        <h1 className="text-headline-md font-bold text-on-surface dark:text-on-background">Live Tracking</h1>
+        <h1 className="text-headline-md font-bold text-on-surface dark:text-on-background">
+          Live Tracking
+        </h1>
         <button className="text-on-surface dark:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full p-2 transition-all duration-200 active:opacity-70 flex items-center justify-center relative">
           <Icon name="notifications" />
           <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
         </button>
       </div>
     </header>
-  )
+  );
 }
 
 function StatusToggle() {
-  const online = useSelector((s) => s.app.online)
-  const dispatch = useDispatch()
+  const online = useSelector((s) => s.app.online);
+  const dispatch = useDispatch();
 
   // Persistence (DB + socket room) is handled by useDeliverySocket,
   // which reacts to the `online` value changing.
@@ -31,7 +33,9 @@ function StatusToggle() {
       <div className="flex items-center space-x-sm ml-xs">
         <div
           className={`w-3 h-3 rounded-full transition-colors duration-300 ${
-            online ? 'bg-primary shadow-[0_0_8px_rgba(139,92,246,0.6)]' : 'bg-surface-container-highest'
+            online
+              ? 'bg-primary shadow-[0_0_8px_rgba(139,92,246,0.6)]'
+              : 'bg-surface-container-highest'
           }`}
         ></div>
         <span
@@ -59,16 +63,16 @@ function StatusToggle() {
         ></span>
       </button>
     </div>
-  )
+  );
 }
 
 function formatMoney(n) {
-  const v = Number(n) || 0
-  return `$${v.toFixed(2)}`
+  const v = Number(n) || 0;
+  return `$${v.toFixed(2)}`;
 }
 
 function StatsBento() {
-  const stats = useSelector((s) => s.app.stats) || {}
+  const stats = useSelector((s) => s.app.stats) || {};
 
   return (
     <section className="grid grid-cols-2 gap-sm">
@@ -80,8 +84,12 @@ function StatsBento() {
               <Icon name="account_balance_wallet" fill />
             </div>
             <div>
-              <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">Today's Earnings</p>
-              <p className="text-display-lg text-on-surface font-bold">{formatMoney(stats.earningsToday)}</p>
+              <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">
+                Today's Earnings
+              </p>
+              <p className="text-display-lg text-on-surface font-bold">
+                {formatMoney(stats.earningsToday)}
+              </p>
             </div>
           </div>
           <Icon name="chevron_right" className="text-outline" />
@@ -94,8 +102,12 @@ function StatsBento() {
           <Icon name="local_shipping" fill />
         </div>
         <div>
-          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">Deliveries</p>
-          <p className="text-headline-lg-mobile text-on-surface font-bold">{stats.deliveredCount ?? 0}</p>
+          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">
+            Deliveries
+          </p>
+          <p className="text-headline-lg-mobile text-on-surface font-bold">
+            {stats.deliveredCount ?? 0}
+          </p>
         </div>
       </div>
 
@@ -105,12 +117,16 @@ function StatsBento() {
           <Icon name="schedule" fill />
         </div>
         <div>
-          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">In Transit</p>
-          <p className="text-headline-lg-mobile text-on-surface font-bold">{stats.inTransitCount ?? 0}</p>
+          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider">
+            In Transit
+          </p>
+          <p className="text-headline-lg-mobile text-on-surface font-bold">
+            {stats.inTransitCount ?? 0}
+          </p>
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 function MapPreview() {
@@ -128,24 +144,30 @@ function MapPreview() {
       </div>
       <div className="absolute bottom-md left-md right-md bg-surface-container-lowest/95 backdrop-blur-md p-sm rounded-xl flex items-center space-x-sm shadow-sm border border-surface-container-highest">
         <Icon name="my_location" className="text-primary" />
-        <p className="text-body-md text-on-surface truncate font-semibold">Downtown Core, Zone A</p>
+        <p className="text-body-md text-on-surface truncate font-semibold">
+          Downtown Core, Zone A
+        </p>
       </div>
     </section>
-  )
+  );
 }
 
 function RecentActivity() {
-  const orders = useSelector((s) => s.app.recentOrders) || []
+  const orders = useSelector((s) => s.app.recentOrders) || [];
 
   if (orders.length === 0) {
     return (
       <section>
-        <h3 className="text-headline-md text-on-surface mb-sm">Recent Activity</h3>
+        <h3 className="text-headline-md text-on-surface mb-sm">
+          Recent Activity
+        </h3>
         <div className="bg-surface-container-lowest rounded-xl p-lg text-center border border-surface-container-highest">
-          <p className="text-body-md text-on-surface-variant">No deliveries yet.</p>
+          <p className="text-body-md text-on-surface-variant">
+            No deliveries yet.
+          </p>
         </div>
       </section>
-    )
+    );
   }
 
   return (
@@ -164,14 +186,18 @@ function RecentActivity() {
                 <Icon name="check_circle" />
               </div>
               <div>
-                <p className="text-body-lg text-on-surface font-semibold">Order {a.orderNumber}</p>
+                <p className="text-body-lg text-on-surface font-semibold">
+                  Order {a.orderNumber}
+                </p>
                 <p className="text-body-md text-on-surface-variant text-sm capitalize">
                   {a.status}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-body-lg text-on-surface font-bold">{formatMoney(a.payout)}</p>
+              <p className="text-body-lg text-on-surface font-bold">
+                {formatMoney(a.payout)}
+              </p>
               <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 tracking-wide uppercase mt-1">
                 {a.status === 'delivered' ? 'Delivered' : a.status}
               </span>
@@ -180,12 +206,12 @@ function RecentActivity() {
         ))}
       </div>
     </section>
-  )
+  );
 }
 
 export default function Home() {
-  const partner = useSelector((s) => s.app.partner)
-  const firstName = partner?.firstName || 'Partner'
+  const partner = useSelector((s) => s.app.partner);
+  const firstName = partner?.firstName || 'Partner';
 
   return (
     <div className="min-h-screen bg-background text-on-background pb-28">
@@ -194,8 +220,12 @@ export default function Home() {
         {/* Welcome */}
         <section className="flex flex-col space-y-md">
           <div>
-            <h2 className="text-headline-lg-mobile text-on-surface">Good morning, {firstName}</h2>
-            <p className="text-body-md text-on-surface-variant">Ready to hit the road?</p>
+            <h2 className="text-headline-lg-mobile text-on-surface">
+              Good morning, {firstName}
+            </h2>
+            <p className="text-body-md text-on-surface-variant">
+              Ready to hit the road?
+            </p>
           </div>
           <StatusToggle />
         </section>
@@ -205,5 +235,5 @@ export default function Home() {
         <RecentActivity />
       </main>
     </div>
-  )
+  );
 }

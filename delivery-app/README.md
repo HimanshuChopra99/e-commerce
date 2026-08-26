@@ -6,14 +6,14 @@ React app with a smooth, Android-like order flow.
 
 ## Screens (5)
 
-| Route | Screen |
-|-------|--------|
-| `/` | **Home** — online/offline toggle, today's earnings (mini bar chart), map preview with High Demand, recent activity |
-| `/orders` | **Orders** — filter tabs (All / Active / Delivered) + order cards with Accept / Reject |
-| `/tracking` | **Live Tracking** — opens automatically when you Accept an order; live map, route markers, order metrics, driver card |
-| `/order-complete` | **Order Complete** — success check, duration/distance/payout stats, route timeline, Back to Orders |
-| `/earnings` | **Earnings** — Total Earnings / Tips / Deliveries / Incentive dashboard + Delivery History |
-| `/profile` | **Profile** — avatar, stats (rating / deliveries / hours), account & support menus |
+| Route             | Screen                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `/`               | **Home** — online/offline toggle, today's earnings (mini bar chart), map preview with High Demand, recent activity    |
+| `/orders`         | **Orders** — filter tabs (All / Active / Delivered) + order cards with Accept / Reject                                |
+| `/tracking`       | **Live Tracking** — opens automatically when you Accept an order; live map, route markers, order metrics, driver card |
+| `/order-complete` | **Order Complete** — success check, duration/distance/payout stats, route timeline, Back to Orders                    |
+| `/earnings`       | **Earnings** — Total Earnings / Tips / Deliveries / Incentive dashboard + Delivery History                            |
+| `/profile`        | **Profile** — avatar, stats (rating / deliveries / hours), account & support menus                                    |
 
 Bottom navigation (`Home · Orders · Earnings · Profile`) is visible on all main screens, like a native app.
 

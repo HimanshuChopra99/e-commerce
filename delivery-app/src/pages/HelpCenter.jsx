@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import PageHeader from '../components/PageHeader'
-import Icon from '../components/Icon'
+import { useState } from 'react';
+import PageHeader from '../components/PageHeader';
+import Icon from '../components/Icon';
 
 const faqs = [
   {
@@ -13,26 +13,31 @@ const faqs = [
   },
   {
     q: 'What do I do if the customer is unavailable?',
-    a: 'Call the customer from the tracking screen. If there\'s still no answer, follow the in-app instructions to return the order to the warehouse.',
+    a: "Call the customer from the tracking screen. If there's still no answer, follow the in-app instructions to return the order to the warehouse.",
   },
   {
     q: 'How is my payout calculated?',
-    a: 'Each order shows its payout before you accept it. It\'s a base rate plus distance and demand bonuses.',
+    a: "Each order shows its payout before you accept it. It's a base rate plus distance and demand bonuses.",
   },
   {
     q: 'Can I change my vehicle type?',
     a: 'Yes — contact support from this page or update it in your profile details. Different vehicles can qualify for different order types.',
   },
-]
+];
 
 const contactOptions = [
-  { icon: 'chat', title: 'Live Chat', subtitle: 'Chat with support instantly', badge: 'Online' },
+  {
+    icon: 'chat',
+    title: 'Live Chat',
+    subtitle: 'Chat with support instantly',
+    badge: 'Online',
+  },
   { icon: 'call', title: 'Call Support', subtitle: '+1 (800) 555-0199' },
   { icon: 'mail', title: 'Email Us', subtitle: 'support@kick.com' },
-]
+];
 
 export default function HelpCenter() {
-  const [open, setOpen] = useState(0)
+  const [open, setOpen] = useState(0);
 
   return (
     <div className="min-h-screen bg-background text-on-background font-body-md antialiased pb-12">
@@ -54,15 +59,22 @@ export default function HelpCenter() {
                   <Icon name={c.icon} fill className="text-[20px]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-body-lg font-bold text-on-surface">{c.title}</p>
-                  <p className="text-label-sm text-on-surface-variant truncate">{c.subtitle}</p>
+                  <p className="text-body-lg font-bold text-on-surface">
+                    {c.title}
+                  </p>
+                  <p className="text-label-sm text-on-surface-variant truncate">
+                    {c.subtitle}
+                  </p>
                 </div>
                 {c.badge && (
                   <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                     {c.badge}
                   </span>
                 )}
-                <Icon name="chevron_right" className="text-[18px] text-on-surface-variant/40 shrink-0" />
+                <Icon
+                  name="chevron_right"
+                  className="text-[18px] text-on-surface-variant/40 shrink-0"
+                />
               </button>
             ))}
           </div>
@@ -75,14 +87,16 @@ export default function HelpCenter() {
           </h3>
           <div className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest overflow-hidden divide-y divide-surface-container-high/40">
             {faqs.map((f, i) => {
-              const isOpen = open === i
+              const isOpen = open === i;
               return (
                 <div key={i}>
                   <button
                     onClick={() => setOpen(isOpen ? -1 : i)}
                     className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-surface-container-low/50 transition-colors"
                   >
-                    <span className="text-body-md font-bold text-on-surface">{f.q}</span>
+                    <span className="text-body-md font-bold text-on-surface">
+                      {f.q}
+                    </span>
                     <Icon
                       name="expand_more"
                       className={`text-[20px] text-on-surface-variant shrink-0 transition-transform duration-300 ${
@@ -96,11 +110,13 @@ export default function HelpCenter() {
                     }`}
                   >
                     <div className="overflow-hidden">
-                      <p className="px-4 pb-4 text-body-md text-on-surface-variant">{f.a}</p>
+                      <p className="px-4 pb-4 text-body-md text-on-surface-variant">
+                        {f.a}
+                      </p>
                     </div>
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </section>
@@ -110,5 +126,5 @@ export default function HelpCenter() {
         </p>
       </main>
     </div>
-  )
+  );
 }

@@ -1,12 +1,12 @@
-import { useNavigate } from 'react-router-dom'
-import Icon from './Icon'
+import { useNavigate } from 'react-router-dom';
+import Icon from './Icon';
 
 /**
  * Standard sticky top app bar for sub-pages.
  * Shows a back button + title (and optional subtitle).
  */
 export default function PageHeader({ title, subtitle, right }) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   return (
     <header className="sticky top-0 z-40 bg-surface/80 dark:bg-on-background/80 backdrop-blur-md border-b border-surface-container-high/40 transition-all">
       <div className="flex items-center w-full px-margin-mobile h-14 max-w-2xl mx-auto gap-3">
@@ -30,5 +30,5 @@ export default function PageHeader({ title, subtitle, right }) {
         {right}
       </div>
     </header>
-  )
+  );
 }

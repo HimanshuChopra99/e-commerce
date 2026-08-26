@@ -10,7 +10,7 @@ export default {
         'on-tertiary-fixed-variant': '#3d4756',
         'on-background': '#191c1d',
         'surface-container-lowest': '#ffffff',
-        'surface': '#f8f9fa',
+        surface: '#f8f9fa',
         'surface-container-low': '#f3f4f5',
         'on-secondary-fixed-variant': '#464651',
         'on-surface-variant': '#494454',
@@ -20,10 +20,10 @@ export default {
         'primary-fixed': '#e9ddff',
         'on-primary-container': '#fffbff',
         'tertiary-fixed': '#d9e3f6',
-        'error': '#ba1a1a',
-        'outline': '#7b7486',
+        error: '#ba1a1a',
+        outline: '#7b7486',
         'inverse-surface': '#2e3132',
-        'secondary': '#5e5d69',
+        secondary: '#5e5d69',
         'secondary-container': '#e1deed',
         'on-primary-fixed-variant': '#5516be',
         'primary-fixed-dim': '#d0bcff',
@@ -48,9 +48,9 @@ export default {
         'on-primary': '#ffffff',
         'error-container': '#ffdad6',
         'surface-dim': '#d9dadb',
-        'tertiary': '#525d6c',
-        'background': '#f8f9fa',
-        'primary': '#6b38d4',
+        tertiary: '#525d6c',
+        background: '#f8f9fa',
+        primary: '#6b38d4',
         'tertiary-container': '#6b7586',
       },
       borderRadius: {
@@ -85,13 +85,22 @@ export default {
       },
       fontSize: {
         'body-md': ['14px', { lineHeight: '20px', fontWeight: '400' }],
-        'headline-lg-mobile': ['22px', { lineHeight: '28px', fontWeight: '700' }],
-        'headline-lg': ['24px', { lineHeight: '32px', letterSpacing: '-0.01em', fontWeight: '700' }],
+        'headline-lg-mobile': [
+          '22px',
+          { lineHeight: '28px', fontWeight: '700' },
+        ],
+        'headline-lg': [
+          '24px',
+          { lineHeight: '32px', letterSpacing: '-0.01em', fontWeight: '700' },
+        ],
         'label-sm': ['12px', { lineHeight: '16px', fontWeight: '600' }],
         'headline-md': ['20px', { lineHeight: '28px', fontWeight: '600' }],
         'body-lg': ['16px', { lineHeight: '24px', fontWeight: '500' }],
         'label-lg': ['14px', { lineHeight: '16px', fontWeight: '600' }],
-        'display-lg': ['32px', { lineHeight: '40px', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'display-lg': [
+          '32px',
+          { lineHeight: '40px', letterSpacing: '-0.02em', fontWeight: '700' },
+        ],
       },
       keyframes: {
         popIn: {
@@ -110,4 +119,4 @@ export default {
     },
   },
   plugins: [],
-}
+};

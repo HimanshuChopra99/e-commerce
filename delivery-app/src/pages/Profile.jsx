@@ -1,10 +1,10 @@
-import { useState, useRef, useLayoutEffect } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
-import Icon from '../components/Icon'
-import Avatar from '../components/Avatar'
-import { logout } from '../store/slices/appSlice'
-import { disconnectSocket } from '../lib/socket'
+import { useState, useRef, useLayoutEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import Icon from '../components/Icon';
+import Avatar from '../components/Avatar';
+import { logout } from '../store/slices/appSlice';
+import { disconnectSocket } from '../lib/socket';
 
 function TopAppBar() {
   return (
@@ -27,90 +27,130 @@ function TopAppBar() {
         </button>
       </div>
     </header>
-  )
+  );
 }
-
 
 const menuSections = [
   {
     title: 'Account Settings',
     items: [
-      { label: 'Personal Details', icon: 'badge', subtitle: 'Name, Phone, Email & Address', to: '/profile/personal-details' },
-      { label: 'Payment Methods', icon: 'credit_card', subtitle: 'Cards, Direct Deposit', to: '/profile/payment-methods' },
-      { label: 'Wallet & Payouts', icon: 'account_balance_wallet', subtitle: 'Earnings & withdrawals', to: '/profile/wallet-payouts' },
+      {
+        label: 'Personal Details',
+        icon: 'badge',
+        subtitle: 'Name, Phone, Email & Address',
+        to: '/profile/personal-details',
+      },
+      {
+        label: 'Payment Methods',
+        icon: 'credit_card',
+        subtitle: 'Cards, Direct Deposit',
+        to: '/profile/payment-methods',
+      },
+      {
+        label: 'Wallet & Payouts',
+        icon: 'account_balance_wallet',
+        subtitle: 'Earnings & withdrawals',
+        to: '/profile/wallet-payouts',
+      },
     ],
   },
   {
     title: 'Support & Safety',
     items: [
-      { label: 'Help Center', icon: 'help', subtitle: 'FAQs, 24/7 Live Support', to: '/profile/help-center' },
-      { label: 'Notifications', icon: 'notifications', subtitle: 'Order alerts, Sound settings', to: '/profile/notifications' },
-      { label: 'Privacy & Safety', icon: 'verified_user', subtitle: 'Security, Account permissions', to: '/profile/privacy-safety' },
+      {
+        label: 'Help Center',
+        icon: 'help',
+        subtitle: 'FAQs, 24/7 Live Support',
+        to: '/profile/help-center',
+      },
+      {
+        label: 'Notifications',
+        icon: 'notifications',
+        subtitle: 'Order alerts, Sound settings',
+        to: '/profile/notifications',
+      },
+      {
+        label: 'Privacy & Safety',
+        icon: 'verified_user',
+        subtitle: 'Security, Account permissions',
+        to: '/profile/privacy-safety',
+      },
     ],
   },
-]
+];
 
 export default function Profile() {
-  const navigate = useNavigate()
-  const dispatch = useDispatch()
-  const [logoutOpen, setLogoutOpen] = useState(false)
-  const [closing, setClosing] = useState(false)
-  const [origin, setOrigin] = useState({ x: 0, y: 0 })
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [origin, setOrigin] = useState({ x: 0, y: 0 });
 
-  const logoutBtnRef = useRef(null)
-  const modalRef = useRef(null)
+  const logoutBtnRef = useRef(null);
+  const modalRef = useRef(null);
 
-  const partner = useSelector((s) => s.app.partner)
-  const statsData = useSelector((s) => s.app.stats) || {}
+  const partner = useSelector((s) => s.app.partner);
+  const statsData = useSelector((s) => s.app.stats) || {};
 
-  const name = partner?.fullName || `${partner?.firstName || ''} ${partner?.lastName || ''}`.trim() || 'Delivery Partner'
-  const publicId = partner?.publicId || partner?.id || '—'
-  const vehicleType = partner?.vehicleType || 'bike'
+  const name =
+    partner?.fullName ||
+    `${partner?.firstName || ''} ${partner?.lastName || ''}`.trim() ||
+    'Delivery Partner';
+  const publicId = partner?.publicId || partner?.id || '—';
+  const vehicleType = partner?.vehicleType || 'bike';
 
   const stats = [
-    { label: 'Deliveries', value: String(statsData.deliveredCount ?? 0), icon: 'local_shipping' },
+    {
+      label: 'Deliveries',
+      value: String(statsData.deliveredCount ?? 0),
+      icon: 'local_shipping',
+    },
     { label: 'Vehicle', value: vehicleType, icon: 'pedal_bike', accent: true },
-    { label: 'In Transit', value: String(statsData.inTransitCount ?? 0), icon: 'schedule' },
-  ]
+    {
+      label: 'In Transit',
+      value: String(statsData.inTransitCount ?? 0),
+      icon: 'schedule',
+    },
+  ];
 
   // Capture the logout button's position so the dialog expands from it.
   const openDialog = () => {
-    const r = logoutBtnRef.current?.getBoundingClientRect()
+    const r = logoutBtnRef.current?.getBoundingClientRect();
     if (r) {
-      setOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+      setOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     } else {
-      setOrigin({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
+      setOrigin({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     }
-    setClosing(false)
-    setLogoutOpen(true)
-  }
+    setClosing(false);
+    setLogoutOpen(true);
+  };
 
   // Runs the exit animation, then performs the final action.
   const closeDialog = (onDone) => {
-    setClosing(true)
+    setClosing(true);
     setTimeout(() => {
-      setLogoutOpen(false)
-      setClosing(false)
-      onDone?.()
-    }, 180)
-  }
+      setLogoutOpen(false);
+      setClosing(false);
+      onDone?.();
+    }, 180);
+  };
 
   const handleConfirmLogout = () => {
     closeDialog(() => {
-      disconnectSocket()
-      dispatch(logout())
-      navigate('/login', { replace: true })
-    })
-  }
+      disconnectSocket();
+      dispatch(logout());
+      navigate('/login', { replace: true });
+    });
+  };
 
   // Anchor the scale transform to the button's position (set before first paint).
   useLayoutEffect(() => {
     if (logoutOpen && !closing && modalRef.current) {
-      const el = modalRef.current
-      const rect = el.getBoundingClientRect()
-      el.style.transformOrigin = `${origin.x - rect.left}px ${origin.y - rect.top}px`
+      const el = modalRef.current;
+      const rect = el.getBoundingClientRect();
+      el.style.transformOrigin = `${origin.x - rect.left}px ${origin.y - rect.top}px`;
     }
-  }, [logoutOpen, closing, origin])
+  }, [logoutOpen, closing, origin]);
 
   return (
     <div className="min-h-screen bg-background text-on-background font-body-md antialiased pb-28 select-none">
@@ -139,7 +179,8 @@ export default function Profile() {
               <Icon name="verified" fill className="text-primary text-[18px]" />
             </div>
             <p className="text-body-md text-on-surface-variant font-medium">
-              Delivery Partner · <span className="font-bold text-on-surface">ID {publicId}</span>
+              Delivery Partner ·{' '}
+              <span className="font-bold text-on-surface">ID {publicId}</span>
             </p>
           </div>
 
@@ -276,7 +317,8 @@ export default function Profile() {
                 id="logout-dialog-desc"
                 className="text-body-md text-on-surface-variant mt-1 max-w-[260px]"
               >
-                You'll be signed out of the Delivery Partner app and will need to sign in again.
+                You'll be signed out of the Delivery Partner app and will need
+                to sign in again.
               </p>
             </div>
 
@@ -301,5 +343,5 @@ export default function Profile() {
         </div>
       )}
     </div>
-  )
+  );
 }

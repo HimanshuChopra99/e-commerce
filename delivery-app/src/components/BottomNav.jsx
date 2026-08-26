@@ -1,37 +1,37 @@
-import { NavLink, useLocation } from 'react-router-dom'
-import Icon from './Icon' // Your app's Icon component
+import { NavLink, useLocation } from 'react-router-dom';
+import Icon from './Icon'; // Your app's Icon component
 
 const TABS = [
   { to: '/', label: 'Home', icon: 'home', badge: null },
   { to: '/orders', label: 'Orders', icon: 'local_shipping', badge: '3' },
   { to: '/earnings', label: 'Earnings', icon: 'payments', badge: null },
   { to: '/profile', label: 'Profile', icon: 'person', badge: null },
-]
+];
 
 export default function BottomNav() {
-  const { pathname } = useLocation()
+  const { pathname } = useLocation();
 
   // Determine active tab index
   const activeIndex = TABS.findIndex((tab) =>
     tab.to === '/' ? pathname === '/' : pathname.startsWith(tab.to)
-  )
-  const current = Math.max(0, activeIndex)
+  );
+  const current = Math.max(0, activeIndex);
 
   // ===== Dynamic Bezier Curve Path Calculation =====
-  const totalTabs = TABS.length // 4 tabs
-  const viewBoxWidth = 400
-  const viewBoxHeight = 75
-  const tabWidth = viewBoxWidth / totalTabs // 100px per tab in SVG space
+  const totalTabs = TABS.length; // 4 tabs
+  const viewBoxWidth = 400;
+  const viewBoxHeight = 75;
+  const tabWidth = viewBoxWidth / totalTabs; // 100px per tab in SVG space
 
   // Calculate center X coordinate for the notch dip
-  const notchCenterX = current * tabWidth + tabWidth / 2 // 50, 150, 250, 350
-  const notchRadius = 40
-  const notchDepth = 32
+  const notchCenterX = current * tabWidth + tabWidth / 2; // 50, 150, 250, 350
+  const notchRadius = 40;
+  const notchDepth = 32;
 
-  const leftStart = notchCenterX - notchRadius
-  const rightEnd = notchCenterX + notchRadius
-  const cp1X = notchCenterX - 20
-  const cp2X = notchCenterX + 20
+  const leftStart = notchCenterX - notchRadius;
+  const rightEnd = notchCenterX + notchRadius;
+  const cp1X = notchCenterX - 20;
+  const cp2X = notchCenterX + 20;
 
   // Morphing SVG Path data for smooth U-shaped concave notch
   const pathData = `
@@ -43,7 +43,7 @@ export default function BottomNav() {
     L ${viewBoxWidth},${viewBoxHeight}
     L 0,${viewBoxHeight}
     Z
-  `
+  `;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50   md:hidden select-none pointer-events-none">
@@ -68,7 +68,6 @@ export default function BottomNav() {
       {/* Floating Shell Container */}
       <div className="relative max-w-md mx-auto pointer-events-auto">
         <div className="relative w-full h-[72px]">
-          
           {/* ===== 1. SVG Morphing Background Bar ===== */}
           <div className="absolute inset-0 drop-shadow-[0_-8px_20px_rgba(0,0,0,0.06)] dark:drop-shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
             <svg
@@ -107,7 +106,7 @@ export default function BottomNav() {
           {/* ===== 3. Interactive Tab Buttons ===== */}
           <nav className="absolute inset-0 flex items-center justify-around z-10">
             {TABS.map((tab, idx) => {
-              const isActive = current === idx
+              const isActive = current === idx;
 
               return (
                 <NavLink
@@ -144,12 +143,11 @@ export default function BottomNav() {
                     </span>
                   )}
                 </NavLink>
-              )
+              );
             })}
           </nav>
-
         </div>
       </div>
     </div>
-  )
+  );
 }
