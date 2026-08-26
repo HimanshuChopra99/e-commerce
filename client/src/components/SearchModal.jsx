@@ -1,29 +1,39 @@
-import { useState, useEffect, useRef } from "react";
-import { Search, X, TrendingUp, ArrowRight } from "lucide-react";
+import { useState, useEffect, useRef } from 'react';
+import { Search, X, TrendingUp, ArrowRight } from 'lucide-react';
 
 const IMAGE_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace('/api', '')
   : '';
 
 function getImageSrc(img) {
-  if (!img) return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80";
-  if (img.startsWith("http")) return img;
+  if (!img)
+    return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
+  if (img.startsWith('http')) return img;
   return `${IMAGE_BASE}${img}`;
 }
 
 export const SearchModal = ({ isOpen, onClose, onSelectProduct }) => {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
-  const popularTags = ["Running", "Sneakers", "Men", "Women", "Leather", "Boots", "Basketball", "Under $100"];
+  const popularTags = [
+    'Running',
+    'Sneakers',
+    'Men',
+    'Women',
+    'Leather',
+    'Boots',
+    'Basketball',
+    'Under $100',
+  ];
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 80);
     } else {
-      setQuery("");
+      setQuery('');
       setResults([]);
     }
   }, [isOpen]);
@@ -69,7 +79,7 @@ export const SearchModal = ({ isOpen, onClose, onSelectProduct }) => {
           />
           {query && (
             <button
-              onClick={() => setQuery("")}
+              onClick={() => setQuery('')}
               className="text-xs text-neutral-400 hover:text-neutral-700 font-bold underline mr-2"
             >
               Clear
@@ -107,17 +117,23 @@ export const SearchModal = ({ isOpen, onClose, onSelectProduct }) => {
           {/* Results List */}
           <div>
             <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">
-              {query ? `Results for "${query}"` : "Recommended Shoes"}
+              {query ? `Results for "${query}"` : 'Recommended Shoes'}
             </div>
 
             <div className="space-y-2">
               {loading ? (
-                <p className="text-center text-xs text-neutral-400 py-6">Searching live catalogue...</p>
+                <p className="text-center text-xs text-neutral-400 py-6">
+                  Searching live catalogue...
+                </p>
               ) : results.length === 0 ? (
-                <p className="text-center text-xs text-neutral-400 py-6">No matching shoes found for "{query}".</p>
+                <p className="text-center text-xs text-neutral-400 py-6">
+                  No matching shoes found for "{query}".
+                </p>
               ) : (
                 results.map((product) => {
-                  const imgSrc = getImageSrc(product.image || (product.images && product.images[0]));
+                  const imgSrc = getImageSrc(
+                    product.image || (product.images && product.images[0])
+                  );
                   return (
                     <div
                       key={product.id || product.slug}
@@ -140,13 +156,19 @@ export const SearchModal = ({ isOpen, onClose, onSelectProduct }) => {
                             {product.name}
                           </h4>
                           <p className="text-[11px] text-neutral-500">
-                            {product.brand} • {product.category?.name || product.category || "Footwear"} {product.gender ? `• ${product.gender}` : ''}
+                            {product.brand} •{' '}
+                            {product.category?.name ||
+                              product.category ||
+                              'Footwear'}{' '}
+                            {product.gender ? `• ${product.gender}` : ''}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-xs text-[#4A69E2]">${Number(product.price).toFixed(2)}</span>
+                        <span className="font-bold text-xs text-[#4A69E2]">
+                          ${Number(product.price).toFixed(2)}
+                        </span>
                         <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                       </div>
                     </div>

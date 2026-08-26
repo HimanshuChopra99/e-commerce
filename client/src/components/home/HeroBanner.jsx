@@ -5,7 +5,7 @@ export default function HeroBanner() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7">
       <div
         className="relative w-full rounded-[20px] sm:rounded-[28px] overflow-hidden bg-[#1A1A1A]"
-        style={{ minHeight: "200px" }}
+        style={{ minHeight: '200px' }}
       >
         {/* Background Image */}
         <div
@@ -39,7 +39,8 @@ export default function HeroBanner() {
               className="text-white/60 text-[13px] sm:text-[14px] max-w-[280px] sm:max-w-[320px] leading-relaxed"
               style={{ fontFamily: "'Rubik', sans-serif" }}
             >
-              Sneakers made with your comfort in mind so you can put all of your focus into your next session.
+              Sneakers made with your comfort in mind so you can put all of your
+              focus into your next session.
             </p>
             <Link
               to="/products?sort=price_asc"
@@ -56,7 +57,7 @@ export default function HeroBanner() {
               src="https://images.pexels.com/photos/1456733/pexels-photo-1456733.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=400&w=700"
               alt="Hero Sneaker"
               className="w-[300px] lg:w-[400px] object-cover rounded-xl opacity-90 drop-shadow-2xl"
-              style={{ transform: "rotate(-8deg) translateY(10px)" }}
+              style={{ transform: 'rotate(-8deg) translateY(10px)' }}
             />
           </div>
         </div>

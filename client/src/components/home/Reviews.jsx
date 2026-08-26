@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from 'react';
 
 /* ------------------------------------------------------------------
    Data
@@ -6,43 +6,43 @@ import React, { useState, useEffect, useRef } from "react";
 const REVIEWS = [
   {
     id: 1,
-    title: "Good Quality",
-    text: "I highly recommend shopping from kicks",
+    title: 'Good Quality',
+    text: 'I highly recommend shopping from kicks',
     rating: 5.0,
-    image: "/images/review-1.jpg",
+    image: '/images/review-1.jpg',
     fallback:
-      "https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=900&q=80",
-    avatar: "https://i.pravatar.cc/120?img=13",
-    name: "Alex Bennett",
+      'https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=900&q=80',
+    avatar: 'https://i.pravatar.cc/120?img=13',
+    name: 'Alex Bennett',
   },
   {
     id: 2,
-    title: "Good Quality",
-    text: "I highly recommend shopping from kicks",
+    title: 'Good Quality',
+    text: 'I highly recommend shopping from kicks',
     rating: 5.0,
-    image: "/images/review-2.jpg",
+    image: '/images/review-2.jpg',
     fallback:
-      "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=900&q=80",
-    avatar: "https://i.pravatar.cc/120?img=33",
-    name: "Jane Reyes",
+      'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=900&q=80',
+    avatar: 'https://i.pravatar.cc/120?img=33',
+    name: 'Jane Reyes',
   },
   {
     id: 3,
-    title: "Good Quality",
-    text: "I highly recommend shopping from kicks",
+    title: 'Good Quality',
+    text: 'I highly recommend shopping from kicks',
     rating: 5.0,
-    image: "/images/review-3.jpg",
+    image: '/images/review-3.jpg',
     fallback:
-      "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=900&q=80",
-    avatar: "https://i.pravatar.cc/120?img=68",
-    name: "Michael Gough",
+      'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=900&q=80',
+    avatar: 'https://i.pravatar.cc/120?img=68',
+    name: 'Michael Gough',
   },
 ];
 
 /* ------------------------------------------------------------------
    Star Icon Component
 ------------------------------------------------------------------ */
-const Star = ({ className = "" }) => (
+const Star = ({ className = '' }) => (
   <svg
     viewBox="0 0 24 24"
     aria-hidden="true"
@@ -108,7 +108,9 @@ const ReviewCard = ({ review }) => (
         src={review.avatar}
         alt={review.name}
         className="h-[52px] w-[52px] shrink-0 rounded-full object-cover ring-1 ring-black/5"
-       loading="lazy" decoding="async"/>
+        loading="lazy"
+        decoding="async"
+      />
     </div>
 
     <div className="mt-auto aspect-[300/232] w-full overflow-hidden bg-neutral-200">
@@ -132,11 +134,11 @@ export default function Reviews() {
   const touchX = useRef(null);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
+    const mq = window.matchMedia('(max-width: 767px)');
     const apply = () => setIsMobile(mq.matches);
     apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
   }, []);
 
   /* Auto slide (mobile only) */
@@ -159,7 +161,9 @@ export default function Reviews() {
     const dx = e.changedTouches[0].clientX - touchX.current;
     if (Math.abs(dx) > 45) {
       setIndex((i) =>
-        dx < 0 ? (i + 1) % REVIEWS.length : (i - 1 + REVIEWS.length) % REVIEWS.length
+        dx < 0
+          ? (i + 1) % REVIEWS.length
+          : (i - 1 + REVIEWS.length) % REVIEWS.length
       );
     }
     touchX.current = null;
@@ -204,7 +208,10 @@ export default function Reviews() {
                 style={{ transform: `translateX(-${index * 100}%)` }}
               >
                 {REVIEWS.map((r) => (
-                  <div key={r.id} className="w-full shrink-0 grow-0 basis-full px-[2px]">
+                  <div
+                    key={r.id}
+                    className="w-full shrink-0 grow-0 basis-full px-[2px]"
+                  >
                     <ReviewCard review={r} />
                   </div>
                 ))}
@@ -223,10 +230,10 @@ export default function Reviews() {
                     setTimeout(() => setPaused(false), 3000);
                   }}
                   className={
-                    "h-[7px] rounded-full transition-all duration-300 " +
+                    'h-[7px] rounded-full transition-all duration-300 ' +
                     (i === index
-                      ? "w-6 bg-[#3f6bec]"
-                      : "w-[7px] bg-neutral-400/50 hover:bg-neutral-500/70")
+                      ? 'w-6 bg-[#3f6bec]'
+                      : 'w-[7px] bg-neutral-400/50 hover:bg-neutral-500/70')
                   }
                 />
               ))}

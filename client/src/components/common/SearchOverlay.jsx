@@ -1,25 +1,22 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useEffect } from "react";
-import { Search, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const IMAGE_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace('/api', '')
   : '';
 
 function getImageSrc(img) {
-  if (!img) return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80";
-  if (img.startsWith("http")) return img;
+  if (!img)
+    return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
+  if (img.startsWith('http')) return img;
   return `${IMAGE_BASE}${img}`;
 }
 
-export default function SearchOverlay({
-  isOpen,
-  onClose,
-  onSelectTag,
-}) {
-  const [query, setQuery] = useState("");
+export default function SearchOverlay({ isOpen, onClose, onSelectTag }) {
+  const [query, setQuery] = useState('');
   const [hits, setHits] = useState([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
@@ -31,7 +28,7 @@ export default function SearchOverlay({
         inputRef.current?.focus();
       }, 100);
     } else {
-      setQuery("");
+      setQuery('');
       setHits([]);
     }
   }, [isOpen]);
@@ -40,7 +37,9 @@ export default function SearchOverlay({
     // Opening search shows a small discovery set; typing narrows it on the server.
     const timer = setTimeout(() => {
       setLoading(true);
-      fetch(`${import.meta.env.VITE_API_URL || '/api'}/products?${query.trim() ? `q=${encodeURIComponent(query.trim())}&` : ''}limit=8&sort=popular`)
+      fetch(
+        `${import.meta.env.VITE_API_URL || '/api'}/products?${query.trim() ? `q=${encodeURIComponent(query.trim())}&` : ''}limit=8&sort=popular`
+      )
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data.data)) {
@@ -79,7 +78,7 @@ export default function SearchOverlay({
       <div
         id="search-overlay"
         className={`fixed inset-x-0 top-0 z-[70] bg-white shadow-mega ${
-          isOpen ? "show" : ""
+          isOpen ? 'show' : ''
         }`}
       >
         <div className="mx-auto max-w-[1100px] px-4 sm:px-8 pt-6 pb-8 md:pt-9 md:pb-10">
@@ -98,7 +97,7 @@ export default function SearchOverlay({
             {query && (
               <button
                 type="button"
-                onClick={() => setQuery("")}
+                onClick={() => setQuery('')}
                 className="text-neutral-400 hover:text-ink text-sm font-bold mr-2"
               >
                 Clear
@@ -118,7 +117,7 @@ export default function SearchOverlay({
             <span className="text-xs font-bold uppercase tracking-widest text-neutral-400 mr-1">
               Popular:
             </span>
-            {["Running", "Sneakers", "Men", "Women", "Boots"].map((tag) => (
+            {['Running', 'Sneakers', 'Men', 'Women', 'Boots'].map((tag) => (
               <button
                 key={tag}
                 onClick={() => handleTagClick(tag)}
@@ -140,8 +139,11 @@ export default function SearchOverlay({
               <p className="col-span-full text-center text-neutral-400 font-medium py-10">
                 No results found for “{query}”. Try another term.
               </p>
-            ) : hits.map((p) => {
-                const imgSrc = getImageSrc(p.image || (p.images && p.images[0]));
+            ) : (
+              hits.map((p) => {
+                const imgSrc = getImageSrc(
+                  p.image || (p.images && p.images[0])
+                );
                 return (
                   <div
                     key={p.id || p.publicId}
@@ -153,9 +155,11 @@ export default function SearchOverlay({
                         src={imgSrc}
                         alt={p.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                       loading="lazy" decoding="async"/>
+                        loading="lazy"
+                        decoding="async"
+                      />
                       <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 text-[10px] font-bold uppercase tracking-wider text-ink">
-                        {p.gender || "Unisex"}
+                        {p.gender || 'Unisex'}
                       </span>
                     </div>
                     <div className="flex items-start justify-between gap-2 mt-2.5">
@@ -163,7 +167,9 @@ export default function SearchOverlay({
                         <p className="text-[13px] font-bold leading-tight">
                           {p.name}
                         </p>
-                        <p className="text-[11px] text-neutral-500">{p.category?.name || p.category || ""}</p>
+                        <p className="text-[11px] text-neutral-500">
+                          {p.category?.name || p.category || ''}
+                        </p>
                       </div>
                       <p className="text-[13px] font-semibold text-branddark whitespace-nowrap">
                         {money(p.price)}
@@ -171,7 +177,8 @@ export default function SearchOverlay({
                     </div>
                   </div>
                 );
-              })}
+              })
+            )}
           </div>
         </div>
       </div>
@@ -179,7 +186,7 @@ export default function SearchOverlay({
         id="search-backdrop"
         onClick={onClose}
         className={`drawer-backdrop fixed inset-0 z-[65] bg-black/40 ${
-          isOpen ? "show" : ""
+          isOpen ? 'show' : ''
         }`}
       />
     </>

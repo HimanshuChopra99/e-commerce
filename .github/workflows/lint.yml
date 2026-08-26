@@ -1,0 +1,98 @@
+name: Linting and formatting on PR
+
+on:
+  push: 
+    branches: 
+    - '**'
+  pull_request:
+    branches:
+    - '**'
+
+jobs:
+  lint-server:
+    name: Server — Lint & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: name: Setup Node.js 20
+        uses: actions/setup-node@v4
+      
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier check
+        run: npm run format:check
+
+  lint-client:
+    name: Client — Lint & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+      steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier check
+        run: npm run format:check
+
+  lint-admin: 
+    name: Admin - Lint & Format
+    runs-on: ubuntu-latest
+    defaults: 
+      run:
+        working-directory: admin
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: 
+          node-version: '20'
+          cache: 'npm'
+          cache-dependencies: admin/package-lock-json
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier check
+        run: npm run format:check
+
+  lint-delivery:
+    name: Delivery App — Lint & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: delivery-app
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: delivery-app/package-lock.json
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier check
+        run: npm run format:check

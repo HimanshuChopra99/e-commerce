@@ -1,11 +1,17 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import Navbar from "@/components/Navbar";
-import SearchOverlay from "@/components/SearchOverlay";
-import MobileDrawer from "@/components/MobileDrawer";
-import Toast from "@/components/Toast";
-import { Search, ShoppingBag, Menu, CheckCircle2, Sparkles } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import Navbar from '@/components/Navbar';
+import SearchOverlay from '@/components/SearchOverlay';
+import MobileDrawer from '@/components/MobileDrawer';
+import Toast from '@/components/Toast';
+import {
+  Search,
+  ShoppingBag,
+  Menu,
+  CheckCircle2,
+  Sparkles,
+} from 'lucide-react';
 
 export default function HomePage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -14,14 +20,16 @@ export default function HomePage() {
 
   const [cartCount, setCartCount] = useState(2);
   const [toastMessage, setToastMessage] = useState(null);
-  const [lastSelectedLink, setLastSelectedLink] = useState("None (Try clicking a menu item)");
+  const [lastSelectedLink, setLastSelectedLink] = useState(
+    'None (Try clicking a menu item)'
+  );
 
   // Lock body scroll when any overlay is open
   useEffect(() => {
     if (isSearchOpen || isCartOpen || isMobileOpen) {
-      document.body.classList.add("locked");
+      document.body.classList.add('locked');
     } else {
-      document.body.classList.remove("locked");
+      document.body.classList.remove('locked');
     }
   }, [isSearchOpen, isCartOpen, isMobileOpen]);
 
@@ -102,7 +110,7 @@ export default function HomePage() {
       {/* ============================================================
            5. TOAST NOTIFICATION COMPONENT
       ============================================================ */}
-      <Toast isOpen={!!toastMessage} message={toastMessage || ""} />
+      <Toast isOpen={!!toastMessage} message={toastMessage || ''} />
 
       {/* ============================================================
            6. COMPONENT DESIGN SHOWCASE / PLAYGROUND CANVAS
@@ -118,11 +126,12 @@ export default function HomePage() {
             KICKS NAVBAR &amp; HEADER DESIGN
           </h1>
           <p className="mt-3 text-neutral-500 max-w-2xl text-base font-medium">
-            This workspace showcases the standalone <strong>Navbar</strong> with its interactive{" "}
-            <strong>Men</strong> &amp; <strong>Women</strong> Mega Menu dropdown panels, animated
-            nav-link underline sweeps, and its accompanying header modals (
-            <strong>Search Overlay</strong>, <strong>Cart Drawer</strong>, <strong>Mobile Menu</strong>
-            , and <strong>Toast</strong>) built as pure JSX components.
+            This workspace showcases the standalone <strong>Navbar</strong> with
+            its interactive <strong>Men</strong> &amp; <strong>Women</strong>{' '}
+            Mega Menu dropdown panels, animated nav-link underline sweeps, and
+            its accompanying header modals (<strong>Search Overlay</strong>,{' '}
+            <strong>Cart Drawer</strong>, <strong>Mobile Menu</strong>, and{' '}
+            <strong>Toast</strong>) built as pure JSX components.
           </p>
 
           {/* Interactive Trigger Shortcuts for checking the Design */}
@@ -199,7 +208,9 @@ export default function HomePage() {
             </div>
           </div>
           <button
-            onClick={() => setLastSelectedLink("None (Try clicking a menu item)")}
+            onClick={() =>
+              setLastSelectedLink('None (Try clicking a menu item)')
+            }
             className="text-xs font-bold px-4 py-2 rounded-full bg-paper hover:bg-neutral-200 transition-colors"
           >
             Reset Action State

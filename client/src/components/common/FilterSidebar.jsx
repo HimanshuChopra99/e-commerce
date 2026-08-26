@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { ChevronUp, ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { useState, useEffect, useRef } from 'react';
+import { ChevronUp, ChevronDown, SlidersHorizontal, X } from 'lucide-react';
 const REFINE_OPTIONS = [];
 
 // How long (ms) the user must stop dragging before a price-filter fetch fires.
@@ -41,7 +41,10 @@ function PriceRange({ value, onChange }) {
         onChange={(e) => handleDraftChange(Number(e.target.value))}
         className="w-full accent-[#4C64F4] h-1.5 rounded-full cursor-pointer"
       />
-      <div className="flex justify-between text-[12px] text-[#888]" style={{ fontFamily: "'Rubik', sans-serif" }}>
+      <div
+        className="flex justify-between text-[12px] text-[#888]"
+        style={{ fontFamily: "'Rubik', sans-serif" }}
+      >
         <span>$0</span>
         <span>${draft}</span>
         <span>$1000</span>
@@ -50,10 +53,7 @@ function PriceRange({ value, onChange }) {
   );
 }
 
-function Section({
-  title,
-  children,
-}) {
+function Section({ title, children }) {
   const [open, setOpen] = useState(true);
   return (
     <div className="border-b border-gray-100 pb-4 mb-4">
@@ -74,7 +74,12 @@ function Section({
   );
 }
 
-export default function FilterSidebar({ filters, onChange, availableFilters = {}, categories = [] }) {
+export default function FilterSidebar({
+  filters,
+  onChange,
+  availableFilters = {},
+  categories = [],
+}) {
   const sizes = availableFilters.sizes || [];
   const colors = availableFilters.colors || [];
   const genders = availableFilters.genders || [];
@@ -93,12 +98,15 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
             <button
               key={opt}
               onClick={() =>
-                onChange({ ...filters, refineBy: toggle(filters.refineBy, opt) })
+                onChange({
+                  ...filters,
+                  refineBy: toggle(filters.refineBy, opt),
+                })
               }
               className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all duration-200 ${
                 (filters.refineBy || []).includes(opt)
-                  ? "bg-[#4C64F4] text-white border-[#4C64F4]"
-                  : "bg-white text-[#1E1E1E] border-gray-200 hover:border-[#4C64F4]"
+                  ? 'bg-[#4C64F4] text-white border-[#4C64F4]'
+                  : 'bg-white text-[#1E1E1E] border-gray-200 hover:border-[#4C64F4]'
               }`}
               style={{ fontFamily: "'Rubik', sans-serif" }}
             >
@@ -117,14 +125,17 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
               onClick={() =>
                 onChange({
                   ...filters,
-                  sizes: (filters.sizes || [])[0] === String(size) ? [] : [String(size)],
+                  sizes:
+                    (filters.sizes || [])[0] === String(size)
+                      ? []
+                      : [String(size)],
                 })
               }
               aria-pressed={(filters.sizes || [])[0] === String(size)}
               className={`py-1.5 rounded-[8px] text-[12px] font-semibold border transition-all duration-200 ${
                 (filters.sizes || []).includes(size)
-                  ? "bg-[#1E1E1E] text-white border-[#1E1E1E]"
-                  : "bg-white text-[#1E1E1E] border-gray-200 hover:border-[#1E1E1E]"
+                  ? 'bg-[#1E1E1E] text-white border-[#1E1E1E]'
+                  : 'bg-white text-[#1E1E1E] border-gray-200 hover:border-[#1E1E1E]'
               }`}
               style={{ fontFamily: "'Rubik', sans-serif" }}
             >
@@ -150,10 +161,25 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
               aria-pressed={(filters.colors || [])[0] === color}
               className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
                 (filters.colors || []).includes(color)
-                  ? "border-[#4C64F4] scale-110 shadow-md"
-                  : "border-white shadow-sm hover:border-gray-300"
+                  ? 'border-[#4C64F4] scale-110 shadow-md'
+                  : 'border-white shadow-sm hover:border-gray-300'
               }`}
-              style={{ backgroundColor: ({ White: '#fff', Black: '#1E1E1E', Red: '#EF4444', Blue: '#3B82F6', Green: '#22C55E', Yellow: '#EAB308', Grey: '#6B7280', Gray: '#6B7280', Pink: '#EC4899', Brown: '#92400E', Tan: '#D2B48C' }[color] || '#1E1E1E') }}
+              style={{
+                backgroundColor:
+                  {
+                    White: '#fff',
+                    Black: '#1E1E1E',
+                    Red: '#EF4444',
+                    Blue: '#3B82F6',
+                    Green: '#22C55E',
+                    Yellow: '#EAB308',
+                    Grey: '#6B7280',
+                    Gray: '#6B7280',
+                    Pink: '#EC4899',
+                    Brown: '#92400E',
+                    Tan: '#D2B48C',
+                  }[color] || '#1E1E1E',
+              }}
             />
           ))}
         </div>
@@ -165,7 +191,8 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
         <div className="space-y-2">
           {/* "All Categories" Option */}
           {(() => {
-            const currentCat = (filters.categories || [])[0] || filters.category || null;
+            const currentCat =
+              (filters.categories || [])[0] || filters.category || null;
             const isAllSelected = !currentCat;
 
             return (
@@ -186,8 +213,8 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
                 <span
                   className={`text-[13px] transition-colors ${
                     isAllSelected
-                      ? "text-[#1E1E1E] font-semibold"
-                      : "text-[#555] group-hover:text-[#1E1E1E]"
+                      ? 'text-[#1E1E1E] font-semibold'
+                      : 'text-[#555] group-hover:text-[#1E1E1E]'
                   }`}
                   style={{ fontFamily: "'Rubik', sans-serif" }}
                 >
@@ -199,7 +226,8 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
 
           {/* List of Categories */}
           {categories.map((cat) => {
-            const currentCat = (filters.categories || [])[0] || filters.category || null;
+            const currentCat =
+              (filters.categories || [])[0] || filters.category || null;
             const isSelected = currentCat === cat.slug;
 
             const handleToggle = () => {
@@ -221,7 +249,10 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
             };
 
             return (
-              <label key={cat.slug} className="flex items-center gap-2.5 cursor-pointer group">
+              <label
+                key={cat.slug}
+                className="flex items-center gap-2.5 cursor-pointer group"
+              >
                 <input
                   type="radio"
                   name="category"
@@ -233,8 +264,8 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
                 <span
                   className={`text-[13px] transition-colors ${
                     isSelected
-                      ? "text-[#1E1E1E] font-semibold"
-                      : "text-[#555] group-hover:text-[#1E1E1E]"
+                      ? 'text-[#1E1E1E] font-semibold'
+                      : 'text-[#555] group-hover:text-[#1E1E1E]'
                   }`}
                   style={{ fontFamily: "'Rubik', sans-serif" }}
                 >
@@ -250,7 +281,10 @@ export default function FilterSidebar({ filters, onChange, availableFilters = {}
       <Section title="Gender">
         <div className="space-y-2">
           {genders.map((g) => (
-            <label key={g} className="flex items-center gap-2.5 cursor-pointer group">
+            <label
+              key={g}
+              className="flex items-center gap-2.5 cursor-pointer group"
+            >
               <input
                 type="checkbox"
                 checked={(filters.gender || []).includes(g)}

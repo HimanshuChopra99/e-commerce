@@ -22,9 +22,12 @@ const Newsletter = () => {
             <p className="text-white/70 text-xs font-bold tracking-[0.3em] uppercase mb-2">
               Exclusive Members
             </p>
-            <h2 className="text-display font-black text-white uppercase leading-none mb-3"
-              style={{ fontSize: 'clamp(1.8rem, 5vw, 3.5rem)' }}>
-              JOIN OUR KICKSPLUS<br />
+            <h2
+              className="text-display font-black text-white uppercase leading-none mb-3"
+              style={{ fontSize: 'clamp(1.8rem, 5vw, 3.5rem)' }}
+            >
+              JOIN OUR KICKSPLUS
+              <br />
               <span className="text-white">CLUB &amp; GET</span>{' '}
               <span
                 className="text-white"
@@ -37,7 +40,8 @@ const Newsletter = () => {
               </span>
             </h2>
             <p className="text-white/70 text-sm mb-6 max-w-sm leading-relaxed">
-              Sign up to find out about our exclusive collections and latest drops.
+              Sign up to find out about our exclusive collections and latest
+              drops.
             </p>
 
             {/* Email Form */}

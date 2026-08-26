@@ -1,45 +1,45 @@
-
-
-const BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Access tokens live in memory only — never in localStorage or cookies.
 // They are re-issued from the HttpOnly refresh cookie on every page load.
-let accessToken = null
+let accessToken = null;
 
 export function setAccessToken(token) {
-  accessToken = token
+  accessToken = token;
 }
 
 export function getAccessToken() {
-  return accessToken
+  return accessToken;
 }
 
-let refreshPromise = null
+let refreshPromise = null;
 
 async function _doRefresh() {
   try {
     const res = await fetch(`${BASE_URL}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
-    })
-    const data = await res.json()
+    });
+    const data = await res.json();
     if (data?.data?.accessToken) {
-      setAccessToken(data.data.accessToken)
-      return true
+      setAccessToken(data.data.accessToken);
+      return true;
     }
-    setAccessToken(null)
-    return false
+    setAccessToken(null);
+    return false;
   } catch {
-    setAccessToken(null)
-    return false
+    setAccessToken(null);
+    return false;
   }
 }
 
 // Exported so authSlice.fetchMe can silently restore the token on boot.
 export function silentRefresh() {
-  if (refreshPromise) return refreshPromise
-  refreshPromise = _doRefresh().finally(() => { refreshPromise = null })
-  return refreshPromise
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = _doRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
 }
 
 async function request(path, options = {}, retriedAfterRefresh = false) {
@@ -47,13 +47,13 @@ async function request(path, options = {}, retriedAfterRefresh = false) {
     'Content-Type': 'application/json',
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...options.headers,
-  }
+  };
 
   const res = await fetch(`${BASE_URL}${path}`, {
     credentials: 'include',
     ...options,
     headers,
-  })
+  });
 
   // Access tokens are intentionally memory-only. After a browser refresh the
   // first protected request is /auth/me, so it must be allowed to use the
@@ -65,9 +65,9 @@ async function request(path, options = {}, retriedAfterRefresh = false) {
     path !== '/auth/refresh' &&
     path !== '/auth/login'
   ) {
-    const refreshed = await silentRefresh()
+    const refreshed = await silentRefresh();
     if (refreshed) {
-      return request(path, options, true)
+      return request(path, options, true);
     }
   }
 
@@ -75,37 +75,54 @@ async function request(path, options = {}, retriedAfterRefresh = false) {
   // the newly refreshed token was rejected). A normal initial /auth/me request
   // can therefore restore the session from the HttpOnly refresh cookie after a
   // page reload instead of treating the user as logged out.
-  if (res.status === 401 && path !== '/auth/refresh' && path !== '/auth/login') {
-    window.dispatchEvent(new CustomEvent('kick:auth:expired'))
-    throw new Error('Your session has expired. Please sign in again.')
+  if (
+    res.status === 401 &&
+    path !== '/auth/refresh' &&
+    path !== '/auth/login'
+  ) {
+    window.dispatchEvent(new CustomEvent('kick:auth:expired'));
+    throw new Error('Your session has expired. Please sign in again.');
   }
 
-  const data = await res.json().catch(() => ({}))
+  const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data?.error?.message || data?.message || (typeof data?.error === 'string' ? data.error : '') || 'Request failed')
+    throw new Error(
+      data?.error?.message ||
+        data?.message ||
+        (typeof data?.error === 'string' ? data.error : '') ||
+        'Request failed'
+    );
   }
 
-  return data
+  return data;
 }
 
 const get = (path, params) => {
   if (params) {
-    const cleanParams = {}
+    const cleanParams = {};
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') {
-        cleanParams[k] = v
+        cleanParams[k] = v;
       }
-    })
-    const queryStr = new URLSearchParams(cleanParams).toString()
-    return request(queryStr ? `${path}?${queryStr}` : path)
+    });
+    const queryStr = new URLSearchParams(cleanParams).toString();
+    return request(queryStr ? `${path}?${queryStr}` : path);
   }
-  return request(path)
-}
+  return request(path);
+};
 
-const post = (path, body) => request(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined })
-const patch = (path, body) => request(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined })
-const del = (path) => request(path, { method: 'DELETE' })
+const post = (path, body) =>
+  request(path, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+const patch = (path, body) =>
+  request(path, {
+    method: 'PATCH',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+const del = (path) => request(path, { method: 'DELETE' });
 
 export const authApi = {
   register: (body) => post('/auth/register', body),
@@ -115,7 +132,7 @@ export const authApi = {
   refresh: () => post('/auth/refresh'),
   updateMe: (body) => patch('/auth/me', body),
   changePassword: (body) => post('/auth/change-password', body),
-}
+};
 
 export const productsApi = {
   list: (params) => get('/products', params),
@@ -123,27 +140,29 @@ export const productsApi = {
   filters: () => get('/products/filters'),
   getBySlug: (slug) => get(`/products/${slug}`),
   related: (slug) => get(`/products/${slug}/related`),
-}
+};
 
 export const categoriesApi = {
   list: () => get('/categories'),
   getBySlug: (slug) => get(`/categories/${slug}`),
-}
+};
 
 export const cartApi = {
   get: () => get('/cart'),
   sync: (items) => post('/cart/sync', { items }),
-  setItem: (variantId, quantity) => patch(`/cart/items/${variantId}`, { quantity }),
-  addItem: (variantId, quantity = 1) => post('/cart/items', { variantId, quantity }),
+  setItem: (variantId, quantity) =>
+    patch(`/cart/items/${variantId}`, { quantity }),
+  addItem: (variantId, quantity = 1) =>
+    post('/cart/items', { variantId, quantity }),
   removeItem: (variantId) => del(`/cart/items/${variantId}`),
   clear: () => del('/cart'),
-}
+};
 
 export const favouritesApi = {
   get: () => get('/favourites'),
   add: (productId) => post(`/favourites/${productId}`),
   remove: (productId) => del(`/favourites/${productId}`),
-}
+};
 
 export const ordersApi = {
   quote: (body) => post('/orders/quote', body),
@@ -153,20 +172,19 @@ export const ordersApi = {
   paymentStatus: (id) => get(`/orders/${id}/payment-status`),
   pay: (id) => post(`/orders/${id}/pay`),
   cancel: (id) => post(`/orders/${id}/cancel`),
-}
-
+};
 
 export const createCall = async ({ userId, userName }) => {
-  const response = await fetch("/api/retell/create-call", {
-    method: "POST",
+  const response = await fetch('/api/retell/create-call', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       userId,
-      userName
-    })
-  })
+      userName,
+    }),
+  });
 
   const data = await response.json();
 
@@ -175,4 +193,4 @@ export const createCall = async ({ userId, userName }) => {
   }
 
   return data;
-}
+};

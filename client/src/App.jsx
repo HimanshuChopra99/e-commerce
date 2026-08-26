@@ -64,18 +64,23 @@ function AppRoutes() {
 
   useEffect(() => {
     if (isSearchOpen || isMobileOpen) {
-      document.body.classList.add("locked");
+      document.body.classList.add('locked');
     } else {
-      document.body.classList.remove("locked");
+      document.body.classList.remove('locked');
     }
   }, [isSearchOpen, isMobileOpen]);
 
   useEffect(() => {
     const enqueueToast = (event) => {
       const detail = event.detail;
-      const notification = typeof detail === 'string'
-        ? { message: detail, type: 'success' }
-        : { message: detail?.message || 'Updated successfully.', type: detail?.type || 'success', title: detail?.title };
+      const notification =
+        typeof detail === 'string'
+          ? { message: detail, type: 'success' }
+          : {
+              message: detail?.message || 'Updated successfully.',
+              type: detail?.type || 'success',
+              title: detail?.title,
+            };
       setToastQueue((queue) => [
         ...queue.slice(-4),
         { id: Date.now() + Math.random(), ...notification },
@@ -89,20 +94,27 @@ function AppRoutes() {
 
   useEffect(() => {
     if (!currentToast) return;
-    const timer = setTimeout(() => {
-      setToastQueue((q) => q.filter((t) => t.id !== currentToast.id));
-    }, currentToast.type === 'error' ? 4200 : 3200);
+    const timer = setTimeout(
+      () => {
+        setToastQueue((q) => q.filter((t) => t.id !== currentToast.id));
+      },
+      currentToast.type === 'error' ? 4200 : 3200
+    );
     return () => clearTimeout(timer);
   }, [currentToast]);
 
   const handleLinkSelect = () => {};
 
   const handleSearchSelectProduct = (item) => {
-    showToast(`Opening ${item.brand || ''} ${item.name || ''}`.trim(), 'info', { title: 'Product selected' });
+    showToast(`Opening ${item.brand || ''} ${item.name || ''}`.trim(), 'info', {
+      title: 'Product selected',
+    });
   };
 
   const handleSearchSelectTag = (tag) => {
-    showToast(`Showing products tagged #${tag}`, 'info', { title: 'Filter applied' });
+    showToast(`Showing products tagged #${tag}`, 'info', {
+      title: 'Filter applied',
+    });
   };
 
   return (
@@ -151,7 +163,11 @@ function AppRoutes() {
                 <Toast
                   key={currentToast.id}
                   toast={currentToast}
-                  onDismiss={() => setToastQueue((queue) => queue.filter((item) => item.id !== currentToast.id))}
+                  onDismiss={() =>
+                    setToastQueue((queue) =>
+                      queue.filter((item) => item.id !== currentToast.id)
+                    )
+                  }
                 />
               )}
 
@@ -167,7 +183,10 @@ function AppRoutes() {
                     <Route path="/orders/:id" element={<OrderDetail />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/about" element={<Company page="about" />} />
-                    <Route path="/contact" element={<Company page="contact" />} />
+                    <Route
+                      path="/contact"
+                      element={<Company page="contact" />}
+                    />
                     <Route path="/blogs" element={<Company page="blogs" />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />

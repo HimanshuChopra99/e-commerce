@@ -46,7 +46,9 @@ const CATEGORY_IMAGES = [
 ];
 
 function CategoryCard({ category, idx }) {
-  const image = getImageSrc(category.image) || CATEGORY_IMAGES[idx % CATEGORY_IMAGES.length];
+  const image =
+    getImageSrc(category.image) ||
+    CATEGORY_IMAGES[idx % CATEGORY_IMAGES.length];
   const bg = GRADIENTS[idx % GRADIENTS.length];
   const displayName = (category.name || 'CATEGORY').toUpperCase();
 
@@ -63,7 +65,8 @@ function CategoryCard({ category, idx }) {
           alt={displayName}
           className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"
           onError={(e) => {
-            e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80';
+            e.target.src =
+              'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80';
           }}
           loading="lazy"
           decoding="async"
@@ -78,14 +81,18 @@ function CategoryCard({ category, idx }) {
           0{idx + 1}
         </span>
         <span className="text-[9px] font-semibold tracking-widest text-white/90 bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border-0 uppercase">
-          {category.productCount ? `${category.productCount}+ STYLES` : 'AVAILABLE NOW'}
+          {category.productCount
+            ? `${category.productCount}+ STYLES`
+            : 'AVAILABLE NOW'}
         </span>
       </div>
 
       {/* Default Title on Image (fades out when white panel slides up) */}
       <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 z-10 transition-all duration-500 ease-out group-hover:opacity-0 group-hover:-translate-y-2">
         <span className="text-[9px] text-white/70 font-semibold uppercase tracking-widest block mb-0.5">
-          {category.description ? category.description.slice(0, 20) : 'FEATURED'}
+          {category.description
+            ? category.description.slice(0, 20)
+            : 'FEATURED'}
         </span>
         <h3
           className="font-black text-white uppercase leading-tight"
@@ -99,7 +106,9 @@ function CategoryCard({ category, idx }) {
       <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 z-20 flex items-end justify-between bg-white/95 backdrop-blur-md border-0 transform translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]">
         <div>
           <span className="text-[9px] text-gray-600 font-semibold uppercase tracking-widest block mb-0.5">
-            {category.description ? category.description.slice(0, 20) : 'FEATURED'}
+            {category.description
+              ? category.description.slice(0, 20)
+              : 'FEATURED'}
           </span>
           <h3
             className="font-black text-[#111111] uppercase leading-tight"
@@ -108,7 +117,9 @@ function CategoryCard({ category, idx }) {
             {displayName}
           </h3>
           <span className="text-[9px] text-gray-500 font-medium mt-1 block">
-            {category.productCount ? `${category.productCount}+ styles` : 'Available now'}
+            {category.productCount
+              ? `${category.productCount}+ styles`
+              : 'Available now'}
           </span>
         </div>
 
@@ -141,7 +152,9 @@ function CategorySkeleton() {
 
 const Categories = () => {
   const dispatch = useDispatch();
-  const { items: categories, loading } = useSelector((state) => state.categories);
+  const { items: categories, loading } = useSelector(
+    (state) => state.categories
+  );
 
   useEffect(() => {
     dispatch(fetchCategories());
@@ -160,31 +173,43 @@ const Categories = () => {
           >
             CATEGORIES
           </h2>
-            <Link
-              to="/products"
-              className="bg-[#4C64F4] hover:bg-[#3B53E3] text-white text-[13px] font-medium sm:font-[700] tracking-wider uppercase px-6 py-4 rounded-[12px] shadow-sm transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
-              style={{ fontFamily: "'Rubik', sans-serif" }}
-            >
-              Shop New Drops
-            </Link>
+          <Link
+            to="/products"
+            className="bg-[#4C64F4] hover:bg-[#3B53E3] text-white text-[13px] font-medium sm:font-[700] tracking-wider uppercase px-6 py-4 rounded-[12px] shadow-sm transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
+            style={{ fontFamily: "'Rubik', sans-serif" }}
+          >
+            Shop New Drops
+          </Link>
         </div>
 
         {/* 4 Side-by-Side Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {loading
-            ? Array.from({ length: 4 }).map((_, i) => <CategorySkeleton key={i} />)
-            : displayCategories.length > 0
-            ? displayCategories.map((cat, idx) => (
-                <CategoryCard key={cat.id || cat.publicId || idx} category={cat} idx={idx} />
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <CategorySkeleton key={i} />
               ))
-            : /* Fallback placeholders when database is empty */
-              ['RUNNING', 'LIFESTYLE', 'FORMAL', 'SPORTS'].map((name, idx) => (
-                <CategoryCard
-                  key={name}
-                  category={{ name, description: 'FEATURED', productCount: 12 }}
-                  idx={idx}
-                />
-              ))}
+            : displayCategories.length > 0
+              ? displayCategories.map((cat, idx) => (
+                  <CategoryCard
+                    key={cat.id || cat.publicId || idx}
+                    category={cat}
+                    idx={idx}
+                  />
+                ))
+              : /* Fallback placeholders when database is empty */
+                ['RUNNING', 'LIFESTYLE', 'FORMAL', 'SPORTS'].map(
+                  (name, idx) => (
+                    <CategoryCard
+                      key={name}
+                      category={{
+                        name,
+                        description: 'FEATURED',
+                        productCount: 12,
+                      }}
+                      idx={idx}
+                    />
+                  )
+                )}
         </div>
       </div>
     </section>

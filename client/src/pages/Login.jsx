@@ -1,43 +1,48 @@
-import React, { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { loginUser, clearError } from '../store/authSlice'
-import { showToast } from '../lib/toast'
+import React, { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { loginUser, clearError } from '../store/authSlice';
+import { showToast } from '../lib/toast';
 
 export default function Login() {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/'
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/';
 
-  const { loading, error } = useSelector((state) => state.auth)
+  const { loading, error } = useSelector((state) => state.auth);
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    dispatch(clearError())
+    e.preventDefault();
+    dispatch(clearError());
     try {
-      const res = await dispatch(loginUser({ email, password })).unwrap()
+      const res = await dispatch(loginUser({ email, password })).unwrap();
       // Redirect based on role
       if (res?.user?.role === 'admin') {
         // Admins go to admin panel - use relative path
-        window.location.href = '/admin'
+        window.location.href = '/admin';
       } else {
-        showToast(`Welcome back, ${res?.user?.firstName || 'member'}!`, 'profile', {
-          title: 'Signed in',
-        })
-        navigate(redirect, { replace: true })
+        showToast(
+          `Welcome back, ${res?.user?.firstName || 'member'}!`,
+          'profile',
+          {
+            title: 'Signed in',
+          }
+        );
+        navigate(redirect, { replace: true });
       }
     } catch {
       // Error handled in slice state
     }
-  }
+  };
 
-  const errorMessage = typeof error === 'object' && error !== null
-    ? (error.message || error.error || JSON.stringify(error))
-    : error
+  const errorMessage =
+    typeof error === 'object' && error !== null
+      ? error.message || error.error || JSON.stringify(error)
+      : error;
 
   return (
     <div className="min-h-screen bg-[#ECEAE5] text-[#111111] font-sans flex items-center justify-center p-4 sm:p-8 md:p-12 animate-fade-in">
@@ -89,7 +94,9 @@ export default function Login() {
                       defaultChecked
                       className="mt-0.5 w-4 h-4 rounded border-gray-500 text-black accent-black focus:ring-0 cursor-pointer"
                     />
-                    <span>Keep me logged in - applies to all log in options below.</span>
+                    <span>
+                      Keep me logged in - applies to all log in options below.
+                    </span>
                   </label>
                 </div>
 
@@ -99,8 +106,18 @@ export default function Login() {
                   className="w-full bg-[#1E1E1E] hover:bg-black text-white font-bold py-3.5 px-5 rounded-lg flex items-center justify-between text-xs tracking-wider uppercase transition-all duration-200 active:scale-[0.99] disabled:bg-gray-400"
                 >
                   <span>{loading ? 'LOGGING IN...' : 'EMAIL LOGIN'}</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                    />
                   </svg>
                 </button>
               </form>
@@ -113,12 +130,19 @@ export default function Login() {
                 Join Kicks Club Get Rewarded Today.
               </h2>
               <p className="text-xs sm:text-sm text-gray-700 mb-4 leading-relaxed">
-                As kicks club member you get rewarded with what you love for doing what you love. Sign up today!
+                As kicks club member you get rewarded with what you love for
+                doing what you love. Sign up today!
               </p>
               <ul className="text-xs sm:text-sm text-gray-700 space-y-1 mb-6">
-                <li className="flex items-start gap-2"><span className="font-bold">•</span> Free shipping</li>
-                <li className="flex items-start gap-2"><span className="font-bold">•</span> 15% off voucher</li>
-                <li className="flex items-start gap-2"><span className="font-bold">•</span> Members-only drops</li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">•</span> Free shipping
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">•</span> 15% off voucher
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">•</span> Members-only drops
+                </li>
               </ul>
             </div>
 
@@ -127,13 +151,23 @@ export default function Login() {
               className="w-full bg-[#1E1E1E] hover:bg-black text-white font-bold py-3.5 px-5 rounded-lg flex items-center justify-between text-xs tracking-wider uppercase transition-all duration-200 active:scale-[0.99]"
             >
               <span>JOIN THE CLUB</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                />
               </svg>
             </Link>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

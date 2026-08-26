@@ -27,7 +27,9 @@ export default function Signup() {
           password,
         })
       ).unwrap();
-      showToast('Your KICKS account is ready.', 'profile', { title: 'Welcome to KICKS' });
+      showToast('Your KICKS account is ready.', 'profile', {
+        title: 'Welcome to KICKS',
+      });
       navigate('/');
     } catch {
       // Error in slice state
@@ -40,7 +42,9 @@ export default function Signup() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           <div className="lg:col-span-6 flex flex-col justify-between py-2">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight mb-1">Create Account</h1>
+              <h1 className="text-3xl font-bold tracking-tight mb-1">
+                Create Account
+              </h1>
               <p className="text-xs font-semibold text-gray-600 mb-6">
                 Join the club to get points and exclusive rewards.
               </p>
@@ -96,7 +100,10 @@ export default function Signup() {
                       defaultChecked
                       className="mt-0.5 w-4 h-4 rounded border-gray-500 text-black accent-black focus:ring-0 cursor-pointer"
                     />
-                    <span>Sign up for emails to get exclusive sales, product drops, and news.</span>
+                    <span>
+                      Sign up for emails to get exclusive sales, product drops,
+                      and news.
+                    </span>
                   </label>
                 </div>
 
@@ -106,8 +113,18 @@ export default function Signup() {
                   className="w-full bg-[#1E1E1E] hover:bg-black text-white font-bold py-3.5 px-5 rounded-lg flex items-center justify-between text-xs tracking-wider uppercase transition-all duration-200 active:scale-[0.99] disabled:bg-gray-400"
                 >
                   <span>{loading ? 'REGISTERING...' : 'REGISTER ACCOUNT'}</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                    />
                   </svg>
                 </button>
               </form>
@@ -121,12 +138,15 @@ export default function Signup() {
               </h2>
 
               <p className="text-xs sm:text-sm text-gray-700 mb-6 leading-relaxed">
-                Welcome back! Log in to access your orders, saved items, member rewards, and personal preferences.
+                Welcome back! Log in to access your orders, saved items, member
+                rewards, and personal preferences.
               </p>
 
               <div className="bg-[#ECEAE5] p-5 rounded-2xl mb-8">
                 <h3 className="font-bold text-sm mb-1">Fast Checkout</h3>
-                <p className="text-xs text-gray-600">Saved details make checking out effortless.</p>
+                <p className="text-xs text-gray-600">
+                  Saved details make checking out effortless.
+                </p>
               </div>
             </div>
 
@@ -135,8 +155,18 @@ export default function Signup() {
               className="w-full bg-[#1E1E1E] hover:bg-black text-white font-bold py-3.5 px-5 rounded-lg flex items-center justify-between text-xs tracking-wider uppercase transition-all duration-200 active:scale-[0.99]"
             >
               <span>LOG IN</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                />
               </svg>
             </Link>
           </div>

@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit'
+import { createSlice } from '@reduxjs/toolkit';
 
 /**
  * Product detail page selection (color/size).
@@ -14,10 +14,10 @@ import { createSlice } from '@reduxjs/toolkit'
  * and plain.
  */
 const initialState = {
-  slug: null,  // product slug this selection belongs to
+  slug: null, // product slug this selection belongs to
   color: null, // canonical color name as stored on the product (e.g. "Red")
-  size: null,  // canonical size value as stored on the product (e.g. "10")
-}
+  size: null, // canonical size value as stored on the product (e.g. "10")
+};
 
 const productViewSlice = createSlice({
   name: 'productView',
@@ -28,26 +28,34 @@ const productViewSlice = createSlice({
      * Clicks and voice commands both go through this single action.
      */
     selectVariant(state, action) {
-      const { slug, color, size } = action.payload || {}
+      const { slug, color, size } = action.payload || {};
 
       // A command for a different product starts a fresh selection — never
       // merge another product's color/size into the current one.
       if (slug && slug !== state.slug) {
-        state.slug = slug
-        state.color = color !== undefined && color !== null && color !== '' ? String(color) : null
-        state.size = size !== undefined && size !== null && size !== '' ? String(size) : null
-        return
+        state.slug = slug;
+        state.color =
+          color !== undefined && color !== null && color !== ''
+            ? String(color)
+            : null;
+        state.size =
+          size !== undefined && size !== null && size !== ''
+            ? String(size)
+            : null;
+        return;
       }
 
-      if (slug) state.slug = slug
-      if (color !== undefined) state.color = color !== null && color !== '' ? String(color) : null
-      if (size !== undefined) state.size = size !== null && size !== '' ? String(size) : null
+      if (slug) state.slug = slug;
+      if (color !== undefined)
+        state.color = color !== null && color !== '' ? String(color) : null;
+      if (size !== undefined)
+        state.size = size !== null && size !== '' ? String(size) : null;
     },
   },
-})
+});
 
-export const { selectVariant } = productViewSlice.actions
+export const { selectVariant } = productViewSlice.actions;
 
-export const selectProductView = (state) => state.productView
+export const selectProductView = (state) => state.productView;
 
-export default productViewSlice.reducer
+export default productViewSlice.reducer;

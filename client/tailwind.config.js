@@ -1,18 +1,21 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: [
+          'Inter',
+          'ui-sans-serif',
+          'system-ui',
+          '-apple-system',
+          'sans-serif',
+        ],
         rubik: ['Rubik', 'sans-serif'],
         display: ['Archivo Black', 'sans-serif'],
         kicks: ['Bebas Neue', 'cursive'],
       },
-      
+
       colors: {
         brand: '#F5A623',
         branddark: '#E09512',
@@ -49,8 +52,8 @@ export default {
           '100%': { transform: 'scale(1)' },
         },
         fadeUp: {
-          'from': { opacity: '0', transform: 'translateY(24px)' },
-          'to': { opacity: '1', transform: 'translateY(0)' },
+          from: { opacity: '0', transform: 'translateY(24px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
         },
       },
       animation: {
@@ -62,4 +65,4 @@ export default {
     },
   },
   plugins: [],
-}
+};

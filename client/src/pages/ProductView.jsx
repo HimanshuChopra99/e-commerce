@@ -1,15 +1,24 @@
-import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { addToCart, removeFromCart, selectCartItems } from "../store/cartSlice";
-import { toggleWishlist, selectIsWishlisted, fetchFavourites } from "../store/wishlistSlice";
-import { selectVariant, selectProductView } from "../store/productViewSlice";
-import { showToast } from "../lib/toast";
-import { emitCartVoiceAction } from "../lib/cartVoiceAction";
-import { ProductGallery } from "../components/product/ProductGallery";
-import { ProductDetails } from "../components/product/ProductDetails";
-import { SizeChartModal } from "../components/product/SizeChartModal";
-import { RelatedProducts } from "../components/product/RelatedProducts";
+import { useState, useEffect, useMemo } from 'react';
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { addToCart, removeFromCart, selectCartItems } from '../store/cartSlice';
+import {
+  toggleWishlist,
+  selectIsWishlisted,
+  fetchFavourites,
+} from '../store/wishlistSlice';
+import { selectVariant, selectProductView } from '../store/productViewSlice';
+import { showToast } from '../lib/toast';
+import { emitCartVoiceAction } from '../lib/cartVoiceAction';
+import { ProductGallery } from '../components/product/ProductGallery';
+import { ProductDetails } from '../components/product/ProductDetails';
+import { SizeChartModal } from '../components/product/SizeChartModal';
+import { RelatedProducts } from '../components/product/RelatedProducts';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -18,14 +27,54 @@ const IMAGE_BASE = import.meta.env.VITE_API_URL
   : '';
 
 function getImageSrc(img) {
-  if (!img) return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80";
-  if (img.startsWith("http")) return img;
+  if (!img)
+    return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80';
+  if (img.startsWith('http')) return img;
   return `${IMAGE_BASE}${img}`;
 }
 
-const EU_TO_US = { '35': 5, '36': 6, '37': 6.5, '38': 7.5, '39': 8, '40': 9, '41': 10, '42': 10.5, '43': 11.5, '44': 12, '45': 13, '46': 14 }
-const EU_TO_UK = { '35': 3, '36': 4, '37': 4.5, '38': 5.5, '39': 6, '40': 7, '41': 8, '42': 8.5, '43': 9.5, '44': 10, '45': 11, '46': 12 }
-const EU_TO_CM = { '35': 22.5, '36': 23, '37': 23.5, '38': 24, '39': 25, '40': 25.5, '41': 26, '42': 26.5, '43': 27.5, '44': 28, '45': 28.5, '46': 29 }
+const EU_TO_US = {
+  35: 5,
+  36: 6,
+  37: 6.5,
+  38: 7.5,
+  39: 8,
+  40: 9,
+  41: 10,
+  42: 10.5,
+  43: 11.5,
+  44: 12,
+  45: 13,
+  46: 14,
+};
+const EU_TO_UK = {
+  35: 3,
+  36: 4,
+  37: 4.5,
+  38: 5.5,
+  39: 6,
+  40: 7,
+  41: 8,
+  42: 8.5,
+  43: 9.5,
+  44: 10,
+  45: 11,
+  46: 12,
+};
+const EU_TO_CM = {
+  35: 22.5,
+  36: 23,
+  37: 23.5,
+  38: 24,
+  39: 25,
+  40: 25.5,
+  41: 26,
+  42: 26.5,
+  43: 27.5,
+  44: 28,
+  45: 28.5,
+  46: 29,
+};
 
 export default function ProductView() {
   const { id } = useParams();
@@ -35,7 +84,11 @@ export default function ProductView() {
 
   const cartItems = useSelector(selectCartItems);
   const user = useSelector((state) => state.auth.user);
-  const { slug: selectionSlug, color: selectionColor, size: selectionSize } = useSelector(selectProductView);
+  const {
+    slug: selectionSlug,
+    color: selectionColor,
+    size: selectionSize,
+  } = useSelector(selectProductView);
 
   const [product, setProduct] = useState(null);
   const [relatedList, setRelatedList] = useState([]);
@@ -53,20 +106,30 @@ export default function ProductView() {
   const selectedColor = useMemo(() => {
     if (!product) return null;
     if (selectionSlug !== product.slug) return product.colors[0] || null;
-    return product.colors.find(
-      (c) => c.name.toLowerCase() === String(selectionColor || '').toLowerCase()
-    ) || product.colors[0] || null;
+    return (
+      product.colors.find(
+        (c) =>
+          c.name.toLowerCase() === String(selectionColor || '').toLowerCase()
+      ) ||
+      product.colors[0] ||
+      null
+    );
   }, [product, selectionSlug, selectionColor]);
 
   const selectedSize = useMemo(() => {
     if (!product) return null;
-    const availableForColor = (size) => product.variants.some(
-      (v) => v.color === selectedColor?.name && String(v.size) === String(size.value) &&
-        Boolean(v.inStock ?? Number(v.available ?? 0) > 0)
-    );
+    const availableForColor = (size) =>
+      product.variants.some(
+        (v) =>
+          v.color === selectedColor?.name &&
+          String(v.size) === String(size.value) &&
+          Boolean(v.inStock ?? Number(v.available ?? 0) > 0)
+      );
     // A voice/URL request wins when its size is in stock for the chosen color
     if (selectionSlug === product.slug && selectionSize != null) {
-      const requested = product.sizes.find((s) => String(s.value) === String(selectionSize));
+      const requested = product.sizes.find(
+        (s) => String(s.value) === String(selectionSize)
+      );
       if (requested && availableForColor(requested)) return requested;
     }
     // Otherwise fall back to the first available size in the selected color
@@ -85,7 +148,7 @@ export default function ProductView() {
 
     fetch(`${API_BASE}/products/${id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Product not found");
+        if (!res.ok) throw new Error('Product not found');
         return res.json();
       })
       .then((data) => {
@@ -96,17 +159,26 @@ export default function ProductView() {
         }
 
         const variants = item.variants || [];
-        const sizeVals = [...new Set(variants.map((v) => v.size).filter(Boolean))]
-          .sort((a, b) => Number(a) - Number(b));
-        const colorList = [...new Set(variants
-          .filter((v) => Boolean(v.inStock ?? Number(v.available ?? 0) > 0))
-          .map((v) => v.color)
-          .filter(Boolean))];
+        const sizeVals = [
+          ...new Set(variants.map((v) => v.size).filter(Boolean)),
+        ].sort((a, b) => Number(a) - Number(b));
+        const colorList = [
+          ...new Set(
+            variants
+              .filter((v) => Boolean(v.inStock ?? Number(v.available ?? 0) > 0))
+              .map((v) => v.color)
+              .filter(Boolean)
+          ),
+        ];
 
         const toSize = (size, color) => {
           const eu = String(size);
-          const variant = variants.find((v) => String(v.size) === eu && v.color === color);
-          const available = Boolean(variant?.inStock ?? Number(variant?.available ?? 0) > 0);
+          const variant = variants.find(
+            (v) => String(v.size) === eu && v.color === color
+          );
+          const available = Boolean(
+            variant?.inStock ?? Number(variant?.available ?? 0) > 0
+          );
           return {
             value: eu,
             eu: Number(eu),
@@ -118,18 +190,34 @@ export default function ProductView() {
           };
         };
 
-        const rawImages = (item.images && item.images.length > 0)
-          ? item.images
-          : [item.image || "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800"];
+        const rawImages =
+          item.images && item.images.length > 0
+            ? item.images
+            : [
+                item.image ||
+                  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
+              ];
 
         const imgList = rawImages.map(getImageSrc);
 
-        const colorImageEntries = Array.isArray(item.colorImages) ? item.colorImages : [];
+        const colorImageEntries = Array.isArray(item.colorImages)
+          ? item.colorImages
+          : [];
         const colorHex = {
-          white: '#FFFFFF', black: '#1E1E1E', red: '#EF4444', blue: '#3B82F6',
-          navy: '#1E3A8A', green: '#22C55E', yellow: '#EAB308', grey: '#6B7280',
-          gray: '#6B7280', pink: '#EC4899', brown: '#92400E', tan: '#D2B48C',
-          beige: '#E7DBC8', olive: '#6B7A32',
+          white: '#FFFFFF',
+          black: '#1E1E1E',
+          red: '#EF4444',
+          blue: '#3B82F6',
+          navy: '#1E3A8A',
+          green: '#22C55E',
+          yellow: '#EAB308',
+          grey: '#6B7280',
+          gray: '#6B7280',
+          pink: '#EC4899',
+          brown: '#92400E',
+          tan: '#D2B48C',
+          beige: '#E7DBC8',
+          olive: '#6B7A32',
         };
         const colors = colorList.map((col, idx) => {
           const key = col.toLowerCase();
@@ -157,18 +245,23 @@ export default function ProductView() {
           name: item.name,
           slug: item.slug || id,
           price: Number(item.price) || 99.99,
-          tag: item.compareAtPrice ? "Sale" : item.featured ? "New" : "Popular",
+          tag: item.compareAtPrice ? 'Sale' : item.featured ? 'New' : 'Popular',
           sizes,
           colors,
           image: imgList[0],
-          description: item.description || "High-performance sneakers engineered for comfort and mobility.",
+          description:
+            item.description ||
+            'High-performance sneakers engineered for comfort and mobility.',
           rating: item.rating || 4.8,
           variants: item.variants || [],
           specs: [
-            { label: "Category", value: item.category?.name || item.category || "Footwear" },
-            { label: "Gender", value: item.gender || "Unisex" },
-            { label: "Material", value: item.material || "Knit Upper" },
-            { label: "Status", value: item.status || "In Stock" },
+            {
+              label: 'Category',
+              value: item.category?.name || item.category || 'Footwear',
+            },
+            { label: 'Gender', value: item.gender || 'Unisex' },
+            { label: 'Material', value: item.material || 'Knit Upper' },
+            { label: 'Status', value: item.status || 'In Stock' },
           ],
         };
 
@@ -181,16 +274,19 @@ export default function ProductView() {
         const urlColor = searchParams.get('color');
         const urlSize = searchParams.get('size');
         const initialColorName = urlColor
-          ? colors.find((c) => c.name.toLowerCase() === urlColor.toLowerCase())?.name ?? null
+          ? (colors.find((c) => c.name.toLowerCase() === urlColor.toLowerCase())
+              ?.name ?? null)
           : null;
         const initialSizeValue = urlSize
-          ? sizeVals.find((v) => String(v) === String(urlSize)) ?? null
+          ? (sizeVals.find((v) => String(v) === String(urlSize)) ?? null)
           : null;
-        dispatch(selectVariant({
-          slug: item.slug || id,
-          color: initialColorName,
-          size: initialSizeValue,
-        }));
+        dispatch(
+          selectVariant({
+            slug: item.slug || id,
+            color: initialColorName,
+            size: initialSizeValue,
+          })
+        );
 
         // Fetch related products dynamically
         fetch(`${API_BASE}/products/${item.slug || id}/related`)
@@ -203,16 +299,16 @@ export default function ProductView() {
                 name: rp.name,
                 price: Number(rp.price),
                 image: getImageSrc(rp.image || (rp.images && rp.images[0])),
-                badge: rp.featured ? "New" : "",
-                category: rp.category?.name || rp.category || "",
+                badge: rp.featured ? 'New' : '',
+                category: rp.category?.name || rp.category || '',
               }));
               setRelatedList(formattedRel);
             }
           })
-          .catch(() => { });
+          .catch(() => {});
       })
       .catch((err) => {
-        setError(err.message || "Failed to load product");
+        setError(err.message || 'Failed to load product');
       })
       .finally(() => setLoading(false));
 
@@ -224,7 +320,9 @@ export default function ProductView() {
       <div className="min-h-screen bg-[#EAE9E5] flex items-center justify-center py-20">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#1E1E1E] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm font-bold text-gray-600">Loading Product Details...</p>
+          <p className="text-sm font-bold text-gray-600">
+            Loading Product Details...
+          </p>
         </div>
       </div>
     );
@@ -235,10 +333,14 @@ export default function ProductView() {
       <div className="min-h-screen bg-[#EAE9E5] flex items-center justify-center py-20">
         <div className="text-center bg-white p-8 rounded-3xl shadow-sm max-w-md">
           <span className="text-5xl mb-4 block">👟</span>
-          <h2 className="text-xl font-bold mb-2 text-gray-900">Product Not Found</h2>
-          <p className="text-sm text-gray-500 mb-6">{error || "The requested product does not exist in the database."}</p>
+          <h2 className="text-xl font-bold mb-2 text-gray-900">
+            Product Not Found
+          </h2>
+          <p className="text-sm text-gray-500 mb-6">
+            {error || 'The requested product does not exist in the database.'}
+          </p>
           <button
-            onClick={() => navigate("/products")}
+            onClick={() => navigate('/products')}
             className="bg-[#1E1E1E] text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors"
           >
             Back to Catalog
@@ -260,12 +362,23 @@ export default function ProductView() {
     dispatch(selectVariant({ slug: product.slug, size: String(size.value) }));
   };
 
-  const isSizeAvailable = (size) => product.variants.some((variant) =>
-    variant.color === selectedColor?.name && String(variant.size) === String(size.value) && Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)
-  );
+  const isSizeAvailable = (size) =>
+    product.variants.some(
+      (variant) =>
+        variant.color === selectedColor?.name &&
+        String(variant.size) === String(size.value) &&
+        Boolean(variant.inStock ?? Number(variant.available ?? 0) > 0)
+    );
 
-  const selectedVariant = product.variants?.find((v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name);
-  const selectedVariantInCart = Boolean(selectedVariant?.id && cartItems.some((item) => item.variantId === selectedVariant.id));
+  const selectedVariant = product.variants?.find(
+    (v) =>
+      String(v.size) === String(selectedSize?.value) &&
+      v.color === selectedColor?.name
+  );
+  const selectedVariantInCart = Boolean(
+    selectedVariant?.id &&
+    cartItems.some((item) => item.variantId === selectedVariant.id)
+  );
   const handleRemoveFromCart = async () => {
     if (!selectedVariant?.id) return;
     // Emit voice event IMMEDIATELY on click to remove network latency
@@ -279,16 +392,25 @@ export default function ProductView() {
       await dispatch(removeFromCart(selectedVariant.id)).unwrap();
       showToast(`${product.name} removed from your cart.`, 'cart');
     } catch (requestError) {
-      showToast(requestError || 'Unable to remove this item.', 'error', { title: 'Cart update failed' });
+      showToast(requestError || 'Unable to remove this item.', 'error', {
+        title: 'Cart update failed',
+      });
     }
   };
 
   const handleAddToCart = async () => {
     const variant = product.variants?.find(
-      (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
+      (v) =>
+        String(v.size) === String(selectedSize?.value) &&
+        v.color === selectedColor?.name
     );
-    if (!variant?.id || !(variant.inStock ?? Number(variant.available ?? 0) > 0)) {
-      showToast('This size is currently unavailable.', 'warning', { title: 'Sold out' });
+    if (
+      !variant?.id ||
+      !(variant.inStock ?? Number(variant.available ?? 0) > 0)
+    ) {
+      showToast('This size is currently unavailable.', 'warning', {
+        title: 'Sold out',
+      });
       return false;
     }
 
@@ -323,36 +445,49 @@ export default function ProductView() {
       showToast(`${product.name} added to your cart.`, 'cart');
       return true;
     } catch (requestError) {
-      showToast(requestError || 'Unable to add this item.', 'error', { title: 'Cart update failed' });
+      showToast(requestError || 'Unable to add this item.', 'error', {
+        title: 'Cart update failed',
+      });
       return false;
     }
   };
 
   const handleBuyNow = async () => {
     const variant = product.variants?.find(
-      (v) => String(v.size) === String(selectedSize?.value) && v.color === selectedColor?.name
+      (v) =>
+        String(v.size) === String(selectedSize?.value) &&
+        v.color === selectedColor?.name
     );
-    const alreadyInCart = variant && cartItems.some((i) => i.variantId === variant.id);
-    if (alreadyInCart || await handleAddToCart()) {
-      navigate("/cart");
+    const alreadyInCart =
+      variant && cartItems.some((i) => i.variantId === variant.id);
+    if (alreadyInCart || (await handleAddToCart())) {
+      navigate('/cart');
     }
   };
 
   const handleToggleWishlist = async () => {
     if (!product?.id) return;
     if (!user) {
-      showToast('Sign in to save favourites across your devices.', 'profile', { title: 'Account required' });
-      navigate(`/login?redirect=${encodeURIComponent(`/product/${product.slug}`)}`);
+      showToast('Sign in to save favourites across your devices.', 'profile', {
+        title: 'Account required',
+      });
+      navigate(
+        `/login?redirect=${encodeURIComponent(`/product/${product.slug}`)}`
+      );
       return;
     }
     try {
       const result = await dispatch(toggleWishlist(product.id)).unwrap();
       showToast(
-        result.saved ? `${product.name} saved to favourites.` : `${product.name} removed from favourites.`,
+        result.saved
+          ? `${product.name} saved to favourites.`
+          : `${product.name} removed from favourites.`,
         'favourite'
       );
     } catch (requestError) {
-      showToast(requestError || 'Unable to update favourites.', 'error', { title: 'Favourite update failed' });
+      showToast(requestError || 'Unable to update favourites.', 'error', {
+        title: 'Favourite update failed',
+      });
     }
   };
 
@@ -361,9 +496,16 @@ export default function ProductView() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 sm:pt-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-6 text-xs text-neutral-500 font-semibold">
           <div className="flex items-center gap-2 flex-wrap">
-            <Link to="/" className="hover:text-neutral-900 transition-colors">Home</Link>
+            <Link to="/" className="hover:text-neutral-900 transition-colors">
+              Home
+            </Link>
             <span>/</span>
-            <Link to="/products" className="hover:text-neutral-900 transition-colors">Products</Link>
+            <Link
+              to="/products"
+              className="hover:text-neutral-900 transition-colors"
+            >
+              Products
+            </Link>
             <span>/</span>
             <span className="text-neutral-900 font-bold">{product.name}</span>
           </div>
@@ -373,7 +515,11 @@ export default function ProductView() {
           <div className="lg:col-span-7">
             <ProductGallery
               key={selectedColor?.id || 'default-gallery'}
-              images={selectedColor?.images?.length ? selectedColor.images : [product.image]}
+              images={
+                selectedColor?.images?.length
+                  ? selectedColor.images
+                  : [product.image]
+              }
               productName={product.name}
             />
           </div>
@@ -403,7 +549,7 @@ export default function ProductView() {
             products={relatedList}
             onSelectProduct={(item) => {
               navigate(`/product/${item.slug || item.id}`);
-              window.scrollTo({ top: 0, behavior: "smooth" });
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onQuickAdd={(item) => {
               navigate(`/product/${item.slug || item.id}`);

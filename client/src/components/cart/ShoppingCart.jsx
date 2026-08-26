@@ -1,33 +1,33 @@
-import React, { useState, useEffect } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   selectCartItems,
   selectCartTotal,
   updateQuantity,
   removeFromCart,
   clearCart,
-} from '../../store/cartSlice'
-import { placeOrder } from '../../store/ordersSlice'
-import { ordersApi } from '../../lib/api'
-import { showToast } from '../../lib/toast'
-import { emitCartVoiceAction } from '../../lib/cartVoiceAction'
-import MapAddressPicker from '../MapAddressPicker'
+} from '../../store/cartSlice';
+import { placeOrder } from '../../store/ordersSlice';
+import { ordersApi } from '../../lib/api';
+import { showToast } from '../../lib/toast';
+import { emitCartVoiceAction } from '../../lib/cartVoiceAction';
+import MapAddressPicker from '../MapAddressPicker';
 
 export default function ShoppingCart() {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const cartItems = useSelector(selectCartItems)
-  const cartLoading = useSelector((state) => state.cart.loading)
-  const subtotal = useSelector(selectCartTotal)
-  const { user } = useSelector((state) => state.auth)
+  const cartItems = useSelector(selectCartItems);
+  const cartLoading = useSelector((state) => state.cart.loading);
+  const subtotal = useSelector(selectCartTotal);
+  const { user } = useSelector((state) => state.auth);
 
-  const [quote, setQuote] = useState(null)
-  const [paymentMethod, setPaymentMethod] = useState('card')
-  const [checkoutLoading, setCheckoutLoading] = useState(false)
-  const [checkoutError, setCheckoutError] = useState(null)
-  const [showAddressForm, setShowAddressForm] = useState(false)
+  const [quote, setQuote] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
   const [shippingAddress, setShippingAddress] = useState({
     name: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
     phone: user?.phone || '',
@@ -39,65 +39,75 @@ export default function ShoppingCart() {
     country: user?.address?.country || 'USA',
     lat: user?.address?.lat || null,
     lng: user?.address?.lng || null,
-  })
+  });
 
   const cartSignature = cartItems
     .map((item) => `${item.variantId}:${item.quantity}`)
     .sort()
-    .join('|')
+    .join('|');
 
   useEffect(() => {
     if (!cartSignature) {
-      setQuote(null)
-      return undefined
+      setQuote(null);
+      return undefined;
     }
 
-    let cancelled = false
-    const requestedSignature = cartSignature
+    let cancelled = false;
+    const requestedSignature = cartSignature;
     ordersApi
-      .quote({ items: cartItems.map((item) => ({ variantId: item.variantId, quantity: item.quantity })) })
+      .quote({
+        items: cartItems.map((item) => ({
+          variantId: item.variantId,
+          quantity: item.quantity,
+        })),
+      })
       .then(async (response) => {
-        if (cancelled) return
-        setQuote({ signature: requestedSignature, data: response.data })
-        const unavailable = (response.data?.lines || []).filter((line) => !line.available)
+        if (cancelled) return;
+        setQuote({ signature: requestedSignature, data: response.data });
+        const unavailable = (response.data?.lines || []).filter(
+          (line) => !line.available
+        );
         if (unavailable.length > 0) {
           for (const line of unavailable) {
-            await dispatch(removeFromCart(line.variantId))
+            await dispatch(removeFromCart(line.variantId));
           }
           showToast(
             `${unavailable.length} unavailable ${unavailable.length === 1 ? 'item was' : 'items were'} removed.`,
             'warning',
             { title: 'Cart adjusted' }
-          )
+          );
         }
       })
       .catch(() => {
         // Keep the locally calculated summary visible. Checkout performs the
         // same authoritative validation again on the server.
-      })
+      });
 
     return () => {
-      cancelled = true
-    }
-  // cartSignature fully represents the quote payload and prevents a duplicate
-  // request when the server confirms the same optimistic cart state.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartSignature, dispatch])
+      cancelled = true;
+    };
+    // cartSignature fully represents the quote payload and prevents a duplicate
+    // request when the server confirms the same optimistic cart state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSignature, dispatch]);
 
-  const totalItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0)
-  const currentQuote = quote?.signature === cartSignature ? quote.data : null
-  const localShipping = subtotal === 0 || subtotal >= 150 ? 0 : 9.99
-  const localTax = Number((subtotal * 0.08).toFixed(2))
-  const displaySubtotal = Number(currentQuote?.subtotal ?? subtotal)
-  const displayShipping = Number(currentQuote?.shipping ?? localShipping)
-  const displayTax = Number(currentQuote?.tax ?? localTax)
+  const totalItemCount = cartItems.reduce(
+    (acc, item) => acc + item.quantity,
+    0
+  );
+  const currentQuote = quote?.signature === cartSignature ? quote.data : null;
+  const localShipping = subtotal === 0 || subtotal >= 150 ? 0 : 9.99;
+  const localTax = Number((subtotal * 0.08).toFixed(2));
+  const displaySubtotal = Number(currentQuote?.subtotal ?? subtotal);
+  const displayShipping = Number(currentQuote?.shipping ?? localShipping);
+  const displayTax = Number(currentQuote?.tax ?? localTax);
   const displayTotal = Number(
-    currentQuote?.total ?? (displaySubtotal + displayShipping + displayTax)
-  )
+    currentQuote?.total ?? displaySubtotal + displayShipping + displayTax
+  );
 
   const handleAddressChange = (field, value) => {
-    setShippingAddress((prev) => ({ ...prev, [field]: value }))
-  }
+    setShippingAddress((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleMapSelect = (geo) => {
     setShippingAddress((prev) => ({
@@ -111,13 +121,18 @@ export default function ShoppingCart() {
       ...(geo.state ? { state: geo.state } : {}),
       ...(geo.postalCode ? { postalCode: geo.postalCode } : {}),
       ...(geo.country ? { country: geo.country } : {}),
-    }))
-  }
+    }));
+  };
 
   const handleQuantityChange = async (item, quantity) => {
-    const isIncrease = quantity > item.quantity
-    const actionType = quantity <= 0 ? 'remove_item' : isIncrease ? 'increase_quantity' : 'decrease_quantity'
-    
+    const isIncrease = quantity > item.quantity;
+    const actionType =
+      quantity <= 0
+        ? 'remove_item'
+        : isIncrease
+          ? 'increase_quantity'
+          : 'decrease_quantity';
+
     // Emit voice event IMMEDIATELY on click to remove network latency
     emitCartVoiceAction({
       action: actionType,
@@ -125,19 +140,21 @@ export default function ShoppingCart() {
       color: item.color,
       size: item.size,
       quantity,
-    })
+    });
 
     try {
-      await dispatch(updateQuantity({ variantId: item.variantId, quantity })).unwrap()
+      await dispatch(
+        updateQuantity({ variantId: item.variantId, quantity })
+      ).unwrap();
       if (quantity <= 0) {
-        showToast(`${item.name} removed from your cart.`, 'cart')
+        showToast(`${item.name} removed from your cart.`, 'cart');
       }
     } catch (error) {
       showToast(error || 'Unable to update the item quantity.', 'error', {
         title: 'Cart update failed',
-      })
+      });
     }
-  }
+  };
 
   const handleRemoveItem = async (item) => {
     // Emit voice event IMMEDIATELY on click to remove network latency
@@ -147,17 +164,17 @@ export default function ShoppingCart() {
       color: item.color,
       size: item.size,
       quantity: 0,
-    })
+    });
 
     try {
-      await dispatch(removeFromCart(item.variantId)).unwrap()
-      showToast(`${item.name} removed from your cart.`, 'cart')
+      await dispatch(removeFromCart(item.variantId)).unwrap();
+      showToast(`${item.name} removed from your cart.`, 'cart');
     } catch (error) {
       showToast(error || 'Unable to remove this item.', 'error', {
         title: 'Cart update failed',
-      })
+      });
     }
-  }
+  };
 
   const isAddressValid = () => {
     return (
@@ -167,36 +184,41 @@ export default function ShoppingCart() {
       Boolean(shippingAddress.state.trim()) &&
       Boolean(shippingAddress.postalCode.trim()) &&
       Boolean(shippingAddress.country.trim())
-    )
-  }
+    );
+  };
 
   const handleCheckout = async () => {
-    if (cartItems.length === 0) return
+    if (cartItems.length === 0) return;
 
     if (!user) {
-      showToast('Sign in to continue to checkout.', 'profile', { title: 'Account required' })
-      navigate('/login?redirect=/cart')
-      return
+      showToast('Sign in to continue to checkout.', 'profile', {
+        title: 'Account required',
+      });
+      navigate('/login?redirect=/cart');
+      return;
     }
 
     if (!showAddressForm && !isAddressValid()) {
-      setShowAddressForm(true)
-      return
+      setShowAddressForm(true);
+      return;
     }
 
     if (!isAddressValid()) {
-      const message = 'Please fill in all required shipping address fields.'
-      setCheckoutError(message)
-      showToast(message, 'warning', { title: 'Delivery address required' })
-      return
+      const message = 'Please fill in all required shipping address fields.';
+      setCheckoutError(message);
+      showToast(message, 'warning', { title: 'Delivery address required' });
+      return;
     }
 
-    setCheckoutLoading(true)
-    setCheckoutError(null)
+    setCheckoutLoading(true);
+    setCheckoutError(null);
 
     try {
       const orderData = {
-        items: cartItems.map((item) => ({ variantId: item.variantId, quantity: item.quantity })),
+        items: cartItems.map((item) => ({
+          variantId: item.variantId,
+          quantity: item.quantity,
+        })),
         shippingAddress: {
           name: shippingAddress.name,
           phone: shippingAddress.phone || undefined,
@@ -210,10 +232,10 @@ export default function ShoppingCart() {
           lng: shippingAddress.lng ?? null,
         },
         paymentMethod,
-      }
+      };
 
-      const result = await dispatch(placeOrder(orderData)).unwrap()
-      const order = result.order || result
+      const result = await dispatch(placeOrder(orderData)).unwrap();
+      const order = result.order || result;
 
       // A card order is only pending at this point. Preserve the cart until
       // Stripe confirms payment and the backend webhook records it as paid.
@@ -221,27 +243,29 @@ export default function ShoppingCart() {
         if (!result.payment?.clientSecret || !result.payment?.publishableKey) {
           throw new Error(
             result.payment?.error ||
-            'Secure payment could not be started. Please check Stripe configuration and try again.'
-          )
+              'Secure payment could not be started. Please check Stripe configuration and try again.'
+          );
         }
         navigate(`/checkout/payment?order=${encodeURIComponent(order.id)}`, {
           state: { order, payment: result.payment },
-        })
-        return
+        });
+        return;
       }
 
-      dispatch(clearCart())
-      showToast(`Order ${order.orderNumber || order.id} was placed successfully.`, 'order')
-      navigate('/orders', { state: { justPlaced: order } })
+      dispatch(clearCart());
+      showToast(
+        `Order ${order.orderNumber || order.id} was placed successfully.`,
+        'order'
+      );
+      navigate('/orders', { state: { justPlaced: order } });
     } catch (err) {
-      const message = err.message || err || 'Failed to place order'
-      setCheckoutError(message)
-      showToast(message, 'error', { title: 'Checkout failed' })
+      const message = err.message || err || 'Failed to place order';
+      setCheckoutError(message);
+      showToast(message, 'error', { title: 'Checkout failed' });
     } finally {
-      setCheckoutLoading(false)
+      setCheckoutLoading(false);
     }
-  }
-
+  };
 
   return (
     <div className="min-h-screen bg-[#ECEAE5] text-[#111111] font-sans p-4 sm:p-8 md:p-12 lg:p-16 flex justify-center items-start">
@@ -251,11 +275,23 @@ export default function ShoppingCart() {
             Saving to celebrate
           </h1>
           <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-            Enjoy up to 60% off thousands of styles during the End of Year sale - while supplies last. No code needed.{' '}
+            Enjoy up to 60% off thousands of styles during the End of Year sale
+            - while supplies last. No code needed.{' '}
             {!user && (
               <>
-                <a href="/login" className="underline font-medium hover:text-black">Sign-in</a> or{' '}
-                <a href="/signup" className="underline font-medium hover:text-black">Create Account</a>
+                <a
+                  href="/login"
+                  className="underline font-medium hover:text-black"
+                >
+                  Sign-in
+                </a>{' '}
+                or{' '}
+                <a
+                  href="/signup"
+                  className="underline font-medium hover:text-black"
+                >
+                  Create Account
+                </a>
               </>
             )}
           </p>
@@ -277,10 +313,14 @@ export default function ShoppingCart() {
 
             <div className="max-h-[460px] overflow-y-auto pr-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
               {cartLoading && cartItems.length === 0 ? (
-                <div className="py-12 text-center text-sm font-semibold text-gray-500">Syncing your saved bag…</div>
+                <div className="py-12 text-center text-sm font-semibold text-gray-500">
+                  Syncing your saved bag…
+                </div>
               ) : cartItems.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-sm text-gray-500 mb-4">Your bag is empty.</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Your bag is empty.
+                  </p>
                   <button
                     onClick={() => navigate('/products')}
                     className="bg-black text-white px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition"
@@ -291,14 +331,18 @@ export default function ShoppingCart() {
               ) : (
                 cartItems.map((item, index) => (
                   <div key={item.variantId || index}>
-                    {index > 0 && <div className="border-t border-gray-100 my-6" />}
+                    {index > 0 && (
+                      <div className="border-t border-gray-100 my-6" />
+                    )}
                     <div className="flex gap-4 sm:gap-6">
                       <div className="w-28 h-28 sm:w-36 sm:h-36 bg-[#F2F1ED] rounded-2xl flex-shrink-0 flex items-center justify-center overflow-hidden">
                         <img
                           src={item.image}
                           alt={item.name}
                           className="w-full h-full object-cover"
-                         loading="lazy" decoding="async"/>
+                          loading="lazy"
+                          decoding="async"
+                        />
                       </div>
 
                       <div className="flex-1 flex flex-col justify-between">
@@ -308,7 +352,9 @@ export default function ShoppingCart() {
                               {item.name}
                             </h3>
                             <span className="font-bold text-blue-600 text-sm sm:text-base whitespace-nowrap">
-                              <AnimatedMoney value={item.price * item.quantity} />
+                              <AnimatedMoney
+                                value={item.price * item.quantity}
+                              />
                             </span>
                           </div>
 
@@ -318,17 +364,26 @@ export default function ShoppingCart() {
 
                           <div className="flex items-center gap-6 mt-3 text-xs sm:text-sm">
                             <div className="flex items-center gap-1">
-                              <span className="text-gray-700 font-semibold">Size:</span>
+                              <span className="text-gray-700 font-semibold">
+                                Size:
+                              </span>
                               <span className="font-bold">{item.size}</span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-700 font-semibold">Quantity:</span>
+                              <span className="text-gray-700 font-semibold">
+                                Quantity:
+                              </span>
                               <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
                                 <button
                                   type="button"
                                   disabled={cartLoading}
-                                  onClick={() => handleQuantityChange(item, item.quantity - 1)}
+                                  onClick={() =>
+                                    handleQuantityChange(
+                                      item,
+                                      item.quantity - 1
+                                    )
+                                  }
                                   className="w-7 h-7 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition font-bold text-sm select-none"
                                   aria-label="Decrease quantity"
                                 >
@@ -342,12 +397,19 @@ export default function ShoppingCart() {
                                   disabled={cartLoading}
                                   onClick={() => {
                                     if (item.quantity >= 10) {
-                                      showToast('Maximum 10 items allowed for one product.', 'warning', {
-                                        title: 'Quantity limit',
-                                      })
-                                      return
+                                      showToast(
+                                        'Maximum 10 items allowed for one product.',
+                                        'warning',
+                                        {
+                                          title: 'Quantity limit',
+                                        }
+                                      );
+                                      return;
                                     }
-                                    handleQuantityChange(item, item.quantity + 1)
+                                    handleQuantityChange(
+                                      item,
+                                      item.quantity + 1
+                                    );
                                   }}
                                   className="w-7 h-7 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition font-bold text-sm select-none"
                                   aria-label="Increase quantity"
@@ -365,8 +427,18 @@ export default function ShoppingCart() {
                             onClick={() => handleRemoveItem(item)}
                             className="text-red-500 hover:text-red-700 text-xs font-semibold transition-colors flex items-center gap-1"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
                             </svg>
                             Remove
                           </button>
@@ -386,7 +458,8 @@ export default function ShoppingCart() {
             <div className="space-y-3 text-sm sm:text-base" aria-live="polite">
               <div className="flex justify-between text-gray-800">
                 <span className="uppercase font-medium text-xs tracking-wider">
-                  {totalItemCount} {totalItemCount === 1 ? 'ITEM' : 'ITEMS'} (SUBTOTAL)
+                  {totalItemCount} {totalItemCount === 1 ? 'ITEM' : 'ITEMS'}{' '}
+                  (SUBTOTAL)
                 </span>
                 <span className="font-medium">
                   <AnimatedMoney value={displaySubtotal} />
@@ -397,7 +470,12 @@ export default function ShoppingCart() {
                 <span>Delivery</span>
                 <span className="font-medium">
                   {displayShipping === 0 ? (
-                    <span key="free" className="price-value-change inline-block font-bold text-green-600">FREE</span>
+                    <span
+                      key="free"
+                      className="price-value-change inline-block font-bold text-green-600"
+                    >
+                      FREE
+                    </span>
                   ) : (
                     <AnimatedMoney value={displayShipping} />
                   )}
@@ -430,7 +508,10 @@ export default function ShoppingCart() {
                 { value: 'card', label: '💳 Credit / Debit Card (Stripe)' },
                 { value: 'cod', label: '💵 Cash on Delivery' },
               ].map((method) => (
-                <label key={method.value} className="flex items-center gap-3 cursor-pointer text-sm">
+                <label
+                  key={method.value}
+                  className="flex items-center gap-3 cursor-pointer text-sm"
+                >
                   <input
                     type="radio"
                     name="paymentMethod"
@@ -481,14 +562,18 @@ export default function ShoppingCart() {
                     type="text"
                     placeholder="City *"
                     value={shippingAddress.city}
-                    onChange={(e) => handleAddressChange('city', e.target.value)}
+                    onChange={(e) =>
+                      handleAddressChange('city', e.target.value)
+                    }
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
                   />
                   <input
                     type="text"
                     placeholder="State *"
                     value={shippingAddress.state}
-                    onChange={(e) => handleAddressChange('state', e.target.value)}
+                    onChange={(e) =>
+                      handleAddressChange('state', e.target.value)
+                    }
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
                   />
                 </div>
@@ -497,14 +582,18 @@ export default function ShoppingCart() {
                     type="text"
                     placeholder="Postal Code *"
                     value={shippingAddress.postalCode}
-                    onChange={(e) => handleAddressChange('postalCode', e.target.value)}
+                    onChange={(e) =>
+                      handleAddressChange('postalCode', e.target.value)
+                    }
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
                   />
                   <input
                     type="text"
                     placeholder="Country *"
                     value={shippingAddress.country}
-                    onChange={(e) => handleAddressChange('country', e.target.value)}
+                    onChange={(e) =>
+                      handleAddressChange('country', e.target.value)
+                    }
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-black"
                   />
                 </div>
@@ -521,14 +610,16 @@ export default function ShoppingCart() {
 
             <button
               onClick={handleCheckout}
-              disabled={checkoutLoading || cartLoading || cartItems.length === 0}
+              disabled={
+                checkoutLoading || cartLoading || cartItems.length === 0
+              }
               className="w-full bg-[#1E1E1E] hover:bg-black disabled:bg-gray-400 text-white font-bold py-3.5 px-4 rounded-xl mt-4 uppercase tracking-wider text-xs sm:text-sm transition-all duration-200 active:scale-[0.99]"
             >
               {checkoutLoading
                 ? 'Processing Order...'
                 : showAddressForm
-                ? 'Place Order'
-                : 'Proceed to Checkout'}
+                  ? 'Place Order'
+                  : 'Proceed to Checkout'}
             </button>
 
             {showAddressForm && (
@@ -543,14 +634,14 @@ export default function ShoppingCart() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function AnimatedMoney({ value }) {
-  const formatted = Number(value || 0).toFixed(2)
+  const formatted = Number(value || 0).toFixed(2);
   return (
-    <span key={formatted} className='price-value-change inline-block'>
+    <span key={formatted} className="price-value-change inline-block">
       ${formatted}
     </span>
-  )
+  );
 }

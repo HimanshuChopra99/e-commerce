@@ -8,7 +8,8 @@ const IMAGE_BASE = import.meta.env.VITE_API_URL
   : '';
 
 function getImageSrc(img) {
-  if (!img) return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
+  if (!img)
+    return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
   if (img.startsWith('http')) return img;
   return `${IMAGE_BASE}${img}`;
 }
@@ -27,7 +28,9 @@ function ProductSkeleton() {
 
 export default function NewDrops() {
   const dispatch = useDispatch();
-  const { featured: products, loading } = useSelector((state) => state.products);
+  const { featured: products, loading } = useSelector(
+    (state) => state.products
+  );
 
   useEffect(() => {
     dispatch(fetchFeaturedProducts());
@@ -49,7 +52,8 @@ export default function NewDrops() {
               className="text-[44px] sm:text-[60px] md:text-[72px] font-bold sm:font-[800] leading-[0.9] tracking-tight uppercase"
               style={{ fontFamily: "'Rubik', sans-serif" }}
             >
-              Don't Miss Out<br />
+              Don't Miss Out
+              <br />
               <span className="text-[#1E1E1E]">New Drops</span>
             </h2>
           </div>
@@ -67,72 +71,77 @@ export default function NewDrops() {
         {/* Products Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {loading
-            ? Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={i} />)
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <ProductSkeleton key={i} />
+              ))
             : displayProducts.length > 0
               ? displayProducts.map((product) => {
-                const imgSrc = getImageSrc(
-                  product.image || (product.images && product.images[0])
-                );
-                const slug = product.slug || product.id || product.publicId;
-                return (
-                  <Link
-                    key={product.id || product.publicId}
-                    to={`/product/${slug}`}
-                    className="flex flex-col group cursor-pointer"
-                  >
-                    <div className="bg-white p-1.5 rounded-[16px] sm:rounded-[32px] shadow-sm transition-all duration-300 group-hover:shadow-md relative overflow-hidden">
-                      <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] relative overflow-hidden">
-                        <img
-                          src={imgSrc}
-                          alt={product.name}
-                          className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3"
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
-                          }}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                        <div className="absolute top-0 left-0 bg-[#4C64F4] text-white font-bold text-[11px] tracking-wider uppercase px-4 py-2 rounded-tl-[14px] rounded-br-[8px] z-10">
-                          New
+                  const imgSrc = getImageSrc(
+                    product.image || (product.images && product.images[0])
+                  );
+                  const slug = product.slug || product.id || product.publicId;
+                  return (
+                    <Link
+                      key={product.id || product.publicId}
+                      to={`/product/${slug}`}
+                      className="flex flex-col group cursor-pointer"
+                    >
+                      <div className="bg-white p-1.5 rounded-[16px] sm:rounded-[32px] shadow-sm transition-all duration-300 group-hover:shadow-md relative overflow-hidden">
+                        <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] relative overflow-hidden">
+                          <img
+                            src={imgSrc}
+                            alt={product.name}
+                            className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3"
+                            onError={(e) => {
+                              e.target.src =
+                                'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
+                            }}
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          <div className="absolute top-0 left-0 bg-[#4C64F4] text-white font-bold text-[11px] tracking-wider uppercase px-4 py-2 rounded-tl-[14px] rounded-br-[8px] z-10">
+                            New
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <h3
-                      className="mt-4 text-[14px] sm:text-[15px] font-[600] sm:font-[700] leading-tight uppercase tracking-wider text-[#1E1E1E] min-h-[40px] px-1 line-clamp-2"
-                      style={{ fontFamily: "'Rubik', sans-serif" }}
-                    >
-                      {product.name}
-                    </h3>
+                      <h3
+                        className="mt-4 text-[14px] sm:text-[15px] font-[600] sm:font-[700] leading-tight uppercase tracking-wider text-[#1E1E1E] min-h-[40px] px-1 line-clamp-2"
+                        style={{ fontFamily: "'Rubik', sans-serif" }}
+                      >
+                        {product.name}
+                      </h3>
 
-                    <div
-                      className="mt-3 bg-[#232321] group-hover:bg-black text-white text-[12px] font-normal sm:font-[700] py-3.5 px-4 rounded-[12px] flex items-center justify-center gap-1.5 transition-colors duration-300 uppercase tracking-wider shadow-sm"
-                      style={{ fontFamily: "'Rubik', sans-serif" }}
-                    >
-                      <span>View Product - </span>
-                      <span className="text-[#E9AD43]">${Number(product.price).toFixed(2)}</span>
-                    </div>
-                  </Link>
-                );
-              })
+                      <div
+                        className="mt-3 bg-[#232321] group-hover:bg-black text-white text-[12px] font-normal sm:font-[700] py-3.5 px-4 rounded-[12px] flex items-center justify-center gap-1.5 transition-colors duration-300 uppercase tracking-wider shadow-sm"
+                        style={{ fontFamily: "'Rubik', sans-serif" }}
+                      >
+                        <span>View Product - </span>
+                        <span className="text-[#E9AD43]">
+                          ${Number(product.price).toFixed(2)}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })
               : Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex flex-col group">
-                  <div className="bg-white p-1.5 rounded-[16px] sm:rounded-[32px] shadow-sm">
-                    <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] flex items-center justify-center">
-                      <span className="text-4xl">👟</span>
+                  <div key={i} className="flex flex-col group">
+                    <div className="bg-white p-1.5 rounded-[16px] sm:rounded-[32px] shadow-sm">
+                      <div className="bg-[#EDEDEB] rounded-[12px] sm:rounded-[26px] aspect-[4/5] flex items-center justify-center">
+                        <span className="text-4xl">👟</span>
+                      </div>
                     </div>
+                    <h3 className="mt-4 text-[14px] font-[700] uppercase text-[#1E1E1E]">
+                      Coming Soon
+                    </h3>
+                    <Link
+                      to="/products"
+                      className="mt-3 bg-[#232321] hover:bg-black text-white text-[12px] font-[700] py-3.5 px-4 rounded-[12px] flex items-center justify-center gap-1.5 uppercase tracking-wider"
+                    >
+                      Browse All
+                    </Link>
                   </div>
-                  <h3 className="mt-4 text-[14px] font-[700] uppercase text-[#1E1E1E]">
-                    Coming Soon
-                  </h3>
-                  <Link
-                    to="/products"
-                    className="mt-3 bg-[#232321] hover:bg-black text-white text-[12px] font-[700] py-3.5 px-4 rounded-[12px] flex items-center justify-center gap-1.5 uppercase tracking-wider"
-                  >
-                    Browse All
-                  </Link>
-                </div>
-              ))}
+                ))}
         </div>
       </div>
     </section>

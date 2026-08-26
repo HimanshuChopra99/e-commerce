@@ -1,16 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap');
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: 'Archivo Black', sans-serif;
-  --color-brand: #F5A623;
-  --color-branddark: #E09512;
+  --color-brand: #f5a623;
+  --color-branddark: #e09512;
   --color-ink: #141414;
-  --color-paper: #F4F4F2;
-  --shadow-mega: 0 24px 60px -12px rgba(0,0,0,0.18);
-  --shadow-head: 0 6px 24px -8px rgba(0,0,0,0.12);
+  --color-paper: #f4f4f2;
+  --shadow-mega: 0 24px 60px -12px rgba(0, 0, 0, 0.18);
+  --shadow-head: 0 6px 24px -8px rgba(0, 0, 0, 0.12);
 }
 
 html {
@@ -26,7 +26,7 @@ body {
 }
 
 ::selection {
-  background: #F5A623;
+  background: #f5a623;
   color: #141414;
 }
 
@@ -36,15 +36,15 @@ body {
   font-weight: 600;
   font-size: 14px;
   color: #141414;
-  letter-spacing: .01em;
+  letter-spacing: 0.01em;
   padding: 6px 0;
-  transition: color .25s;
+  transition: color 0.25s;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
 }
 .nav-link::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 0;
   bottom: 0;
@@ -53,7 +53,7 @@ body {
   background: #141414;
   transform: scaleX(0);
   transform-origin: right;
-  transition: transform .35s cubic-bezier(.65,.05,.36,1);
+  transition: transform 0.35s cubic-bezier(0.65, 0.05, 0.36, 1);
 }
 .nav-link:hover::after,
 .dropdown.open .nav-link::after {
@@ -61,7 +61,7 @@ body {
   transform-origin: left;
 }
 .nav-link .chev {
-  transition: transform .3s cubic-bezier(.65,.05,.36,1);
+  transition: transform 0.3s cubic-bezier(0.65, 0.05, 0.36, 1);
 }
 .dropdown.open .nav-link .chev {
   transform: rotate(180deg);
@@ -73,7 +73,10 @@ body {
   visibility: hidden;
   transform: translateY(14px);
   pointer-events: none;
-  transition: opacity .32s cubic-bezier(.22,1,.36,1), transform .32s cubic-bezier(.22,1,.36,1), visibility .32s;
+  transition:
+    opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.32s;
 }
 .dropdown.open .mega-panel {
   opacity: 1;
@@ -89,7 +92,9 @@ body {
   font-weight: 500;
   color: #3d3d3d;
   padding: 7px 0;
-  transition: color .2s, transform .2s;
+  transition:
+    color 0.2s,
+    transform 0.2s;
   cursor: pointer;
 }
 .mega-link:hover {
@@ -103,7 +108,7 @@ body {
 .mega-arrow {
   opacity: 0;
   transform: translateX(-6px);
-  transition: .25s;
+  transition: 0.25s;
 }
 
 /* ---------- Icon buttons ---------- */
@@ -115,33 +120,43 @@ body {
   height: 42px;
   border-radius: 9999px;
   color: #141414;
-  transition: background .25s, transform .25s;
+  transition:
+    background 0.25s,
+    transform 0.25s;
   cursor: pointer;
 }
 .icon-btn:hover {
-  background: rgba(0,0,0,.06);
+  background: rgba(0, 0, 0, 0.06);
   transform: translateY(-1px);
 }
 .icon-btn:active {
-  transform: scale(.92);
+  transform: scale(0.92);
 }
 
 /* ---------- Cart badge pop ---------- */
 @keyframes badgePop {
-  0% { transform: scale(1); }
-  35% { transform: scale(1.28); }
-  70% { transform: scale(.94); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.28);
+  }
+  70% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 .badge-pop {
-  animation: badgePop .45s cubic-bezier(.36,.66,.4,1.4);
+  animation: badgePop 0.45s cubic-bezier(0.36, 0.66, 0.4, 1.4);
 }
 
 /* ---------- Drawers ---------- */
 .drawer-backdrop {
   opacity: 0;
   pointer-events: none;
-  transition: opacity .35s ease;
+  transition: opacity 0.35s ease;
 }
 .drawer-backdrop.show {
   opacity: 1;
@@ -149,14 +164,14 @@ body {
 }
 .drawer-left {
   transform: translateX(-105%);
-  transition: transform .45s cubic-bezier(.22,1,.36,1);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .drawer-left.show {
   transform: translateX(0);
 }
 .drawer-right {
   transform: translateX(105%);
-  transition: transform .45s cubic-bezier(.22,1,.36,1);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .drawer-right.show {
   transform: translateX(0);
@@ -166,13 +181,13 @@ body {
 .acc-body {
   max-height: 0;
   overflow: hidden;
-  transition: max-height .45s cubic-bezier(.22,1,.36,1);
+  transition: max-height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .acc.open .acc-body {
   max-height: 420px;
 }
 .acc .acc-chev {
-  transition: transform .35s;
+  transition: transform 0.35s;
 }
 .acc.open .acc-chev {
   transform: rotate(180deg);
@@ -183,7 +198,10 @@ body {
   opacity: 0;
   visibility: hidden;
   transform: translateY(-12px);
-  transition: opacity .35s cubic-bezier(.22,1,.36,1), transform .32s cubic-bezier(.22,1,.36,1), visibility .35s;
+  transition:
+    opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.35s;
 }
 #search-overlay.show {
   opacity: 1;
@@ -194,7 +212,7 @@ body {
 /* ---------- Toast ---------- */
 #toast {
   transform: translateY(140%);
-  transition: transform .45s cubic-bezier(.22,1,.36,1);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 #toast.show {
   transform: translateY(0);
@@ -207,7 +225,7 @@ body {
   border-radius: 14px;
   object-fit: cover;
   pointer-events: none;
-  transition: all .8s cubic-bezier(.5,-0.1,.2,1);
+  transition: all 0.8s cubic-bezier(0.5, -0.1, 0.2, 1);
 }
 
 /* ---------- Misc ---------- */
@@ -218,17 +236,23 @@ body {
   scrollbar-width: none;
 }
 .card-img {
-  transition: transform .6s cubic-bezier(.22,1,.36,1);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .product-card:hover .card-img {
   transform: scale(1.07) rotate(-2deg);
 }
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .fade-up {
-  animation: fadeUp .7s cubic-bezier(.22,1,.36,1) both;
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 body.locked {
   overflow: hidden;

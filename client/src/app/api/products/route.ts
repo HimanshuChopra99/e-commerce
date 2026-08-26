@@ -1,17 +1,17 @@
-import { NextResponse, NextRequest } from "next/server";
-import { db } from "@/db";
-import { products } from "@/db/schema";
-import { SEED_PRODUCTS } from "@/db/seed-data";
+import { NextResponse, NextRequest } from 'next/server';
+import { db } from '@/db';
+import { products } from '@/db/schema';
+import { SEED_PRODUCTS } from '@/db/seed-data';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const gender = searchParams.get("gender");
-    const category = searchParams.get("category");
-    const collection = searchParams.get("collection");
-    const search = searchParams.get("search");
-    const isNewDrop = searchParams.get("isNewDrop");
-    const onSale = searchParams.get("onSale");
+    const gender = searchParams.get('gender');
+    const category = searchParams.get('category');
+    const collection = searchParams.get('collection');
+    const search = searchParams.get('search');
+    const isNewDrop = searchParams.get('isNewDrop');
+    const onSale = searchParams.get('onSale');
 
     // Check if table has data
     let allProducts = await db.select().from(products);
@@ -37,8 +37,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (collection) {
-      if (collection.toLowerCase() === "sale — up to 40%" || collection.toLowerCase() === "sale") {
-        filtered = filtered.filter((p) => p.originalPrice && p.originalPrice > p.price);
+      if (
+        collection.toLowerCase() === 'sale — up to 40%' ||
+        collection.toLowerCase() === 'sale'
+      ) {
+        filtered = filtered.filter(
+          (p) => p.originalPrice && p.originalPrice > p.price
+        );
       } else {
         filtered = filtered.filter(
           (p) => p.collection.toLowerCase() === collection.toLowerCase()
@@ -46,11 +51,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (onSale === "true") {
-      filtered = filtered.filter((p) => p.originalPrice && p.originalPrice > p.price);
+    if (onSale === 'true') {
+      filtered = filtered.filter(
+        (p) => p.originalPrice && p.originalPrice > p.price
+      );
     }
 
-    if (isNewDrop === "true") {
+    if (isNewDrop === 'true') {
       filtered = filtered.filter((p) => p.isNewDrop === true);
     }
 
@@ -67,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ products: filtered, total: filtered.length });
   } catch (error) {
-    console.error("Error fetching products, using fallback seed data:", error);
+    console.error('Error fetching products, using fallback seed data:', error);
     // Graceful fallback if database table is not yet migrated
     let filtered = SEED_PRODUCTS.map((p, idx) => ({
       ...p,
@@ -76,12 +83,12 @@ export async function GET(request: NextRequest) {
     }));
 
     const { searchParams } = new URL(request.url);
-    const gender = searchParams.get("gender");
-    const category = searchParams.get("category");
-    const collection = searchParams.get("collection");
-    const search = searchParams.get("search");
-    const isNewDrop = searchParams.get("isNewDrop");
-    const onSale = searchParams.get("onSale");
+    const gender = searchParams.get('gender');
+    const category = searchParams.get('category');
+    const collection = searchParams.get('collection');
+    const search = searchParams.get('search');
+    const isNewDrop = searchParams.get('isNewDrop');
+    const onSale = searchParams.get('onSale');
 
     if (gender) {
       filtered = filtered.filter(
@@ -94,7 +101,10 @@ export async function GET(request: NextRequest) {
       );
     }
     if (collection) {
-      if (collection.toLowerCase() === "sale — up to 40%" || collection.toLowerCase() === "sale") {
+      if (
+        collection.toLowerCase() === 'sale — up to 40%' ||
+        collection.toLowerCase() === 'sale'
+      ) {
         filtered = filtered.filter((p) => (p.originalPrice ?? 0) > p.price);
       } else {
         filtered = filtered.filter(
@@ -102,10 +112,10 @@ export async function GET(request: NextRequest) {
         );
       }
     }
-    if (onSale === "true") {
+    if (onSale === 'true') {
       filtered = filtered.filter((p) => (p.originalPrice ?? 0) > p.price);
     }
-    if (isNewDrop === "true") {
+    if (isNewDrop === 'true') {
       filtered = filtered.filter((p) => p.isNewDrop === true);
     }
     if (search) {

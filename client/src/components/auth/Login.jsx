@@ -1,4 +1,4 @@
-import React from 'react'
+import React from 'react';
 
 export default function Login({ onSwitchToSignup }) {
   return (
@@ -15,8 +15,8 @@ export default function Login({ onSwitchToSignup }) {
           </a>
 
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
-            <span className="font-bold">Note:</span> Please use the Login page at the top level route.
-            Use the "Join the Club" button to sign up.
+            <span className="font-bold">Note:</span> Please use the Login page
+            at the top level route. Use the "Join the Club" button to sign up.
           </div>
         </div>
       </div>
@@ -29,7 +29,9 @@ export default function Login({ onSwitchToSignup }) {
           </h2>
 
           <p className="text-xs sm:text-sm text-gray-700 mb-4 leading-relaxed">
-            As kicks club member you get rewarded with what you love for doing what you love. Sign up today and receive immediate access to these Level 1 benefits:
+            As kicks club member you get rewarded with what you love for doing
+            what you love. Sign up today and receive immediate access to these
+            Level 1 benefits:
           </p>
 
           <ul className="text-xs sm:text-sm text-gray-700 space-y-1 mb-6">
@@ -37,13 +39,16 @@ export default function Login({ onSwitchToSignup }) {
               <span className="font-bold">•</span> Free shipping
             </li>
             <li className="flex items-start gap-2">
-              <span className="font-bold">•</span> A 15% off voucher for your next purchase
+              <span className="font-bold">•</span> A 15% off voucher for your
+              next purchase
             </li>
             <li className="flex items-start gap-2">
-              <span className="font-bold">•</span> Access to Members Only products and sales
+              <span className="font-bold">•</span> Access to Members Only
+              products and sales
             </li>
             <li className="flex items-start gap-2">
-              <span className="font-bold">•</span> Access to adidas Running and Training apps
+              <span className="font-bold">•</span> Access to adidas Running and
+              Training apps
             </li>
             <li className="flex items-start gap-2">
               <span className="font-bold">•</span> Special offers and promotions
@@ -51,7 +56,8 @@ export default function Login({ onSwitchToSignup }) {
           </ul>
 
           <p className="text-xs sm:text-sm text-gray-700 mb-8 leading-relaxed">
-            Join now to start earning points, reach new levels and unlock more rewards and benefits from adiClub.
+            Join now to start earning points, reach new levels and unlock more
+            rewards and benefits from adiClub.
           </p>
         </div>
 
@@ -61,8 +67,18 @@ export default function Login({ onSwitchToSignup }) {
           className="w-full bg-[#1E1E1E] hover:bg-black text-white font-bold py-3.5 px-5 rounded-lg flex items-center justify-between text-xs tracking-wider uppercase transition-all duration-200 active:scale-[0.99]"
         >
           <span>JOIN THE CLUB</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+            />
           </svg>
         </button>
       </div>

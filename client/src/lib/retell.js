@@ -1,3 +1,3 @@
-import {RetellWebClient} from 'retell-client-js-sdk'
+import { RetellWebClient } from 'retell-client-js-sdk';
 
-export const retellClient = new RetellWebClient()
+export const retellClient = new RetellWebClient();

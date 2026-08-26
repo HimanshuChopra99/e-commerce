@@ -1,10 +1,10 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 
 const badgeColors = {
-  New: "bg-[#4C64F4]",
-  "20% off": "bg-[#E9AD43]",
-  Sale: "bg-red-500",
-  Hot: "bg-orange-500",
+  New: 'bg-[#4C64F4]',
+  '20% off': 'bg-[#E9AD43]',
+  Sale: 'bg-red-500',
+  Hot: 'bg-orange-500',
 };
 
 export default function ProductCard({ product }) {
@@ -27,7 +27,7 @@ export default function ProductCard({ product }) {
           {/* Badge */}
           {product.badge && (
             <div
-              className={`absolute top-0 left-0 ${badgeColors[product.badge] ?? "bg-[#4C64F4]"} text-white font-bold text-[11px] tracking-wider uppercase px-4 py-2 rounded-tl-[14px] rounded-br-[8px] z-10`}
+              className={`absolute top-0 left-0 ${badgeColors[product.badge] ?? 'bg-[#4C64F4]'} text-white font-bold text-[11px] tracking-wider uppercase px-4 py-2 rounded-tl-[14px] rounded-br-[8px] z-10`}
               style={{ fontFamily: "'Rubik', sans-serif" }}
             >
               {product.badge}
@@ -42,7 +42,8 @@ export default function ProductCard({ product }) {
             loading="lazy"
             decoding="async"
             onError={(e) => {
-              e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
+              e.target.src =
+                'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80';
             }}
           />
         </div>
@@ -69,7 +70,9 @@ export default function ProductCard({ product }) {
         {product.originalPrice ? (
           <span className="flex items-center gap-1">
             <span className="text-[#E9AD43]">${product.price}</span>
-            <span className="text-white/40 line-through text-[10px]">(${product.originalPrice})</span>
+            <span className="text-white/40 line-through text-[10px]">
+              (${product.originalPrice})
+            </span>
           </span>
         ) : (
           <span className="text-[#E9AD43]">${product.price}</span>
