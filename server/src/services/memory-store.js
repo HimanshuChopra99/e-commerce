@@ -1,5 +1,5 @@
-import bcrypt from 'bcryptjs'
-import { slugify, publicId } from '../utils/helpers.js'
+import bcrypt from 'bcryptjs';
+import { slugify, publicId } from '../utils/helpers.js';
 
 const unsplashImages = [
   'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80',
@@ -22,21 +22,53 @@ const unsplashImages = [
   'https://images.unsplash.com/photo-1520639888713-7851133b1ed0?auto=format&fit=crop&w=800&q=80',
   'https://images.unsplash.com/photo-1562183241-b937e95585b6?auto=format&fit=crop&w=800&q=80',
   'https://images.unsplash.com/photo-1588117305388-c26305436df8?auto=format&fit=crop&w=800&q=80',
-]
+];
 
 const CATEGORIES_DATA = [
-  { name: 'Running', color: 'blue', image: unsplashImages[0], description: 'Road and trail shoes built for distance, speed and daily training.' },
-  { name: 'Sneakers', color: 'teal', image: unsplashImages[1], description: 'Everyday low-tops, high-tops and lifestyle silhouettes.' },
-  { name: 'Formal', color: 'slate', image: unsplashImages[2], description: 'Oxfords, derbies and loafers for the office and formal occasions.' },
-  { name: 'Boots', color: 'amber', image: unsplashImages[3], description: 'Hiking, chelsea and weatherproof boots for rough ground.' },
-  { name: 'Training', color: 'rose', image: unsplashImages[4], description: 'High-intensity gym, crossfit and weightlifting footwear.' },
-  { name: 'Basketball', color: 'violet', image: unsplashImages[5], description: 'High-top ankle support and court responsive traction.' },
-]
+  {
+    name: 'Running',
+    color: 'blue',
+    image: unsplashImages[0],
+    description:
+      'Road and trail shoes built for distance, speed and daily training.',
+  },
+  {
+    name: 'Sneakers',
+    color: 'teal',
+    image: unsplashImages[1],
+    description: 'Everyday low-tops, high-tops and lifestyle silhouettes.',
+  },
+  {
+    name: 'Formal',
+    color: 'slate',
+    image: unsplashImages[2],
+    description:
+      'Oxfords, derbies and loafers for the office and formal occasions.',
+  },
+  {
+    name: 'Boots',
+    color: 'amber',
+    image: unsplashImages[3],
+    description: 'Hiking, chelsea and weatherproof boots for rough ground.',
+  },
+  {
+    name: 'Training',
+    color: 'rose',
+    image: unsplashImages[4],
+    description: 'High-intensity gym, crossfit and weightlifting footwear.',
+  },
+  {
+    name: 'Basketball',
+    color: 'violet',
+    image: unsplashImages[5],
+    description: 'High-top ankle support and court responsive traction.',
+  },
+];
 
 // Seed passwords come from env vars, never from source code.
 // Defaults are for local dev ONLY. Rotate before any deployment.
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!'
-const CUSTOMER_PASSWORD = process.env.SEED_CUSTOMER_PASSWORD || 'Password123'
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!';
+const CUSTOMER_PASSWORD = process.env.SEED_CUSTOMER_PASSWORD || 'Password123';
 
 const USERS_DATA = [
   {
@@ -46,7 +78,13 @@ const USERS_DATA = [
     email: 'admin@kick.com',
     phone: '+1 555-0199',
     preferredSize: '10',
-    address: { line1: '100 Admin Plaza', city: 'San Francisco', state: 'CA', postalCode: '94105', country: 'USA' },
+    address: {
+      line1: '100 Admin Plaza',
+      city: 'San Francisco',
+      state: 'CA',
+      postalCode: '94105',
+      country: 'USA',
+    },
   },
   {
     role: 'customer',
@@ -55,7 +93,13 @@ const USERS_DATA = [
     email: 'customer@example.com',
     phone: '+1 555-0122',
     preferredSize: '8',
-    address: { line1: '12 Marine Drive', city: 'Mumbai', state: 'Maharashtra', postalCode: '400001', country: 'India' },
+    address: {
+      line1: '12 Marine Drive',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      postalCode: '400001',
+      country: 'India',
+    },
   },
   {
     role: 'customer',
@@ -64,7 +108,13 @@ const USERS_DATA = [
     email: 'alex.rivera@example.com',
     phone: '+1 555-0144',
     preferredSize: '9',
-    address: { line1: '742 Evergreen Terrace', city: 'Austin', state: 'TX', postalCode: '78701', country: 'USA' },
+    address: {
+      line1: '742 Evergreen Terrace',
+      city: 'Austin',
+      state: 'TX',
+      postalCode: '78701',
+      country: 'USA',
+    },
   },
   {
     role: 'customer',
@@ -73,7 +123,13 @@ const USERS_DATA = [
     email: 'jordan.lee@example.com',
     phone: '+1 555-0166',
     preferredSize: '10',
-    address: { line1: '450 Kingsway', city: 'Vancouver', state: 'BC', postalCode: 'V5T 3J8', country: 'Canada' },
+    address: {
+      line1: '450 Kingsway',
+      city: 'Vancouver',
+      state: 'BC',
+      postalCode: 'V5T 3J8',
+      country: 'Canada',
+    },
   },
   {
     role: 'customer',
@@ -82,15 +138,33 @@ const USERS_DATA = [
     email: 'samira.patel@example.com',
     phone: '+1 555-0188',
     preferredSize: '7',
-    address: { line1: '88 Baker Street', city: 'London', state: 'England', postalCode: 'NW1 6XE', country: 'UK' },
+    address: {
+      line1: '88 Baker Street',
+      city: 'London',
+      state: 'England',
+      postalCode: 'NW1 6XE',
+      country: 'UK',
+    },
   },
-]
+];
 
 const BRANDS_LIST = [
-  'Nike', 'Adidas', 'Jordan', 'Puma', 'New Balance',
-  'Asics', 'Reebok', 'Converse', 'Vans', 'Under Armour',
-  'Saucony', 'Brooks', 'Hoka', 'Salomon', 'Timberland',
-]
+  'Nike',
+  'Adidas',
+  'Jordan',
+  'Puma',
+  'New Balance',
+  'Asics',
+  'Reebok',
+  'Converse',
+  'Vans',
+  'Under Armour',
+  'Saucony',
+  'Brooks',
+  'Hoka',
+  'Salomon',
+  'Timberland',
+];
 
 const UNIQUE_SHOE_IMAGES = [
   'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80',
@@ -124,7 +198,7 @@ const UNIQUE_SHOE_IMAGES = [
   'https://images.unsplash.com/photo-1617606002779-51d866bdd1d1?w=800&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1603808033192-082d6919d3e1?w=800&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?w=800&auto=format&fit=crop&q=80',
-]
+];
 
 const COLOR_GALLERY = {
   Black: [
@@ -157,62 +231,137 @@ const COLOR_GALLERY = {
     'https://images.unsplash.com/photo-1605348532760-6753d2c43329?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1562183241-b937e95585b6?w=800&auto=format&fit=crop&q=80',
   ],
-}
+};
 
 function generateProducts() {
   const prefixes = [
-    'Air Max', 'Ultraboost', 'Retro High', 'Court Vision', 'Velocity', 'Summit', 'Metro', 'Legacy', 'Quantum', 'Cloud',
-    'Pulse', 'Blazer', 'Zoom', 'Vapor', 'Classic', 'Ignite', 'Phantom', 'Titan', 'Samba', 'Gazelle',
-    'Pegasus', 'Dunk Low', 'Forum', 'Clyde', 'Floatride', 'Speedcross', 'Clifton', 'Ghost', 'Terrex'
-  ]
+    'Air Max',
+    'Ultraboost',
+    'Retro High',
+    'Court Vision',
+    'Velocity',
+    'Summit',
+    'Metro',
+    'Legacy',
+    'Quantum',
+    'Cloud',
+    'Pulse',
+    'Blazer',
+    'Zoom',
+    'Vapor',
+    'Classic',
+    'Ignite',
+    'Phantom',
+    'Titan',
+    'Samba',
+    'Gazelle',
+    'Pegasus',
+    'Dunk Low',
+    'Forum',
+    'Clyde',
+    'Floatride',
+    'Speedcross',
+    'Clifton',
+    'Ghost',
+    'Terrex',
+  ];
 
   const suffixes = [
-    'Runner', 'Pro Racer', 'Classic Low', 'Court Hi', 'Oxford', 'Trail Boot', 'Chelsea', 'Trainer',
-    'StriderMax', 'Speedster', 'Flow', 'Suede Loafer', 'Desert Chukka', 'Dunk High', 'Skate Pro',
-    'Slide', 'Marathon Ultra', 'Pace 3.0', 'Elevation', 'Ground Grip', 'Wingtip', 'Tuxedo Dress',
-    'Cross Trainer', 'Ankle Guard', 'Slip-On', 'Platform', 'Vapor Max', 'Court Legend', 'Zero Gravity'
-  ]
+    'Runner',
+    'Pro Racer',
+    'Classic Low',
+    'Court Hi',
+    'Oxford',
+    'Trail Boot',
+    'Chelsea',
+    'Trainer',
+    'StriderMax',
+    'Speedster',
+    'Flow',
+    'Suede Loafer',
+    'Desert Chukka',
+    'Dunk High',
+    'Skate Pro',
+    'Slide',
+    'Marathon Ultra',
+    'Pace 3.0',
+    'Elevation',
+    'Ground Grip',
+    'Wingtip',
+    'Tuxedo Dress',
+    'Cross Trainer',
+    'Ankle Guard',
+    'Slip-On',
+    'Platform',
+    'Vapor Max',
+    'Court Legend',
+    'Zero Gravity',
+  ];
 
-  const genders = ['men', 'women', 'unisex']
-  const materials = ['Mesh', 'Knit Upper', 'Canvas', 'Genuine Leather', 'Suede', 'Nubuck', 'Synthetic Mesh']
-  const categoryNames = ['Running', 'Sneakers', 'Formal', 'Boots', 'Training', 'Basketball', 'Outdoor', 'Casual shoes']
+  const genders = ['men', 'women', 'unisex'];
+  const materials = [
+    'Mesh',
+    'Knit Upper',
+    'Canvas',
+    'Genuine Leather',
+    'Suede',
+    'Nubuck',
+    'Synthetic Mesh',
+  ];
+  const categoryNames = [
+    'Running',
+    'Sneakers',
+    'Formal',
+    'Boots',
+    'Training',
+    'Basketball',
+    'Outdoor',
+    'Casual shoes',
+  ];
   const colorsList = [
     ['Black', 'White', 'Red'],
     ['Blue', 'Grey', 'White'],
     ['White', 'Black'],
     ['Red', 'Black'],
     ['Grey', 'Blue'],
-  ]
+  ];
 
-  const products = []
-  let count = 1
+  const products = [];
+  let count = 1;
 
   for (let i = 0; i < prefixes.length; i++) {
     for (let j = 0; j < suffixes.length; j++) {
-      if (products.length >= 100) break
+      if (products.length >= 100) break;
 
-      const brand = BRANDS_LIST[count % BRANDS_LIST.length]
-      const pName = `${brand} ${prefixes[i]} ${suffixes[j]}`.toUpperCase()
-      const category = categoryNames[count % categoryNames.length]
-      const gender = genders[count % genders.length]
-      const material = materials[count % materials.length]
-      const colors = colorsList[count % colorsList.length]
-      const price = Number((59.99 + (count * 4.5) % 200).toFixed(2))
-      const compareAtPrice = count % 3 === 0 ? Number((price * 1.25).toFixed(2)) : null
+      const brand = BRANDS_LIST[count % BRANDS_LIST.length];
+      const pName = `${brand} ${prefixes[i]} ${suffixes[j]}`.toUpperCase();
+      const category = categoryNames[count % categoryNames.length];
+      const gender = genders[count % genders.length];
+      const material = materials[count % materials.length];
+      const colors = colorsList[count % colorsList.length];
+      const price = Number((59.99 + ((count * 4.5) % 200)).toFixed(2));
+      const compareAtPrice =
+        count % 3 === 0 ? Number((price * 1.25).toFixed(2)) : null;
 
-      const uniquePrimary = UNIQUE_SHOE_IMAGES[(count * 3 + i) % UNIQUE_SHOE_IMAGES.length]
-      const uniqueSecondary = UNIQUE_SHOE_IMAGES[(count * 3 + j + 5) % UNIQUE_SHOE_IMAGES.length]
+      const uniquePrimary =
+        UNIQUE_SHOE_IMAGES[(count * 3 + i) % UNIQUE_SHOE_IMAGES.length];
+      const uniqueSecondary =
+        UNIQUE_SHOE_IMAGES[(count * 3 + j + 5) % UNIQUE_SHOE_IMAGES.length];
 
       const colorImages = colors.map((col, cIdx) => {
-        const palette = COLOR_GALLERY[col] || COLOR_GALLERY.Black
+        const palette = COLOR_GALLERY[col] || COLOR_GALLERY.Black;
         return {
           color: col,
           images: [palette[(count + cIdx) % palette.length], uniqueSecondary],
-        }
-      })
+        };
+      });
 
-      const allImages = [uniquePrimary, uniqueSecondary, ...colorImages.flatMap((ci) => ci.images)]
-      const pId = publicId()
+      const allImages = [
+        uniquePrimary,
+        uniqueSecondary,
+        ...colorImages.flatMap((ci) => ci.images),
+      ];
+      const pId = publicId();
 
       products.push({
         name: pName,
@@ -229,18 +378,26 @@ function generateProducts() {
         colorImages,
         featured: count % 6 === 0,
         description: `Premium grade ${pName} from ${brand}. Engineered with ${material.toLowerCase()} upper, anatomically contoured cushioning, and multi-surface traction outer sole for high performance ${category.toLowerCase()} and daily lifestyle comfort.`,
-        tags: [category.toLowerCase(), brand.toLowerCase(), gender, material.toLowerCase(), 'footwear', 'authentic', 'cushioned'],
+        tags: [
+          category.toLowerCase(),
+          brand.toLowerCase(),
+          gender,
+          material.toLowerCase(),
+          'footwear',
+          'authentic',
+          'cushioned',
+        ],
         rating: Number((4.2 + (count % 8) * 0.1).toFixed(1)),
         reviewCount: 15 + count * 3,
         id: pId,
         publicId: pId,
-      })
+      });
 
-      count++
+      count++;
     }
   }
 
-  return products
+  return products;
 }
 
 function buildInitialData() {
@@ -254,7 +411,10 @@ function buildInitialData() {
     lastName: u.lastName,
     fullName: `${u.firstName} ${u.lastName}`,
     email: u.email.toLowerCase(),
-    passwordHash: bcrypt.hashSync(u.role === 'admin' ? ADMIN_PASSWORD : CUSTOMER_PASSWORD, 10),
+    passwordHash: bcrypt.hashSync(
+      u.role === 'admin' ? ADMIN_PASSWORD : CUSTOMER_PASSWORD,
+      10
+    ),
     phone: u.phone,
     status: 'active',
     emailVerified: true,
@@ -264,7 +424,7 @@ function buildInitialData() {
     notes: u.role === 'admin' ? 'Administrator' : 'Customer Account',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  }))
+  }));
 
   // Create categories
   const categories = CATEGORIES_DATA.map((c, idx) => ({
@@ -280,14 +440,14 @@ function buildInitialData() {
     productCount: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  }))
+  }));
 
   // Generate products
-  const rawProducts = generateProducts()
-  const sizes = ['38', '39', '40', '41', '42', '43', '44', '45']
+  const rawProducts = generateProducts();
+  const sizes = ['38', '39', '40', '41', '42', '43', '44', '45'];
 
   const products = rawProducts.map((p, idx) => {
-    const cat = categories.find((c) => c.name === p.category) || categories[0]
+    const cat = categories.find((c) => c.name === p.category) || categories[0];
 
     return {
       id: p.id,
@@ -311,10 +471,12 @@ function buildInitialData() {
       reviewCount: p.reviewCount,
       images: p.images,
       image: p.image,
-      colorImages: p.colorImages || p.colors.map((color, colorIndex) => ({
-        color,
-        images: [p.images[colorIndex % p.images.length]],
-      })),
+      colorImages:
+        p.colorImages ||
+        p.colors.map((color, colorIndex) => ({
+          color,
+          images: [p.images[colorIndex % p.images.length]],
+        })),
       tags: p.tags,
       categoryId: cat.publicId,
       category: { id: cat.publicId, name: cat.name, slug: cat.slug },
@@ -322,7 +484,7 @@ function buildInitialData() {
       sizes,
       variants: p.colors.flatMap((col) =>
         sizes.map((sz, vIdx) => {
-          const vId = publicId()
+          const vId = publicId();
           return {
             id: vId,
             publicId: vId,
@@ -334,29 +496,30 @@ function buildInitialData() {
             available: 10,
             inStock: true,
             isActive: true,
-          }
+          };
         })
       ),
       description: p.description,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
-  })
+    };
+  });
 
   // Create sample orders
   const orders = Array.from({ length: 15 }).map((_, idx) => {
-    const num = 1001 + idx
-    const user = users[1 + (idx % 4)]
-    const product = products[(idx * 3) % products.length]
-    const lineTotal = product.price
-    const oId = publicId()
+    const num = 1001 + idx;
+    const user = users[1 + (idx % 4)];
+    const product = products[(idx * 3) % products.length];
+    const lineTotal = product.price;
+    const oId = publicId();
 
     return {
       id: oId,
       publicId: oId,
       internalId: idx + 1,
       orderNumber: `#${num}`,
-      status: idx % 4 === 0 ? 'processing' : idx % 3 === 0 ? 'shipped' : 'delivered',
+      status:
+        idx % 4 === 0 ? 'processing' : idx % 3 === 0 ? 'shipped' : 'delivered',
       paymentStatus: 'paid',
       customer: {
         id: user.publicId,
@@ -385,49 +548,55 @@ function buildInitialData() {
       grandTotal: Number((lineTotal * 1.08).toFixed(2)),
       placedAt: new Date(Date.now() - 86400000 * (idx + 1)).toISOString(),
       updatedAt: new Date().toISOString(),
-    }
-  })
+    };
+  });
 
   // Update category product counts
   categories.forEach((cat) => {
-    cat.productCount = products.filter((p) => p.categoryId === cat.publicId).length
-  })
+    cat.productCount = products.filter(
+      (p) => p.categoryId === cat.publicId
+    ).length;
+  });
 
-  return { users, categories, products, orders }
+  return { users, categories, products, orders };
 }
 
-const initialData = buildInitialData()
+const initialData = buildInitialData();
 
-export const initialCategories = initialData.categories
-export const initialProducts = initialData.products.slice(0, 6)
-export const initialUsers = initialData.users
-export const initialOrders = initialData.orders.slice(0, 2)
+export const initialCategories = initialData.categories;
+export const initialProducts = initialData.products.slice(0, 6);
+export const initialUsers = initialData.users;
+export const initialOrders = initialData.orders.slice(0, 2);
 
 class MemoryStore {
   constructor() {
-    this.categories = [...initialData.categories]
-    this.products = [...initialData.products]
-    this.users = [...initialData.users]
-    this.orders = [...initialData.orders]
-    this.carts = new Map()
-    this.favourites = new Map()
+    this.categories = [...initialData.categories];
+    this.products = [...initialData.products];
+    this.users = [...initialData.users];
+    this.orders = [...initialData.orders];
+    this.carts = new Map();
+    this.favourites = new Map();
   }
 
   // Categories
   getCategories() {
-    return this.categories
+    return this.categories;
   }
 
   getCategoryByPublicId(publicId) {
-    return this.categories.find((c) => c.publicId === publicId || c.id === publicId) || null
+    return (
+      this.categories.find(
+        (c) => c.publicId === publicId || c.id === publicId
+      ) || null
+    );
   }
 
   getCategoryBySlug(slug) {
-    return this.categories.find((c) => c.slug === slug) || null
+    return this.categories.find((c) => c.slug === slug) || null;
   }
 
   addCategory(input) {
-    const id = publicId()
+    const id = publicId();
     const category = {
       id,
       publicId: id,
@@ -441,78 +610,95 @@ class MemoryStore {
       productCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
-    this.categories.unshift(category)
-    return category
+    };
+    this.categories.unshift(category);
+    return category;
   }
 
   updateCategory(publicId, patch) {
-    const cat = this.getCategoryByPublicId(publicId)
-    if (!cat) return null
-    Object.assign(cat, patch, { updatedAt: new Date().toISOString() })
-    return cat
+    const cat = this.getCategoryByPublicId(publicId);
+    if (!cat) return null;
+    Object.assign(cat, patch, { updatedAt: new Date().toISOString() });
+    return cat;
   }
 
   deleteCategory(publicId) {
-    const idx = this.categories.findIndex((c) => c.publicId === publicId || c.id === publicId)
+    const idx = this.categories.findIndex(
+      (c) => c.publicId === publicId || c.id === publicId
+    );
     if (idx !== -1) {
-      this.categories.splice(idx, 1)
-      return true
+      this.categories.splice(idx, 1);
+      return true;
     }
-    return false
+    return false;
   }
 
   // Products
   getProducts(filters = {}) {
-    let list = [...this.products]
+    let list = [...this.products];
 
     if (filters.slugs) {
-      const slugList = typeof filters.slugs === 'string'
-        ? filters.slugs.split(',').map((s) => s.trim()).filter(Boolean)
-        : (Array.isArray(filters.slugs) ? filters.slugs : [])
+      const slugList =
+        typeof filters.slugs === 'string'
+          ? filters.slugs
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : Array.isArray(filters.slugs)
+            ? filters.slugs
+            : [];
       if (slugList.length > 0) {
-        list = list.filter((p) => slugList.includes(p.slug))
+        list = list.filter((p) => slugList.includes(p.slug));
         if (!filters.sort) {
-          list.sort((a, b) => slugList.indexOf(a.slug) - slugList.indexOf(b.slug))
+          list.sort(
+            (a, b) => slugList.indexOf(a.slug) - slugList.indexOf(b.slug)
+          );
         }
       }
     }
 
     if (filters.categorySlug) {
-      list = list.filter((p) => p.category?.slug === filters.categorySlug)
+      list = list.filter((p) => p.category?.slug === filters.categorySlug);
     }
     if (filters.categoryPublicId) {
-      list = list.filter((p) => p.categoryId === filters.categoryPublicId)
+      list = list.filter((p) => p.categoryId === filters.categoryPublicId);
     }
     if (filters.gender) {
-      const genders = Array.isArray(filters.gender) ? filters.gender : [filters.gender]
-      list = list.filter((p) => genders.includes(p.gender))
+      const genders = Array.isArray(filters.gender)
+        ? filters.gender
+        : [filters.gender];
+      list = list.filter((p) => genders.includes(p.gender));
     }
-    const effectiveMin = filters.minPrice ?? filters.priceMin
-    const effectiveMax = filters.maxPrice ?? filters.priceMax
+    const effectiveMin = filters.minPrice ?? filters.priceMin;
+    const effectiveMax = filters.maxPrice ?? filters.priceMax;
     if (effectiveMin !== undefined && effectiveMin !== null) {
-      list = list.filter((p) => p.price >= Number(effectiveMin))
+      list = list.filter((p) => p.price >= Number(effectiveMin));
     }
     if (effectiveMax !== undefined && effectiveMax !== null) {
-      list = list.filter((p) => p.price <= Number(effectiveMax))
+      list = list.filter((p) => p.price <= Number(effectiveMax));
     }
     if (filters.color) {
-      const col = String(filters.color).toLowerCase()
-      list = list.filter((p) =>
-        p.colors?.some((c) => c.toLowerCase() === col) ||
-        p.colorImages?.some((ci) => ci.color?.toLowerCase() === col) ||
-        p.variants?.some((v) => v.color?.toLowerCase() === col)
-      )
+      const col = String(filters.color).toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.colors?.some((c) => c.toLowerCase() === col) ||
+          p.colorImages?.some((ci) => ci.color?.toLowerCase() === col) ||
+          p.variants?.some((v) => v.color?.toLowerCase() === col)
+      );
     }
     if (filters.size) {
-      const sz = String(filters.size)
+      const sz = String(filters.size);
       list = list.filter((p) =>
-        p.variants?.some((v) => String(v.size) === sz && (v.inStock || (v.stock - (v.reserved || 0)) > 0))
-      )
+        p.variants?.some(
+          (v) =>
+            String(v.size) === sz &&
+            (v.inStock || v.stock - (v.reserved || 0) > 0)
+        )
+      );
     }
     if (filters.search) {
-      const q = filters.search.toLowerCase().trim()
-      const searchTokens = q.split(/\s+/).filter(Boolean)
+      const q = filters.search.toLowerCase().trim();
+      const searchTokens = q.split(/\s+/).filter(Boolean);
       list = list.filter((p) => {
         const fullDoc = [
           p.name,
@@ -528,40 +714,45 @@ class MemoryStore {
         ]
           .filter(Boolean)
           .join(' ')
-          .toLowerCase()
+          .toLowerCase();
 
         // Match if all search tokens are found, or any token is found
         return searchTokens.length > 1
           ? searchTokens.some((tok) => fullDoc.includes(tok))
-          : fullDoc.includes(q)
-      })
+          : fullDoc.includes(q);
+      });
     }
     if (filters.featured) {
-      list = list.filter((p) => p.featured)
+      list = list.filter((p) => p.featured);
     }
     if (filters.storefront) {
-      list = list.filter((p) => p.status === 'active')
+      list = list.filter((p) => p.status === 'active');
     }
 
-    const total = list.length
-    const offset = Number(filters.offset) || 0
-    const limit = Number(filters.limit) || 20
-    const items = list.slice(offset, offset + limit)
+    const total = list.length;
+    const offset = Number(filters.offset) || 0;
+    const limit = Number(filters.limit) || 20;
+    const items = list.slice(offset, offset + limit);
 
-    return { items, total }
+    return { items, total };
   }
 
   getProductByPublicId(publicId) {
-    return this.products.find((p) => p.publicId === publicId || p.id === publicId) || null
+    return (
+      this.products.find((p) => p.publicId === publicId || p.id === publicId) ||
+      null
+    );
   }
 
   getProductBySlug(slug) {
-    return this.products.find((p) => p.slug === slug) || null
+    return this.products.find((p) => p.slug === slug) || null;
   }
 
   addProduct(input) {
-    const id = publicId()
-    const category = this.categories.find((c) => c.publicId === input.categoryId || c.id === input.categoryId)
+    const id = publicId();
+    const category = this.categories.find(
+      (c) => c.publicId === input.categoryId || c.id === input.categoryId
+    );
     const product = {
       id,
       publicId: id,
@@ -570,7 +761,9 @@ class MemoryStore {
       slug: input.slug || slugify(input.name),
       sku: input.sku || `SKU-${Date.now()}`,
       price: Number(input.price) || 99.99,
-      compareAtPrice: input.compareAtPrice ? Number(input.compareAtPrice) : null,
+      compareAtPrice: input.compareAtPrice
+        ? Number(input.compareAtPrice)
+        : null,
       costPerItem: input.costPerItem ? Number(input.costPerItem) : 45.0,
       brand: input.brand || 'Kick',
       gender: input.gender || 'unisex',
@@ -578,101 +771,126 @@ class MemoryStore {
       status: input.status || 'active',
       featured: Boolean(input.featured),
       inStock: true,
-      totalStock: input.variants ? input.variants.reduce((s, v) => s + Number(v.stock || 0), 0) : 50,
+      totalStock: input.variants
+        ? input.variants.reduce((s, v) => s + Number(v.stock || 0), 0)
+        : 50,
       unitsSold: 0,
       rating: 5.0,
       reviewCount: 1,
-      images: input.images && input.images.length ? input.images : [unsplashImages[0]],
-      image: input.images && input.images[0] ? input.images[0] : unsplashImages[0],
+      images:
+        input.images && input.images.length
+          ? input.images
+          : [unsplashImages[0]],
+      image:
+        input.images && input.images[0] ? input.images[0] : unsplashImages[0],
       colorImages: input.colorImages || [],
       tags: input.tags || [],
       categoryId: category ? category.publicId : null,
-      category: category ? { id: category.publicId, name: category.name, slug: category.slug } : null,
+      category: category
+        ? { id: category.publicId, name: category.name, slug: category.slug }
+        : null,
       colors: input.colors || ['Black'],
       sizes: input.sizes || ['40', '41', '42'],
       variants: input.variants || [],
       description: input.description || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
-    this.products.unshift(product)
-    return product
+    };
+    this.products.unshift(product);
+    return product;
   }
 
   updateProduct(publicId, patch) {
-    const prod = this.getProductByPublicId(publicId)
-    if (!prod) return null
+    const prod = this.getProductByPublicId(publicId);
+    if (!prod) return null;
     if (patch.categoryId) {
-      const category = this.categories.find((c) => c.publicId === patch.categoryId || c.id === patch.categoryId)
+      const category = this.categories.find(
+        (c) => c.publicId === patch.categoryId || c.id === patch.categoryId
+      );
       if (category) {
-        prod.categoryId = category.publicId
-        prod.category = { id: category.publicId, name: category.name, slug: category.slug }
+        prod.categoryId = category.publicId;
+        prod.category = {
+          id: category.publicId,
+          name: category.name,
+          slug: category.slug,
+        };
       }
     }
-    Object.assign(prod, patch, { updatedAt: new Date().toISOString() })
-    if (patch.images !== undefined) prod.image = patch.images[0] ?? null
-    return prod
+    Object.assign(prod, patch, { updatedAt: new Date().toISOString() });
+    if (patch.images !== undefined) prod.image = patch.images[0] ?? null;
+    return prod;
   }
 
   deleteProduct(publicId) {
-    const idx = this.products.findIndex((p) => p.publicId === publicId || p.id === publicId)
+    const idx = this.products.findIndex(
+      (p) => p.publicId === publicId || p.id === publicId
+    );
     if (idx !== -1) {
-      this.products.splice(idx, 1)
-      return true
+      this.products.splice(idx, 1);
+      return true;
     }
-    return false
+    return false;
   }
 
   // Durable customer state fallback (used only when MySQL is unavailable).
   getCart(userId) {
-    return [...(this.carts.get(String(userId))?.values() ?? [])]
+    return [...(this.carts.get(String(userId))?.values() ?? [])];
   }
 
   setCartItem(userId, variantId, quantity) {
-    const key = String(userId)
-    const cart = this.carts.get(key) ?? new Map()
-    cart.set(String(variantId), { variantId: String(variantId), quantity: Number(quantity) })
-    this.carts.set(key, cart)
+    const key = String(userId);
+    const cart = this.carts.get(key) ?? new Map();
+    cart.set(String(variantId), {
+      variantId: String(variantId),
+      quantity: Number(quantity),
+    });
+    this.carts.set(key, cart);
   }
 
   removeCartItem(userId, variantId) {
-    this.carts.get(String(userId))?.delete(String(variantId))
+    this.carts.get(String(userId))?.delete(String(variantId));
   }
 
   clearCart(userId) {
-    this.carts.delete(String(userId))
+    this.carts.delete(String(userId));
   }
 
   getFavourites(userId) {
-    return [...(this.favourites.get(String(userId)) ?? new Set())]
+    return [...(this.favourites.get(String(userId)) ?? new Set())];
   }
 
   addFavourite(userId, productId) {
-    const key = String(userId)
-    const favourites = this.favourites.get(key) ?? new Set()
-    favourites.add(String(productId))
-    this.favourites.set(key, favourites)
+    const key = String(userId);
+    const favourites = this.favourites.get(key) ?? new Set();
+    favourites.add(String(productId));
+    this.favourites.set(key, favourites);
   }
 
   removeFavourite(userId, productId) {
-    this.favourites.get(String(userId))?.delete(String(productId))
+    this.favourites.get(String(userId))?.delete(String(productId));
   }
 
   // Users
   getUsers() {
-    return this.users
+    return this.users;
   }
 
   getUserByPublicId(publicId) {
-    return this.users.find((u) => u.publicId === publicId || u.id === publicId) || null
+    return (
+      this.users.find((u) => u.publicId === publicId || u.id === publicId) ||
+      null
+    );
   }
 
   getUserByEmail(email) {
-    return this.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null
+    return (
+      this.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) ||
+      null
+    );
   }
 
   addUser(input) {
-    const id = publicId()
+    const id = publicId();
     const user = {
       id,
       publicId: id,
@@ -698,19 +916,19 @@ class MemoryStore {
       tier: 'bronze',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
-    this.users.unshift(user)
-    return user
+    };
+    this.users.unshift(user);
+    return user;
   }
 
   // Orders
   getOrders() {
-    return this.orders
+    return this.orders;
   }
 
   getOrderById(publicId) {
-    const pStr = String(publicId)
-    const cleanNum = pStr.startsWith('#') ? pStr : `#${pStr}`
+    const pStr = String(publicId);
+    const cleanNum = pStr.startsWith('#') ? pStr : `#${pStr}`;
     return (
       this.orders.find(
         (o) =>
@@ -720,12 +938,12 @@ class MemoryStore {
           String(o.orderNumber) === pStr ||
           String(o.orderNumber) === cleanNum
       ) || null
-    )
+    );
   }
 
   addOrder(input) {
-    const num = 1000 + this.orders.length + 1
-    const id = publicId()
+    const num = 1000 + this.orders.length + 1;
+    const id = publicId();
     const order = {
       id,
       publicId: id,
@@ -753,25 +971,30 @@ class MemoryStore {
       grandTotal: Number(input.grandTotal) || Number(input.subtotal) || 0,
       placedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
-    this.orders.unshift(order)
-    return order
+    };
+    this.orders.unshift(order);
+    return order;
   }
 
   updateOrderStatus(publicId, status) {
-    const order = this.getOrderById(publicId)
-    if (!order) return null
-    order.status = status
-    order.updatedAt = new Date().toISOString()
-    return order
+    const order = this.getOrderById(publicId);
+    if (!order) return null;
+    order.status = status;
+    order.updatedAt = new Date().toISOString();
+    return order;
   }
 
   // Dashboard Stats
   getDashboardStats() {
-    const totalRevenue = this.orders.reduce((sum, o) => sum + (o.grandTotal || 0), 0)
-    const totalOrders = this.orders.length
-    const totalCustomers = this.users.filter((u) => u.role === 'customer').length
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
+    const totalRevenue = this.orders.reduce(
+      (sum, o) => sum + (o.grandTotal || 0),
+      0
+    );
+    const totalOrders = this.orders.length;
+    const totalCustomers = this.users.filter(
+      (u) => u.role === 'customer'
+    ).length;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     return {
       totalRevenue: Number(totalRevenue.toFixed(2)),
@@ -785,7 +1008,8 @@ class MemoryStore {
       avgOrderValue: Number(avgOrderValue.toFixed(2)),
       aovChange: 4.1,
       pendingOrders: this.orders.filter((o) => o.status === 'pending').length,
-      processingOrders: this.orders.filter((o) => o.status === 'processing').length,
+      processingOrders: this.orders.filter((o) => o.status === 'processing')
+        .length,
       shippedOrders: this.orders.filter((o) => o.status === 'shipped').length,
       returnedOrders: this.orders.filter((o) => o.status === 'returned').length,
       totalProducts: this.products.length,
@@ -799,8 +1023,8 @@ class MemoryStore {
         { month: 'May', total: 22000 },
         { month: 'Jun', total: 25000 },
       ],
-    }
+    };
   }
 }
 
-export const memoryStore = new MemoryStore()
+export const memoryStore = new MemoryStore();

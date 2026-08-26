@@ -1,43 +1,53 @@
-import { withTransaction, pool, isDatabaseConnected } from '../config/database.js'
-import { env } from '../config/env.js'
-import { logger } from '../config/logger.js'
-import { ApiError } from '../utils/api-error.js'
-import { publicId, parseJson, randomToken } from '../utils/helpers.js'
-import { toCents, fromCents, centsToNumber } from '../utils/money.js'
-import { ORDER_TRANSITIONS, CACHE_TTL } from '../utils/constants.js'
-import * as orderModel from '../models/order.model.js'
-import * as variantModel from '../models/variant.model.js'
-import * as productModel from '../models/product.model.js'
-import * as userModel from '../models/user.model.js'
-import * as cartModel from '../models/cart.model.js'
-import { deleteCached, deleteCachedPattern, getCachedJson, setCachedJson } from './cache.service.js'
-import { memoryStore } from './memory-store.js'
-import geocodeAddress from '../utils/geocode.js'
-import { createTrackingSession } from './tracking.service.js'
-import { getIO, getWarehouseLocation } from '../config/socket.js'
-import * as dpModel from '../models/delivery-partner.model.js'
+import {
+  withTransaction,
+  pool,
+  isDatabaseConnected,
+} from '../config/database.js';
+import { env } from '../config/env.js';
+import { logger } from '../config/logger.js';
+import { ApiError } from '../utils/api-error.js';
+import { publicId, parseJson, randomToken } from '../utils/helpers.js';
+import { toCents, fromCents, centsToNumber } from '../utils/money.js';
+import { ORDER_TRANSITIONS, CACHE_TTL } from '../utils/constants.js';
+import * as orderModel from '../models/order.model.js';
+import * as variantModel from '../models/variant.model.js';
+import * as productModel from '../models/product.model.js';
+import * as userModel from '../models/user.model.js';
+import * as cartModel from '../models/cart.model.js';
+import {
+  deleteCached,
+  deleteCachedPattern,
+  getCachedJson,
+  setCachedJson,
+} from './cache.service.js';
+import { memoryStore } from './memory-store.js';
+import geocodeAddress from '../utils/geocode.js';
+import { createTrackingSession } from './tracking.service.js';
+import { getIO, getWarehouseLocation } from '../config/socket.js';
+import * as dpModel from '../models/delivery-partner.model.js';
 
 const orderCacheKey = (userId, limit, offset) =>
-  `customer:${userId}:orders:${limit}:${offset}`
+  `customer:${userId}:orders:${limit}:${offset}`;
 
 export async function invalidateOrderCache(userId) {
-  if (userId === null || userId === undefined) return
-  await deleteCachedPattern(`customer:${userId}:orders:*`)
+  if (userId === null || userId === undefined) return;
+  await deleteCachedPattern(`customer:${userId}:orders:*`);
 }
 
 async function invalidateCartCache(userId) {
-  if (userId === null || userId === undefined) return
-  await deleteCached(`customer:${userId}:cart`)
+  if (userId === null || userId === undefined) return;
+  await deleteCached(`customer:${userId}:cart`);
 }
 
 function imageForColor(imagesValue, colorImagesValue, color) {
-  const colorImages = parseJson(colorImagesValue, [])
+  const colorImages = parseJson(colorImagesValue, []);
   const gallery = Array.isArray(colorImages)
     ? colorImages.find(
-      (entry) => entry.color?.toLocaleLowerCase() === String(color).toLocaleLowerCase()
-    )
-    : null
-  return gallery?.images?.[0] ?? parseJson(imagesValue, [])[0] ?? null
+        (entry) =>
+          entry.color?.toLocaleLowerCase() === String(color).toLocaleLowerCase()
+      )
+    : null;
+  return gallery?.images?.[0] ?? parseJson(imagesValue, [])[0] ?? null;
 }
 
 /**
@@ -47,13 +57,13 @@ function imageForColor(imagesValue, colorImagesValue, color) {
  * from the database, so the preview always matches what checkout will charge.
  */
 export async function quote(items) {
-  const ids = [...new Set(items.map((i) => i.variantId))]
-  if (!ids.length) throw ApiError.badRequest('Your cart is empty.')
+  const ids = [...new Set(items.map((i) => i.variantId))];
+  if (!ids.length) throw ApiError.badRequest('Your cart is empty.');
 
-  let rows = []
+  let rows = [];
   if (isDatabaseConnected()) {
     try {
-      const placeholders = ids.map(() => '?').join(',')
+      const placeholders = ids.map(() => '?').join(',');
       const [dbRows] = await pool.query(
         `SELECT v.public_id, v.size, v.color, v.stock, v.reserved, v.is_active,
                 p.name, p.slug, p.price, p.status, p.images, p.color_images, p.deleted_at
@@ -61,16 +71,16 @@ export async function quote(items) {
          JOIN products p ON p.id = v.product_id
          WHERE v.public_id IN (${placeholders})`,
         ids
-      )
-      if (dbRows && dbRows.length > 0) rows = dbRows
-    } catch { }
+      );
+      if (dbRows && dbRows.length > 0) rows = dbRows;
+    } catch {}
   }
 
   if (!rows.length) {
     for (const prod of memoryStore.getProducts({ limit: 1000 }).items) {
-      if (!prod.variants) continue
+      if (!prod.variants) continue;
       for (const v of prod.variants) {
-        const vId = v.publicId || v.id
+        const vId = v.publicId || v.id;
         if (ids.includes(vId)) {
           rows.push({
             public_id: vId,
@@ -86,28 +96,32 @@ export async function quote(items) {
             images: JSON.stringify(prod.images || [prod.image]),
             color_images: JSON.stringify(prod.colorImages || []),
             deleted_at: null,
-          })
+          });
         }
       }
     }
   }
 
-  const byId = new Map(rows.map((r) => [r.public_id, r]))
-  const lines = []
-  let subtotalCents = 0
+  const byId = new Map(rows.map((r) => [r.public_id, r]));
+  const lines = [];
+  let subtotalCents = 0;
 
   for (const item of items) {
-    const row = byId.get(item.variantId)
+    const row = byId.get(item.variantId);
     if (!row || row.deleted_at || row.status !== 'active' || !row.is_active) {
-      lines.push({ variantId: item.variantId, available: false, reason: 'unavailable' })
-      continue
+      lines.push({
+        variantId: item.variantId,
+        available: false,
+        reason: 'unavailable',
+      });
+      continue;
     }
 
-    const available = Number(row.stock) - Number(row.reserved)
-    const quantity = Math.min(item.quantity, env.business.maxQtyPerLine)
-    const unitCents = toCents(row.price)
-    const lineCents = unitCents * quantity
-    subtotalCents += lineCents
+    const available = Number(row.stock) - Number(row.reserved);
+    const quantity = Math.min(item.quantity, env.business.maxQtyPerLine);
+    const unitCents = toCents(row.price);
+    const lineCents = unitCents * quantity;
+    subtotalCents += lineCents;
 
     lines.push({
       variantId: item.variantId,
@@ -121,21 +135,22 @@ export async function quote(items) {
       lineTotal: centsToNumber(lineCents),
       available: available >= quantity,
       availableQty: available,
-    })
+    });
   }
 
-  const totals = calculateTotals(subtotalCents)
-  return { lines, ...totals, currency: env.currency }
+  const totals = calculateTotals(subtotalCents);
+  return { lines, ...totals, currency: env.currency };
 }
 
 /** Shipping and tax rules live in one place so quote and checkout agree. */
 function calculateTotals(subtotalCents) {
   const shippingCents =
-    subtotalCents >= toCents(env.business.freeShippingThreshold) || subtotalCents === 0
+    subtotalCents >= toCents(env.business.freeShippingThreshold) ||
+    subtotalCents === 0
       ? 0
-      : toCents(env.business.flatShippingRate)
-  const taxCents = Math.round(subtotalCents * env.business.taxRate)
-  const totalCents = subtotalCents + shippingCents + taxCents
+      : toCents(env.business.flatShippingRate);
+  const taxCents = Math.round(subtotalCents * env.business.taxRate);
+  const totalCents = subtotalCents + shippingCents + taxCents;
 
   return {
     subtotal: centsToNumber(subtotalCents),
@@ -146,7 +161,7 @@ function calculateTotals(subtotalCents) {
     shippingCents,
     taxCents,
     totalCents,
-  }
+  };
 }
 
 /**
@@ -161,65 +176,78 @@ function calculateTotals(subtotalCents) {
  * the same last pair.
  */
 export async function createOrder({ user, input }) {
-  if (!input.items?.length) throw ApiError.badRequest('Your cart is empty.')
+  if (!input.items?.length) throw ApiError.badRequest('Your cart is empty.');
 
   // Collapse duplicate lines so the same variant can't be locked twice.
-  const merged = new Map()
+  const merged = new Map();
   for (const item of input.items) {
-    const qty = merged.get(item.variantId) ?? 0
-    merged.set(item.variantId, Math.min(qty + item.quantity, env.business.maxQtyPerLine))
+    const qty = merged.get(item.variantId) ?? 0;
+    merged.set(
+      item.variantId,
+      Math.min(qty + item.quantity, env.business.maxQtyPerLine)
+    );
   }
 
-  const variantIds = [...merged.keys()]
-  const customerEmail = (user?.email ?? input.email ?? '').toLowerCase()
+  const variantIds = [...merged.keys()];
+  const customerEmail = (user?.email ?? input.email ?? '').toLowerCase();
   if (!customerEmail) {
-    throw ApiError.badRequest('An email address is required to place an order.')
+    throw ApiError.badRequest(
+      'An email address is required to place an order.'
+    );
   }
 
   if (isDatabaseConnected()) {
     try {
       const result = await withTransaction(async (conn) => {
         // ── 1. Lock the variants. Other checkouts block here. ──────────────
-        const rows = await variantModel.lockForUpdate(variantIds, conn)
+        const rows = await variantModel.lockForUpdate(variantIds, conn);
 
         if (rows.length !== variantIds.length) {
-          throw ApiError.badRequest('One of the items in your cart no longer exists.')
+          throw ApiError.badRequest(
+            'One of the items in your cart no longer exists.'
+          );
         }
 
         // ── 2. Verify every line is buyable ────────────────────────────────
         for (const row of rows) {
-          const wanted = merged.get(row.public_id)
+          const wanted = merged.get(row.public_id);
 
-          if (row.deleted_at || row.product_status !== 'active' || !row.is_active) {
-            throw ApiError.conflict(`"${row.product_name}" is no longer available.`)
+          if (
+            row.deleted_at ||
+            row.product_status !== 'active' ||
+            !row.is_active
+          ) {
+            throw ApiError.conflict(
+              `"${row.product_name}" is no longer available.`
+            );
           }
 
-          const available = Number(row.stock) - Number(row.reserved)
+          const available = Number(row.stock) - Number(row.reserved);
           if (available < wanted) {
             throw ApiError.insufficientStock(
               available === 0
                 ? `"${row.product_name}" in size ${row.size} just sold out.`
                 : `Only ${available} left of "${row.product_name}" in size ${row.size}.`,
               [{ variantId: row.public_id, requested: wanted, available }]
-            )
+            );
           }
         }
 
         // ── 3. Recalculate money FROM THE DATABASE ─────────────────────────
-        let subtotalCents = 0
+        let subtotalCents = 0;
         const lines = rows.map((row) => {
-          const quantity = merged.get(row.public_id)
-          const unitCents = toCents(row.price)
-          const lineCents = unitCents * quantity
-          subtotalCents += lineCents
-          return { row, quantity, unitCents, lineCents }
-        })
+          const quantity = merged.get(row.public_id);
+          const unitCents = toCents(row.price);
+          const lineCents = unitCents * quantity;
+          subtotalCents += lineCents;
+          return { row, quantity, unitCents, lineCents };
+        });
 
-        const totals = calculateTotals(subtotalCents)
+        const totals = calculateTotals(subtotalCents);
 
         // ── 4. Create the order ────────────────────────────────────────────
-        const orderNumber = await orderModel.nextOrderNumber(conn)
-        const shipping = input.shippingAddress
+        const orderNumber = await orderModel.nextOrderNumber(conn);
+        const shipping = input.shippingAddress;
 
         const orderInternalId = await orderModel.create(
           {
@@ -227,8 +255,9 @@ export async function createOrder({ user, input }) {
             orderNumber,
             userId: user?.id ?? null,
             customerEmail,
-            customerName: input.customerName
-              ?? (user ? `${user.firstName} ${user.lastName}` : shipping.name),
+            customerName:
+              input.customerName ??
+              (user ? `${user.firstName} ${user.lastName}` : shipping.name),
             customerPhone: input.customerPhone ?? shipping.phone ?? null,
             // Cash on delivery is never "paid" up front.
             paymentStatus: 'pending',
@@ -242,7 +271,7 @@ export async function createOrder({ user, input }) {
             customerNote: input.customerNote ?? null,
           },
           conn
-        )
+        );
 
         // ── 5. Snapshot each line and reserve its stock ────────────────────
         for (const line of lines) {
@@ -266,14 +295,18 @@ export async function createOrder({ user, input }) {
               lineTotal: fromCents(line.lineCents),
             },
             conn
-          )
+          );
 
-          const reserved = await variantModel.reserve(line.row.id, line.quantity, conn)
+          const reserved = await variantModel.reserve(
+            line.row.id,
+            line.quantity,
+            conn
+          );
           if (!reserved) {
             // Belt and braces: the CHECK constraint would also catch this.
             throw ApiError.insufficientStock(
               `"${line.row.product_name}" in size ${line.row.size} just sold out.`
-            )
+            );
           }
         }
 
@@ -281,70 +314,90 @@ export async function createOrder({ user, input }) {
         // checkout, so commit the reservation immediately and never let the
         // unpaid-card expiry job put this stock back on sale.
         if (input.paymentMethod === 'cod') {
-          const touchedProducts = new Set()
+          const touchedProducts = new Set();
           for (const line of lines) {
-            const committed = await variantModel.commitReservation(line.row.id, line.quantity, conn)
+            const committed = await variantModel.commitReservation(
+              line.row.id,
+              line.quantity,
+              conn
+            );
             if (!committed) {
               throw ApiError.insufficientStock(
                 `"${line.row.product_name}" in size ${line.row.size} is no longer available.`
-              )
+              );
             }
             if (line.row.product_id) {
-              await productModel.incrementUnitsSold(line.row.product_id, line.quantity, conn)
-              touchedProducts.add(line.row.product_id)
+              await productModel.incrementUnitsSold(
+                line.row.product_id,
+                line.quantity,
+                conn
+              );
+              touchedProducts.add(line.row.product_id);
             }
           }
           for (const productId of touchedProducts) {
-            await productModel.recalcStock(productId, conn)
+            await productModel.recalcStock(productId, conn);
           }
-          if (user?.id) await cartModel.clearByUser(user.id, conn)
+          if (user?.id) await cartModel.clearByUser(user.id, conn);
         }
 
         // Read the finished order back through the SAME connection, so we see
         // our own uncommitted rows.
-        const order = await orderModel.findByInternalId(orderInternalId, conn)
+        const order = await orderModel.findByInternalId(orderInternalId, conn);
 
         logger.info(
-          { orderNumber, total: totals.total, items: lines.length, userId: user?.publicId },
+          {
+            orderNumber,
+            total: totals.total,
+            items: lines.length,
+            userId: user?.publicId,
+          },
           'order created'
-        )
+        );
 
-        return { order, internalId: orderInternalId, totalCents: totals.totalCents }
-      })
+        return {
+          order,
+          internalId: orderInternalId,
+          totalCents: totals.totalCents,
+        };
+      });
       if (result) {
-        await invalidateOrderCache(user?.id)
-        if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id)
+        await invalidateOrderCache(user?.id);
+        if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id);
         // Stock availability changed, so drop the cached public catalogue.
-        await deleteCachedPattern('public:*')
-        return result
+        await deleteCachedPattern('public:*');
+        return result;
       }
     } catch (err) {
-      if (err.statusCode) throw err
+      if (err.statusCode) throw err;
     }
   }
 
   // Memory store fallback for checkout
-  const lines = []
-  let subtotalCents = 0
+  const lines = [];
+  let subtotalCents = 0;
 
   for (const variantId of variantIds) {
-    let foundProd = null
-    let foundVar = null
+    let foundProd = null;
+    let foundVar = null;
     for (const prod of memoryStore.getProducts({ limit: 1000 }).items) {
-      const v = prod.variants?.find((v) => (v.publicId || v.id) === variantId)
+      const v = prod.variants?.find((v) => (v.publicId || v.id) === variantId);
       if (v) {
-        foundProd = prod
-        foundVar = v
-        break
+        foundProd = prod;
+        foundVar = v;
+        break;
       }
     }
 
     if (!foundProd || !foundVar) {
-      throw ApiError.badRequest('One of the items in your cart no longer exists.')
+      throw ApiError.badRequest(
+        'One of the items in your cart no longer exists.'
+      );
     }
 
-    const wanted = merged.get(variantId)
-    const available = Number(foundVar.stock ?? 10) - Number(foundVar.reserved ?? 0)
+    const wanted = merged.get(variantId);
+    const available =
+      Number(foundVar.stock ?? 10) - Number(foundVar.reserved ?? 0);
 
     if (available < wanted) {
       throw ApiError.insufficientStock(
@@ -352,20 +405,20 @@ export async function createOrder({ user, input }) {
           ? `"${foundProd.name}" in size ${foundVar.size} just sold out.`
           : `Only ${available} left of "${foundProd.name}" in size ${foundVar.size}.`,
         [{ variantId, requested: wanted, available }]
-      )
+      );
     }
 
-    const unitCents = toCents(foundProd.price)
-    const lineCents = unitCents * wanted
-    subtotalCents += lineCents
+    const unitCents = toCents(foundProd.price);
+    const lineCents = unitCents * wanted;
+    subtotalCents += lineCents;
 
     // Reserve stock in memory store. COD has no payment webhook, so it must
     // become a committed allocation immediately (mirrors the DB path above).
-    foundVar.reserved = (foundVar.reserved ?? 0) + wanted
+    foundVar.reserved = (foundVar.reserved ?? 0) + wanted;
     if (input.paymentMethod === 'cod') {
-      foundVar.stock = (foundVar.stock ?? 0) - wanted
-      foundVar.reserved -= wanted
-      foundProd.unitsSold = (foundProd.unitsSold ?? 0) + wanted
+      foundVar.stock = (foundVar.stock ?? 0) - wanted;
+      foundVar.reserved -= wanted;
+      foundProd.unitsSold = (foundProd.unitsSold ?? 0) + wanted;
     }
 
     lines.push({
@@ -373,22 +426,28 @@ export async function createOrder({ user, input }) {
       productPublicId: foundProd.publicId || foundProd.id,
       productName: foundProd.name,
       productSlug: foundProd.slug,
-      productImage: imageForColor(foundProd.images, foundProd.colorImages, foundVar.color),
+      productImage: imageForColor(
+        foundProd.images,
+        foundProd.colorImages,
+        foundVar.color
+      ),
       color: foundVar.color,
       size: foundVar.size,
       unitPrice: centsToNumber(unitCents),
       quantity: wanted,
       lineTotal: centsToNumber(lineCents),
-    })
+    });
   }
 
-  const totals = calculateTotals(subtotalCents)
-  const shipping = input.shippingAddress
+  const totals = calculateTotals(subtotalCents);
+  const shipping = input.shippingAddress;
 
   const order = memoryStore.addOrder({
     customer: {
       id: user?.publicId ?? 'guest',
-      name: input.customerName ?? (user ? `${user.firstName} ${user.lastName}` : shipping.name),
+      name:
+        input.customerName ??
+        (user ? `${user.firstName} ${user.lastName}` : shipping.name),
       email: customerEmail,
       phone: input.customerPhone ?? shipping.phone ?? null,
     },
@@ -400,60 +459,69 @@ export async function createOrder({ user, input }) {
     grandTotal: totals.total,
     paymentMethod: input.paymentMethod,
     customerNote: input.customerNote ?? null,
-  })
+  });
 
-  order.orderNumber = `#${1000 + memoryStore.orders.length}`
-  if (user?.id && input.paymentMethod === 'cod') memoryStore.clearCart(user.id)
-  await invalidateOrderCache(user?.id)
-  if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id)
-  await deleteCachedPattern('public:*')
+  order.orderNumber = `#${1000 + memoryStore.orders.length}`;
+  if (user?.id && input.paymentMethod === 'cod') memoryStore.clearCart(user.id);
+  await invalidateOrderCache(user?.id);
+  if (input.paymentMethod === 'cod') await invalidateCartCache(user?.id);
+  await deleteCachedPattern('public:*');
 
-  return { order, internalId: order.internalId || order.id, totalCents: totals.totalCents }
+  return {
+    order,
+    internalId: order.internalId || order.id,
+    totalCents: totals.totalCents,
+  };
 }
 
 /** Full order detail, with an ownership check for customers. */
 export async function getOrder(orderPublicId, requester) {
-  const order = await orderModel.findByPublicId(orderPublicId)
-  if (!order) throw ApiError.notFound('Order not found.')
+  const order = await orderModel.findByPublicId(orderPublicId);
+  if (!order) throw ApiError.notFound('Order not found.');
 
-  const isAdmin = requester?.role === 'admin'
-  const owns = order.customerId && requester?.publicId === order.customerId
+  const isAdmin = requester?.role === 'admin';
+  const owns = order.customerId && requester?.publicId === order.customerId;
 
   // 404 rather than 403 — don't confirm that someone else's order exists.
-  if (!isAdmin && !owns) throw ApiError.notFound('Order not found.')
+  if (!isAdmin && !owns) throw ApiError.notFound('Order not found.');
 
-  const items = await orderModel.findItems(order.internalId)
-  const full = { ...order, items }
-  return isAdmin ? { ...full, internalId: undefined } : orderModel.toPublicOrder(full)
+  const items = await orderModel.findItems(order.internalId);
+  const full = { ...order, items };
+  return isAdmin
+    ? { ...full, internalId: undefined }
+    : orderModel.toPublicOrder(full);
 }
 
 export async function listForUser(userId, { limit, offset }) {
-  const key = orderCacheKey(userId, limit, offset)
-  const cached = await getCachedJson(key)
-  if (cached) return cached
+  const key = orderCacheKey(userId, limit, offset);
+  const cached = await getCachedJson(key);
+  if (cached) return cached;
 
-  const { items, total } = await orderModel.findAll({ userId, limit, offset })
+  const { items, total } = await orderModel.findAll({ userId, limit, offset });
   const ordersWithItems = await Promise.all(
     items.map(async (order) => {
-      const orderItems = await orderModel.findItems(order.internalId)
-      return { ...order, items: orderItems }
+      const orderItems = await orderModel.findItems(order.internalId);
+      return { ...order, items: orderItems };
     })
-  )
-  const result = { items: ordersWithItems.map(orderModel.toPublicOrder), total }
+  );
+  const result = {
+    items: ordersWithItems.map(orderModel.toPublicOrder),
+    total,
+  };
   // Customer order history → CART-tier TTL; invalidated on any order mutation.
-  await setCachedJson(key, result, CACHE_TTL.CART)
-  return result
+  await setCachedJson(key, result, CACHE_TTL.CART);
+  return result;
 }
 
 export async function listForAdmin(filters) {
-  const { items, total } = await orderModel.findAll(filters)
+  const { items, total } = await orderModel.findAll(filters);
   const ordersWithItems = await Promise.all(
     items.map(async (order) => {
-      const orderItems = await orderModel.findItems(order.internalId)
-      return { ...order, items: orderItems }
+      const orderItems = await orderModel.findItems(order.internalId);
+      return { ...order, items: orderItems };
     })
-  )
-  return { items: ordersWithItems.map(({ internalId: _i, ...o }) => o), total }
+  );
+  return { items: ordersWithItems.map(({ internalId: _i, ...o }) => o), total };
 }
 
 /**
@@ -461,42 +529,49 @@ export async function listForAdmin(filters) {
  * Cancelling or returning puts stock back.
  */
 export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
-  const order = await orderModel.findByPublicId(orderPublicId)
-  if (!order) throw ApiError.notFound('Order not found.')
+  const order = await orderModel.findByPublicId(orderPublicId);
+  if (!order) throw ApiError.notFound('Order not found.');
 
-  const allowed = ORDER_TRANSITIONS[order.status] ?? []
+  const allowed = ORDER_TRANSITIONS[order.status] ?? [];
   if (!allowed.includes(nextStatus)) {
     throw ApiError.badRequest(
       `An order that is "${order.status}" cannot become "${nextStatus}".` +
-      (allowed.length ? ` Allowed: ${allowed.join(', ')}.` : ' This status is final.')
-    )
+        (allowed.length
+          ? ` Allowed: ${allowed.join(', ')}.`
+          : ' This status is final.')
+    );
   }
 
   // ── ready_for_pickup: broadcast to all delivery partners ────────────
   if (nextStatus === 'ready_for_pickup') {
-    const io = getIO()
+    const io = getIO();
     if (io) {
-      const warehouse = getWarehouseLocation()
-      const wLat = warehouse?.lat ?? 30.7333
-      const wLng = warehouse?.lng ?? 76.7794
-      const sLat = Number(order.shippingAddress?.lat ?? order.shippingLat)
-      const sLng = Number(order.shippingAddress?.lng ?? order.shippingLng)
+      const warehouse = getWarehouseLocation();
+      const wLat = warehouse?.lat ?? 30.7333;
+      const wLng = warehouse?.lng ?? 76.7794;
+      const sLat = Number(order.shippingAddress?.lat ?? order.shippingLat);
+      const sLng = Number(order.shippingAddress?.lng ?? order.shippingLng);
 
-      let distanceStr = '2.8 km'
-      let etaStr = '12 min'
+      let distanceStr = '2.8 km';
+      let etaStr = '12 min';
       if (Number.isFinite(sLat) && Number.isFinite(sLng)) {
-        const R = 6371 // km
-        const dLat = (sLat - wLat) * (Math.PI / 180)
-        const dLon = (sLng - wLng) * (Math.PI / 180)
+        const R = 6371; // km
+        const dLat = (sLat - wLat) * (Math.PI / 180);
+        const dLon = (sLng - wLng) * (Math.PI / 180);
         const a =
           Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(wLat * (Math.PI / 180)) * Math.cos(sLat * (Math.PI / 180)) *
-          Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        const roadKm = Math.max(0.5, R * c * 1.3)
-        distanceStr = roadKm < 1 ? `${Math.round(roadKm * 1000)} m` : `${roadKm.toFixed(1)} km`
-        const mins = Math.max(5, Math.round(roadKm * 2.2 + 3))
-        etaStr = `${mins} min`
+          Math.cos(wLat * (Math.PI / 180)) *
+            Math.cos(sLat * (Math.PI / 180)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const roadKm = Math.max(0.5, R * c * 1.3);
+        distanceStr =
+          roadKm < 1
+            ? `${Math.round(roadKm * 1000)} m`
+            : `${roadKm.toFixed(1)} km`;
+        const mins = Math.max(5, Math.round(roadKm * 2.2 + 3));
+        etaStr = `${mins} min`;
       }
 
       io.to('delivery:pool').emit('order:ready_for_pickup', {
@@ -506,10 +581,10 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
         pickupAddress: warehouse?.address || 'KICKS Main Hub',
         pickupLat: wLat,
         pickupLng: wLng,
-        dropoffAddress: [
-          order.shippingAddress?.city,
-          order.shippingAddress?.state,
-        ].filter(Boolean).join(', ') || 'Customer Location',
+        dropoffAddress:
+          [order.shippingAddress?.city, order.shippingAddress?.state]
+            .filter(Boolean)
+            .join(', ') || 'Customer Location',
         // Full shipping address for map routing
         shippingAddress: {
           lat: Number.isFinite(sLat) ? sLat : null,
@@ -524,31 +599,50 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
         distance: distanceStr,
         eta: etaStr,
         status: 'ready_for_pickup',
-      })
+      });
     }
   }
 
   if (nextStatus === 'shipped') {
     if (!extra.trackingNumber) {
-      extra.trackingNumber = `KICK-${(order.orderNumber || order.id || 'ORD').toString().replace('#', '')}-${Date.now()}`
+      extra.trackingNumber = `KICK-${(order.orderNumber || order.id || 'ORD').toString().replace('#', '')}-${Date.now()}`;
     }
-    extra.courier = extra.courier || order.courier || 'Delhivery'
+    extra.courier = extra.courier || order.courier || 'Delhivery';
 
     try {
       // Use saved coords first — only geocode when this order predates the
       // coordinate migration and has none stored.
-      let coords = null
+      let coords = null;
       if (order.shippingLat != null && order.shippingLng != null) {
-        coords = { lat: Number(order.shippingLat), lng: Number(order.shippingLng) }
-        logger.info({ orderId: orderPublicId }, 'Using saved shipping coords for tracking session')
+        coords = {
+          lat: Number(order.shippingLat),
+          lng: Number(order.shippingLng),
+        };
+        logger.info(
+          { orderId: orderPublicId },
+          'Using saved shipping coords for tracking session'
+        );
       } else {
-        coords = await geocodeAddress(order.shippingAddress)
-        logger.info({ orderId: orderPublicId }, 'Geocoded address for tracking session (coords not pre-saved)')
+        coords = await geocodeAddress(order.shippingAddress);
+        logger.info(
+          { orderId: orderPublicId },
+          'Geocoded address for tracking session (coords not pre-saved)'
+        );
       }
-      logger.info({ orderId: orderPublicId, trackingNumber: extra.trackingNumber, coords }, 'Creating tracking session on shipping')
-      await createTrackingSession({ ...order, ...extra }, coords)
+      logger.info(
+        {
+          orderId: orderPublicId,
+          trackingNumber: extra.trackingNumber,
+          coords,
+        },
+        'Creating tracking session on shipping'
+      );
+      await createTrackingSession({ ...order, ...extra }, coords);
     } catch (err) {
-      logger.warn({ err: err.message, orderPublicId }, 'Failed to create tracking session')
+      logger.warn(
+        { err: err.message, orderPublicId },
+        'Failed to create tracking session'
+      );
     }
   }
 
@@ -559,33 +653,39 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
   if (nextStatus === 'shipping') {
     // Partner picked up. Create/resume tracking session if not already active.
     if (!extra.trackingNumber) {
-      extra.trackingNumber = `KICK-${(order.orderNumber || order.id || 'ORD').toString().replace('#', '')}-${Date.now()}`
+      extra.trackingNumber = `KICK-${(order.orderNumber || order.id || 'ORD').toString().replace('#', '')}-${Date.now()}`;
     }
     try {
-      let coords = null
+      let coords = null;
       if (order.shippingLat != null && order.shippingLng != null) {
-        coords = { lat: Number(order.shippingLat), lng: Number(order.shippingLng) }
+        coords = {
+          lat: Number(order.shippingLat),
+          lng: Number(order.shippingLng),
+        };
       } else {
-        coords = await geocodeAddress(order.shippingAddress)
+        coords = await geocodeAddress(order.shippingAddress);
       }
-      await createTrackingSession({ ...order, ...extra }, coords)
+      await createTrackingSession({ ...order, ...extra }, coords);
     } catch (err) {
-      logger.warn({ err: err.message, orderPublicId }, 'Failed to create tracking session on pickup')
+      logger.warn(
+        { err: err.message, orderPublicId },
+        'Failed to create tracking session on pickup'
+      );
     }
 
-    const io = getIO()
+    const io = getIO();
     if (io) {
       // Notify admin
       io.to('admin_room').emit('order:shipping', {
         orderId: orderPublicId,
         trackingNumber: extra.trackingNumber,
-      })
+      });
       // Notify customer
       if (order.customerId) {
         io.to(`user:${order.customerId}`).emit('order:shipping', {
           orderId: orderPublicId,
           trackingNumber: extra.trackingNumber,
-        })
+        });
       }
     }
   }
@@ -593,22 +693,29 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
   if (nextStatus === 'delivered') {
     if (order.trackingNumber) {
       try {
-        await import('./tracking.service.js').then(t => t.completeSession(order.trackingNumber))
+        await import('./tracking.service.js').then((t) =>
+          t.completeSession(order.trackingNumber)
+        );
       } catch (err) {
-        logger.warn({ err: err.message }, 'Failed to complete tracking session on delivery')
+        logger.warn(
+          { err: err.message },
+          'Failed to complete tracking session on delivery'
+        );
       }
     }
-    const io = getIO()
+    const io = getIO();
     if (io) {
-      io.to('admin_room').emit('order:delivered', { orderId: orderPublicId })
+      io.to('admin_room').emit('order:delivered', { orderId: orderPublicId });
       if (order.customerId) {
-        io.to(`user:${order.customerId}`).emit('order:delivered', { orderId: orderPublicId })
+        io.to(`user:${order.customerId}`).emit('order:delivered', {
+          orderId: orderPublicId,
+        });
       }
     }
   }
 
   // ── Global real-time status broadcast to admin and order watchers ───────────
-  const io = getIO()
+  const io = getIO();
   if (io) {
     const statusPayload = {
       orderId: orderPublicId,
@@ -616,50 +723,66 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
       trackingNumber: extra.trackingNumber || order.trackingNumber,
       partnerName: extra.courier || order.courier,
       at: new Date().toISOString(),
-    }
-    io.to('admin_room').emit('order:status_changed', statusPayload)
-    io.to(`order:${orderPublicId}`).emit('order:status_changed', statusPayload)
+    };
+    io.to('admin_room').emit('order:status_changed', statusPayload);
+    io.to(`order:${orderPublicId}`).emit('order:status_changed', statusPayload);
     if (order.customerId) {
-      io.to(`user:${order.customerId}`).emit('order:status_changed', statusPayload)
+      io.to(`user:${order.customerId}`).emit(
+        'order:status_changed',
+        statusPayload
+      );
     }
   }
 
   if (isDatabaseConnected()) {
     try {
       await withTransaction(async (conn) => {
-        await orderModel.updateStatus(order.internalId, nextStatus, extra, conn)
+        await orderModel.updateStatus(
+          order.internalId,
+          nextStatus,
+          extra,
+          conn
+        );
 
         if (nextStatus === 'cancelled') {
-          await releaseOrRestock(order, conn)
+          await releaseOrRestock(order, conn);
         }
 
         if (nextStatus === 'returned') {
-          const items = await orderModel.findRawItems(order.internalId, conn)
+          const items = await orderModel.findRawItems(order.internalId, conn);
           for (const item of items) {
-            if (!item.variant_id) continue
-            await variantModel.restock(item.variant_id, item.quantity, conn)
-            if (item.product_id) await productModel.recalcStock(item.product_id, conn)
+            if (!item.variant_id) continue;
+            await variantModel.restock(item.variant_id, item.quantity, conn);
+            if (item.product_id)
+              await productModel.recalcStock(item.product_id, conn);
           }
         }
-      })
+      });
     } catch (err) {
-      if (err.statusCode) throw err
+      if (err.statusCode) throw err;
     }
   }
 
-  await orderModel.updateStatus(order.internalId || order.id || orderPublicId, nextStatus, extra)
+  await orderModel.updateStatus(
+    order.internalId || order.id || orderPublicId,
+    nextStatus,
+    extra
+  );
 
-  logger.info({ orderNumber: order.orderNumber, from: order.status, to: nextStatus }, 'order status changed')
-  await invalidateOrderCache(order.customerInternalId)
+  logger.info(
+    { orderNumber: order.orderNumber, from: order.status, to: nextStatus },
+    'order status changed'
+  );
+  await invalidateOrderCache(order.customerInternalId);
   if (nextStatus === 'cancelled' || nextStatus === 'returned') {
     // Restocked items change public availability.
-    await deleteCachedPattern('public:*')
+    await deleteCachedPattern('public:*');
   }
   return orderModel.findByPublicId(orderPublicId).then((o) => ({
     ...o,
     internalId: undefined,
     customerInternalId: undefined,
-  }))
+  }));
 }
 
 /**
@@ -667,78 +790,101 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
  * deducted, so cancelling must add it back.
  */
 async function releaseOrRestock(order, conn) {
-  const items = await orderModel.findRawItems(order.internalId, conn)
+  const items = await orderModel.findRawItems(order.internalId, conn);
   // COD commits stock on checkout because it has no Stripe success webhook.
   // Treat it like a paid allocation for inventory cancellation purposes.
-  const stockWasCommitted = order.paymentStatus === 'paid' || order.paymentMethod === 'cod'
+  const stockWasCommitted =
+    order.paymentStatus === 'paid' || order.paymentMethod === 'cod';
 
   for (const item of items) {
-    if (!item.variant_id) continue
+    if (!item.variant_id) continue;
     if (stockWasCommitted) {
-      await variantModel.restock(item.variant_id, item.quantity, conn)
+      await variantModel.restock(item.variant_id, item.quantity, conn);
     } else {
-      await variantModel.releaseReservation(item.variant_id, item.quantity, conn)
+      await variantModel.releaseReservation(
+        item.variant_id,
+        item.quantity,
+        conn
+      );
     }
-    if (item.product_id) await productModel.recalcStock(item.product_id, conn)
+    if (item.product_id) await productModel.recalcStock(item.product_id, conn);
   }
 }
 
 /** A customer cancelling their own order. */
 export async function cancelByCustomer(orderPublicId, requester) {
-  const order = await orderModel.findByPublicId(orderPublicId)
-  if (!order) throw ApiError.notFound('Order not found.')
+  const order = await orderModel.findByPublicId(orderPublicId);
+  if (!order) throw ApiError.notFound('Order not found.');
   if (!order.customerId || order.customerId !== requester.publicId) {
-    throw ApiError.notFound('Order not found.')
+    throw ApiError.notFound('Order not found.');
   }
   if (!['pending', 'processing'].includes(order.status)) {
     throw ApiError.badRequest(
       `This order is already ${order.status} and can no longer be cancelled.`
-    )
+    );
   }
-  return updateStatus(orderPublicId, 'cancelled')
+  return updateStatus(orderPublicId, 'cancelled');
 }
 
-export async function updateTracking(orderPublicId, { courier, trackingNumber }) {
-  const order = await orderModel.findByPublicId(orderPublicId)
-  if (!order) throw ApiError.notFound('Order not found.')
+export async function updateTracking(
+  orderPublicId,
+  { courier, trackingNumber }
+) {
+  const order = await orderModel.findByPublicId(orderPublicId);
+  if (!order) throw ApiError.notFound('Order not found.');
 
-  await orderModel.updateStatus(order.internalId, order.status, { courier, trackingNumber })
+  await orderModel.updateStatus(order.internalId, order.status, {
+    courier,
+    trackingNumber,
+  });
 
   try {
     // Use saved coords first — only geocode as a fallback for legacy orders.
-    let coords = null
+    let coords = null;
     if (order.shippingLat != null && order.shippingLng != null) {
-      coords = { lat: Number(order.shippingLat), lng: Number(order.shippingLng) }
+      coords = {
+        lat: Number(order.shippingLat),
+        lng: Number(order.shippingLng),
+      };
     } else {
-      coords = await geocodeAddress(order.shippingAddress)
+      coords = await geocodeAddress(order.shippingAddress);
     }
-    await createTrackingSession({ ...order, courier, trackingNumber }, coords)
+    await createTrackingSession({ ...order, courier, trackingNumber }, coords);
   } catch (err) {
-    logger.warn({ err: err.message, orderPublicId }, 'Failed to update tracking session')
+    logger.warn(
+      { err: err.message, orderPublicId },
+      'Failed to update tracking session'
+    );
   }
 
-  await invalidateOrderCache(order.customerInternalId)
+  await invalidateOrderCache(order.customerInternalId);
   return orderModel.findByPublicId(orderPublicId).then((o) => ({
     ...o,
     internalId: undefined,
     customerInternalId: undefined,
-  }))
+  }));
 }
 
 export async function updateNote(orderPublicId, adminNote) {
-  const order = await orderModel.findByPublicId(orderPublicId)
-  if (!order) throw ApiError.notFound('Order not found.')
+  const order = await orderModel.findByPublicId(orderPublicId);
+  if (!order) throw ApiError.notFound('Order not found.');
 
-  await orderModel.updateNote(order.internalId, adminNote)
-  return orderModel.findByPublicId(orderPublicId).then((o) => ({ ...o, internalId: undefined }))
+  await orderModel.updateNote(order.internalId, adminNote);
+  return orderModel
+    .findByPublicId(orderPublicId)
+    .then((o) => ({ ...o, internalId: undefined }));
 }
 
 export async function getCustomerOrders(customerPublicId, { limit, offset }) {
-  const customer = await userModel.findByPublicId(customerPublicId)
-  if (!customer) throw ApiError.notFound('Customer not found.')
+  const customer = await userModel.findByPublicId(customerPublicId);
+  if (!customer) throw ApiError.notFound('Customer not found.');
 
-  const { items, total } = await orderModel.findAll({ userId: customer.internalId, limit, offset })
-  return { items: items.map(({ internalId: _i, ...o }) => o), total }
+  const { items, total } = await orderModel.findAll({
+    userId: customer.internalId,
+    limit,
+    offset,
+  });
+  return { items: items.map(({ internalId: _i, ...o }) => o), total };
 }
 
 /**
@@ -746,27 +892,40 @@ export async function getCustomerOrders(customerPublicId, { limit, offset }) {
  * Run from a scheduled job — see src/services/jobs.service.js.
  */
 export async function releaseStaleReservations() {
-  const stale = await orderModel.findStalePending(env.business.reservationTtlMinutes)
-  let released = 0
+  const stale = await orderModel.findStalePending(
+    env.business.reservationTtlMinutes
+  );
+  let released = 0;
 
   for (const row of stale) {
     try {
       await withTransaction(async (conn) => {
-        const items = await orderModel.findRawItems(row.id, conn)
+        const items = await orderModel.findRawItems(row.id, conn);
         for (const item of items) {
-          if (!item.variant_id) continue
-          await variantModel.releaseReservation(item.variant_id, item.quantity, conn)
-          if (item.product_id) await productModel.recalcStock(item.product_id, conn)
+          if (!item.variant_id) continue;
+          await variantModel.releaseReservation(
+            item.variant_id,
+            item.quantity,
+            conn
+          );
+          if (item.product_id)
+            await productModel.recalcStock(item.product_id, conn);
         }
-        await orderModel.updateStatus(row.id, 'cancelled', {}, conn)
-        await orderModel.markPaymentFailed(row.id, conn)
-      })
-      await invalidateOrderCache(row.user_id)
-      released += 1
-      logger.info({ orderNumber: row.order_number }, 'released stale reservation')
+        await orderModel.updateStatus(row.id, 'cancelled', {}, conn);
+        await orderModel.markPaymentFailed(row.id, conn);
+      });
+      await invalidateOrderCache(row.user_id);
+      released += 1;
+      logger.info(
+        { orderNumber: row.order_number },
+        'released stale reservation'
+      );
     } catch (err) {
-      logger.error({ err, orderId: row.id }, 'failed to release stale reservation')
+      logger.error(
+        { err, orderId: row.id },
+        'failed to release stale reservation'
+      );
     }
   }
-  return released
+  return released;
 }

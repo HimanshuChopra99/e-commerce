@@ -1,18 +1,18 @@
-import { Router } from 'express'
-import { pool } from '../config/database.js'
-import { env } from '../config/env.js'
-import authRoutes from './auth.routes.js'
-import productRoutes from './product.routes.js'
-import categoryRoutes from './category.routes.js'
-import orderRoutes from './order.routes.js'
-import adminRoutes from './admin/index.js'
-import customerStateRoutes from './customer-state.routes.js'
-import retellRoutes from './retell.routes.js'
-import { cacheStatus } from '../services/cache.service.js'
-import trackingRoutes from './tracking.routes.js'
-import deliveryPartnerRoutes from './delivery-partner.routes.js'
+import { Router } from 'express';
+import { pool } from '../config/database.js';
+import { env } from '../config/env.js';
+import authRoutes from './auth.routes.js';
+import productRoutes from './product.routes.js';
+import categoryRoutes from './category.routes.js';
+import orderRoutes from './order.routes.js';
+import adminRoutes from './admin/index.js';
+import customerStateRoutes from './customer-state.routes.js';
+import retellRoutes from './retell.routes.js';
+import { cacheStatus } from '../services/cache.service.js';
+import trackingRoutes from './tracking.routes.js';
+import deliveryPartnerRoutes from './delivery-partner.routes.js';
 
-const router = Router()
+const router = Router();
 
 /**
  * GET /api/health
@@ -21,17 +21,17 @@ const router = Router()
  * broken DB connection takes the instance out of rotation.
  */
 router.get('/health', async (_req, res) => {
-  let database = 'down'
+  let database = 'down';
   try {
-    const conn = await pool.getConnection()
+    const conn = await pool.getConnection();
     try {
-      await conn.ping()
-      database = 'up'
+      await conn.ping();
+      database = 'up';
     } finally {
-      conn.release()
+      conn.release();
     }
   } catch {
-    database = 'fallback'
+    database = 'fallback';
   }
 
   // This endpoint is a readiness check, not just a process liveness check.
@@ -39,7 +39,7 @@ router.get('/health', async (_req, res) => {
   // in a load balancer and can lead to false checkout success/fallback data.
   // Local/demo mode intentionally supports the in-memory catalogue; production
   // must never advertise a database-fallback process as ready.
-  const healthy = database === 'up' || !env.isProd
+  const healthy = database === 'up' || !env.isProd;
   res.status(healthy ? 200 : 503).json({
     success: healthy,
     data: {
@@ -50,22 +50,22 @@ router.get('/health', async (_req, res) => {
       uptime: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
     },
-  })
-})
+  });
+});
 
 // ── Storefront ────────────────────────────────────────────────────────
-router.use('/auth', authRoutes)
-router.use(customerStateRoutes)
-router.use('/products', productRoutes)
-router.use('/categories', categoryRoutes)
-router.use('/orders', orderRoutes)
-router.use('/retell', retellRoutes)
-router.use('/tracking', trackingRoutes)
+router.use('/auth', authRoutes);
+router.use(customerStateRoutes);
+router.use('/products', productRoutes);
+router.use('/categories', categoryRoutes);
+router.use('/orders', orderRoutes);
+router.use('/retell', retellRoutes);
+router.use('/tracking', trackingRoutes);
 
 // ── Admin (guarded inside admin/index.js) ─────────────────────────────
-router.use('/admin', adminRoutes)
+router.use('/admin', adminRoutes);
 
 // ── Delivery Partner ──────────────────────────────────────────────────
-router.use('/delivery-partner', deliveryPartnerRoutes)
+router.use('/delivery-partner', deliveryPartnerRoutes);
 
-export default router
+export default router;

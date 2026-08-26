@@ -1,6 +1,6 @@
-import Stripe from 'stripe'
-import { env } from './env.js'
-import { logger } from './logger.js'
+import Stripe from 'stripe';
+import { env } from './env.js';
+import { logger } from './logger.js';
 
 /**
  * Stripe client.
@@ -16,8 +16,8 @@ export const stripe = env.stripe.enabled
       maxNetworkRetries: 2,
       timeout: 20_000,
     })
-  : null
+  : null;
 
 if (!env.stripe.enabled) {
-  logger.warn('STRIPE_SECRET_KEY not set — payment endpoints are disabled')
+  logger.warn('STRIPE_SECRET_KEY not set — payment endpoints are disabled');
 }

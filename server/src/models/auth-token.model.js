@@ -1,4 +1,4 @@
-import { query, queryOne } from '../config/database.js'
+import { query, queryOne } from '../config/database.js';
 
 /**
  * One table for refresh sessions, password resets and email verification,
@@ -8,12 +8,26 @@ import { query, queryOne } from '../config/database.js'
  * attacker gets useless hashes rather than live sessions.
  */
 
-export async function create({ userId, type, tokenHash, expiresAt, userAgent, ipAddress }) {
+export async function create({
+  userId,
+  type,
+  tokenHash,
+  expiresAt,
+  userAgent,
+  ipAddress,
+}) {
   await query(
     `INSERT INTO auth_tokens (user_id, type, token_hash, expires_at, user_agent, ip_address)
      VALUES (?,?,?,?,?,?)`,
-    [userId, type, tokenHash, expiresAt, userAgent?.slice(0, 255) ?? null, ipAddress ?? null]
-  )
+    [
+      userId,
+      type,
+      tokenHash,
+      expiresAt,
+      userAgent?.slice(0, 255) ?? null,
+      ipAddress ?? null,
+    ]
+  );
 }
 
 /** Finds an unused, unexpired token of the given type. */
@@ -24,13 +38,18 @@ export async function findActive(tokenHash, type) {
      WHERE token_hash = ? AND type = ? AND used_at IS NULL AND expires_at > NOW()
      LIMIT 1`,
     [tokenHash, type]
-  )
-  if (!row) return null
-  return { id: row.id, userId: row.user_id, type: row.type, expiresAt: row.expires_at }
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    expiresAt: row.expires_at,
+  };
 }
 
 export async function consume(id) {
-  await query('UPDATE auth_tokens SET used_at = NOW() WHERE id = ?', [id])
+  await query('UPDATE auth_tokens SET used_at = NOW() WHERE id = ?', [id]);
 }
 
 /** Revokes every token of a type for a user — used on password reset / logout-all. */
@@ -38,7 +57,7 @@ export async function revokeAllForUser(userId, type = 'refresh') {
   await query(
     'UPDATE auth_tokens SET used_at = NOW() WHERE user_id = ? AND type = ? AND used_at IS NULL',
     [userId, type]
-  )
+  );
 }
 
 /** Housekeeping: drop rows that are expired or long used. */
@@ -48,8 +67,8 @@ export async function purgeExpired() {
      WHERE expires_at < NOW()
         OR (used_at IS NOT NULL AND used_at < DATE_SUB(NOW(), INTERVAL 7 DAY))
      LIMIT 5000`
-  )
-  return result.affectedRows ?? 0
+  );
+  return result.affectedRows ?? 0;
 }
 
 export async function countActiveSessions(userId) {
@@ -57,6 +76,6 @@ export async function countActiveSessions(userId) {
     `SELECT COUNT(*) AS n FROM auth_tokens
      WHERE user_id = ? AND type = 'refresh' AND used_at IS NULL AND expires_at > NOW()`,
     [userId]
-  )
-  return Number(row?.n ?? 0)
+  );
+  return Number(row?.n ?? 0);
 }

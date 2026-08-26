@@ -1,34 +1,36 @@
-import { pool, isDatabaseConnected } from '../config/database.js'
-import { parseJson } from '../utils/helpers.js'
-import { memoryStore } from '../services/memory-store.js'
-import * as userModel from './user.model.js'
+import { pool, isDatabaseConnected } from '../config/database.js';
+import { parseJson } from '../utils/helpers.js';
+import { memoryStore } from '../services/memory-store.js';
+import * as userModel from './user.model.js';
 
 // ULIDs are exactly 26 uppercase alphanumeric characters.
 // If userId matches that pattern it is a public_id; resolve it to the
 // internal BIGINT so MySQL does not truncate it into the BIGINT column.
-const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/i
+const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/i;
 
 async function resolveInternalUserId(userId) {
   if (ULID_RE.test(String(userId))) {
-    const user = await userModel.findByPublicId(userId)
-    if (!user?.internalId) throw new Error(`User not found for public_id: ${userId}`)
-    return user.internalId
+    const user = await userModel.findByPublicId(userId);
+    if (!user?.internalId)
+      throw new Error(`User not found for public_id: ${userId}`);
+    return user.internalId;
   }
-  return userId
+  return userId;
 }
 
 function imageForColor(imagesValue, colorImagesValue, color) {
-  const colorImages = parseJson(colorImagesValue, [])
+  const colorImages = parseJson(colorImagesValue, []);
   const gallery = Array.isArray(colorImages)
     ? colorImages.find(
-      (entry) => entry.color?.toLocaleLowerCase() === String(color).toLocaleLowerCase()
-    )
-    : null
-  return gallery?.images?.[0] ?? parseJson(imagesValue, [])[0] ?? null
+        (entry) =>
+          entry.color?.toLocaleLowerCase() === String(color).toLocaleLowerCase()
+      )
+    : null;
+  return gallery?.images?.[0] ?? parseJson(imagesValue, [])[0] ?? null;
 }
 
 function mapCartRow(row) {
-  const available = Math.max(0, Number(row.stock) - Number(row.reserved))
+  const available = Math.max(0, Number(row.stock) - Number(row.reserved));
   return {
     variantId: row.variant_public_id,
     productId: row.product_public_id,
@@ -46,7 +48,7 @@ function mapCartRow(row) {
       !row.deleted_at &&
       available > 0,
     updatedAt: row.updated_at,
-  }
+  };
 }
 
 const CART_SELECT = `
@@ -61,68 +63,87 @@ const CART_SELECT = `
   JOIN products p ON p.id = v.product_id
   WHERE ci.user_id = ?
   ORDER BY ci.created_at DESC, ci.id DESC
-`
+`;
 
 export async function findByUser(userId, conn = pool) {
   if (isDatabaseConnected()) {
     try {
-      const internalId = await resolveInternalUserId(userId)
-      const [rows] = await conn.query(CART_SELECT, [internalId])
-      return rows.map(mapCartRow)
+      const internalId = await resolveInternalUserId(userId);
+      const [rows] = await conn.query(CART_SELECT, [internalId]);
+      return rows.map(mapCartRow);
     } catch {
       // Development can continue through the in-memory fallback.
     }
   }
 
-  const items = []
+  const items = [];
   for (const saved of memoryStore.getCart(userId)) {
     for (const product of memoryStore.products) {
       const variant = product.variants?.find(
         (entry) => (entry.publicId || entry.id) === saved.variantId
-      )
-      if (!variant) continue
+      );
+      if (!variant) continue;
       const available = Math.max(
         0,
         Number(variant.stock ?? 0) - Number(variant.reserved ?? 0)
-      )
+      );
       items.push({
         variantId: variant.publicId || variant.id,
         productId: product.publicId || product.id,
         name: product.name,
         slug: product.slug,
-        image: imageForColor(product.images, product.colorImages, variant.color),
+        image: imageForColor(
+          product.images,
+          product.colorImages,
+          variant.color
+        ),
         price: Number(product.price),
         size: variant.size,
         color: variant.color,
         quantity: Number(saved.quantity),
         available,
-        inStock: product.status === 'active' && variant.isActive !== false && available > 0,
+        inStock:
+          product.status === 'active' &&
+          variant.isActive !== false &&
+          available > 0,
         updatedAt: new Date().toISOString(),
-      })
-      break
+      });
+      break;
     }
   }
-  return items
+  return items;
 }
 
-export async function setItem(userId, variantInternalId, variantPublicId, quantity, conn = pool) {
+export async function setItem(
+  userId,
+  variantInternalId,
+  variantPublicId,
+  quantity,
+  conn = pool
+) {
   if (isDatabaseConnected()) {
-    const internalId = await resolveInternalUserId(userId)
+    const internalId = await resolveInternalUserId(userId);
     const [result] = await conn.query(
       `INSERT INTO cart_items (user_id, variant_id, quantity)
        VALUES (?,?,?)
        ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), updated_at = CURRENT_TIMESTAMP`,
       [internalId, variantInternalId, quantity]
-    )
-    return result.affectedRows > 0
+    );
+    return result.affectedRows > 0;
   }
-  memoryStore.setCartItem(userId, variantPublicId, quantity)
-  return true
+  memoryStore.setCartItem(userId, variantPublicId, quantity);
+  return true;
 }
 
-export async function mergeItem(userId, variantInternalId, variantPublicId, quantity, conn = pool) {
+export async function mergeItem(
+  userId,
+  variantInternalId,
+  variantPublicId,
+  quantity,
+  conn = pool
+) {
   if (isDatabaseConnected()) {
-    const internalId = await resolveInternalUserId(userId)
+    const internalId = await resolveInternalUserId(userId);
     const [result] = await conn.query(
       `INSERT INTO cart_items (user_id, variant_id, quantity)
        VALUES (?,?,?)
@@ -130,35 +151,47 @@ export async function mergeItem(userId, variantInternalId, variantPublicId, quan
          quantity = GREATEST(quantity, VALUES(quantity)),
          updated_at = CURRENT_TIMESTAMP`,
       [internalId, variantInternalId, quantity]
-    )
-    return result.affectedRows > 0
+    );
+    return result.affectedRows > 0;
   }
   const existing = memoryStore
     .getCart(userId)
-    .find((item) => item.variantId === String(variantPublicId))
-  memoryStore.setCartItem(userId, variantPublicId, Math.max(existing?.quantity ?? 0, quantity))
-  return true
+    .find((item) => item.variantId === String(variantPublicId));
+  memoryStore.setCartItem(
+    userId,
+    variantPublicId,
+    Math.max(existing?.quantity ?? 0, quantity)
+  );
+  return true;
 }
 
-export async function removeItem(userId, variantInternalId, variantPublicId, conn = pool) {
+export async function removeItem(
+  userId,
+  variantInternalId,
+  variantPublicId,
+  conn = pool
+) {
   if (isDatabaseConnected()) {
-    const internalId = await resolveInternalUserId(userId)
+    const internalId = await resolveInternalUserId(userId);
     const [result] = await conn.query(
       'DELETE FROM cart_items WHERE user_id = ? AND variant_id = ?',
       [internalId, variantInternalId]
-    )
-    return result.affectedRows > 0
+    );
+    return result.affectedRows > 0;
   }
-  memoryStore.removeCartItem(userId, variantPublicId)
-  return true
+  memoryStore.removeCartItem(userId, variantPublicId);
+  return true;
 }
 
 export async function clearByUser(userId, conn = pool) {
   if (isDatabaseConnected()) {
-    const internalId = await resolveInternalUserId(userId)
-    const [result] = await conn.query('DELETE FROM cart_items WHERE user_id = ?', [internalId])
-    return result.affectedRows ?? 0
+    const internalId = await resolveInternalUserId(userId);
+    const [result] = await conn.query(
+      'DELETE FROM cart_items WHERE user_id = ?',
+      [internalId]
+    );
+    return result.affectedRows ?? 0;
   }
-  memoryStore.clearCart(userId)
-  return 0
+  memoryStore.clearCart(userId);
+  return 0;
 }

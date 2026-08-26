@@ -1,7 +1,7 @@
-import { pool, query, queryOne } from '../config/database.js'
-import { decimalToNumber } from '../utils/money.js'
-import { parseJson } from '../utils/helpers.js'
-import { memoryStore } from '../services/memory-store.js'
+import { pool, query, queryOne } from '../config/database.js';
+import { decimalToNumber } from '../utils/money.js';
+import { parseJson } from '../utils/helpers.js';
+import { memoryStore } from '../services/memory-store.js';
 
 /**
  * The database speaks snake_case; the rest of the app speaks camelCase.
@@ -9,9 +9,9 @@ import { memoryStore } from '../services/memory-store.js'
  */
 
 export function mapProduct(row) {
-  if (!row) return null
-  const images = parseJson(row.images, [])
-  const colorImages = parseJson(row.color_images, [])
+  if (!row) return null;
+  const images = parseJson(row.images, []);
+  const colorImages = parseJson(row.color_images, []);
   return {
     id: row.public_id,
     internalId: row.id,
@@ -37,12 +37,17 @@ export function mapProduct(row) {
     tags: parseJson(row.tags, []),
     categoryId: row.category_public_id ?? null,
     category: row.category_public_id
-      ? { id: row.category_public_id, name: row.category_name, slug: row.category_slug }
+      ? {
+          id: row.category_public_id,
+          name: row.category_name,
+          slug: row.category_slug,
+        }
       : null,
-    inStock: row.in_stock !== undefined ? Boolean(Number(row.in_stock)) : undefined,
+    inStock:
+      row.in_stock !== undefined ? Boolean(Number(row.in_stock)) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  }
+  };
 }
 
 /**
@@ -50,11 +55,15 @@ export function mapProduct(row) {
  * `costPerItem` is your margin — leaking it tells competitors your buy price.
  */
 export function toPublicProduct(product) {
-  if (!product) return null
+  if (!product) return null;
   const {
-    internalId: _i, costPerItem: _c, unitsSold: _u, status: _s, ...rest
-  } = product
-  return rest
+    internalId: _i,
+    costPerItem: _c,
+    unitsSold: _u,
+    status: _s,
+    ...rest
+  } = product;
+  return rest;
 }
 
 const BASE = `
@@ -68,111 +77,165 @@ const BASE = `
                     AND (v.stock - v.reserved) > 0) AS in_stock
   FROM products p
   LEFT JOIN categories c ON c.id = p.category_id
-`
+`;
 
-export async function findByPublicId(publicId, { includeDeleted = false } = {}) {
+export async function findByPublicId(
+  publicId,
+  { includeDeleted = false } = {}
+) {
   try {
     const row = await queryOne(
       `${BASE} WHERE p.public_id = ? ${includeDeleted ? '' : 'AND p.deleted_at IS NULL'} LIMIT 1`,
       [publicId]
-    )
-    if (row) return mapProduct(row)
-  } catch { }
+    );
+    if (row) return mapProduct(row);
+  } catch {}
 
   // Fallback to memory store if DB fails
-  return memoryStore.getProductByPublicId(publicId)
+  return memoryStore.getProductByPublicId(publicId);
 }
 
 export async function findBySlug(slug) {
   try {
-    const row = await queryOne(`${BASE} WHERE p.slug = ? AND p.deleted_at IS NULL LIMIT 1`, [slug])
-    if (row) return mapProduct(row)
-  } catch { }
+    const row = await queryOne(
+      `${BASE} WHERE p.slug = ? AND p.deleted_at IS NULL LIMIT 1`,
+      [slug]
+    );
+    if (row) return mapProduct(row);
+  } catch {}
 
   // Fallback to memory store if DB fails
-  return memoryStore.getProductBySlug(slug)
+  return memoryStore.getProductBySlug(slug);
 }
 
 export async function findByInternalId(id, conn = pool) {
   try {
-    const [rows] = await conn.query(`${BASE} WHERE p.id = ? LIMIT 1`, [id])
-    if (rows && rows[0]) return mapProduct(rows[0])
-  } catch { }
+    const [rows] = await conn.query(`${BASE} WHERE p.id = ? LIMIT 1`, [id]);
+    if (rows && rows[0]) return mapProduct(rows[0]);
+  } catch {}
 
   // Fallback to memory store
-  return memoryStore.products.find((p) => p.internalId === id || p.id === id) || null
+  return (
+    memoryStore.products.find((p) => p.internalId === id || p.id === id) || null
+  );
 }
 
 export async function slugExists(slug, ignoreInternalId = null) {
   try {
     const row = ignoreInternalId
-      ? await queryOne('SELECT 1 AS x FROM products WHERE slug = ? AND id <> ? LIMIT 1', [slug, ignoreInternalId])
-      : await queryOne('SELECT 1 AS x FROM products WHERE slug = ? LIMIT 1', [slug])
-    if (row) return Boolean(row)
-  } catch { }
+      ? await queryOne(
+          'SELECT 1 AS x FROM products WHERE slug = ? AND id <> ? LIMIT 1',
+          [slug, ignoreInternalId]
+        )
+      : await queryOne('SELECT 1 AS x FROM products WHERE slug = ? LIMIT 1', [
+          slug,
+        ]);
+    if (row) return Boolean(row);
+  } catch {}
 
   // Check memory store
-  return memoryStore.products.some((p) => p.slug === slug)
+  return memoryStore.products.some((p) => p.slug === slug);
 }
 
 export async function skuExists(sku, ignoreInternalId = null) {
   try {
     const row = ignoreInternalId
-      ? await queryOne('SELECT 1 AS x FROM products WHERE sku = ? AND id <> ? LIMIT 1', [sku, ignoreInternalId])
-      : await queryOne('SELECT 1 AS x FROM products WHERE sku = ? LIMIT 1', [sku])
-    if (row) return Boolean(row)
-  } catch { }
+      ? await queryOne(
+          'SELECT 1 AS x FROM products WHERE sku = ? AND id <> ? LIMIT 1',
+          [sku, ignoreInternalId]
+        )
+      : await queryOne('SELECT 1 AS x FROM products WHERE sku = ? LIMIT 1', [
+          sku,
+        ]);
+    if (row) return Boolean(row);
+  } catch {}
 
-  return memoryStore.products.some((p) => p.sku === sku)
+  return memoryStore.products.some((p) => p.sku === sku);
 }
 
 export async function findAll(filters = {}) {
   try {
     const {
-      limit = 20, offset = 0, categorySlug, categoryPublicId, gender,
-      minPrice, maxPrice, priceMin, priceMax, size, color, search, slugs, status, featured,
-      inStockOnly = false, sort, storefront = false,
-    } = filters
+      limit = 20,
+      offset = 0,
+      categorySlug,
+      categoryPublicId,
+      gender,
+      minPrice,
+      maxPrice,
+      priceMin,
+      priceMax,
+      size,
+      color,
+      search,
+      slugs,
+      status,
+      featured,
+      inStockOnly = false,
+      sort,
+      storefront = false,
+    } = filters;
 
-    const effectiveMinPrice = minPrice ?? priceMin
-    const effectiveMaxPrice = maxPrice ?? priceMax
+    const effectiveMinPrice = minPrice ?? priceMin;
+    const effectiveMaxPrice = maxPrice ?? priceMax;
 
-    const where = ['p.deleted_at IS NULL']
-    const params = []
+    const where = ['p.deleted_at IS NULL'];
+    const params = [];
 
     if (storefront) {
-      where.push("p.status = 'active'")
+      where.push("p.status = 'active'");
     } else if (status) {
       if (Array.isArray(status)) {
-        where.push(`p.status IN (${status.map(() => '?').join(',')})`)
-        params.push(...status)
+        where.push(`p.status IN (${status.map(() => '?').join(',')})`);
+        params.push(...status);
       } else {
-        where.push('p.status = ?')
-        params.push(status)
+        where.push('p.status = ?');
+        params.push(status);
       }
     }
 
-    const slugList = typeof slugs === 'string'
-      ? slugs.split(',').map((s) => s.trim()).filter(Boolean)
-      : (Array.isArray(slugs) ? slugs : [])
+    const slugList =
+      typeof slugs === 'string'
+        ? slugs
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : Array.isArray(slugs)
+          ? slugs
+          : [];
 
     if (slugList.length > 0) {
-      where.push(`p.slug IN (${slugList.map(() => '?').join(',')})`)
-      params.push(...slugList)
+      where.push(`p.slug IN (${slugList.map(() => '?').join(',')})`);
+      params.push(...slugList);
     }
 
-    if (categorySlug) { where.push('c.slug = ?'); params.push(categorySlug) }
-    if (categoryPublicId) { where.push('c.public_id = ?'); params.push(categoryPublicId) }
+    if (categorySlug) {
+      where.push('c.slug = ?');
+      params.push(categorySlug);
+    }
+    if (categoryPublicId) {
+      where.push('c.public_id = ?');
+      params.push(categoryPublicId);
+    }
 
     if (gender) {
-      const list = Array.isArray(gender) ? gender : [gender]
-      where.push(`p.gender IN (${list.map(() => '?').join(',')})`)
-      params.push(...list)
+      const list = Array.isArray(gender) ? gender : [gender];
+      where.push(`p.gender IN (${list.map(() => '?').join(',')})`);
+      params.push(...list);
     }
 
-    if (effectiveMinPrice !== undefined && effectiveMinPrice !== null) { where.push('p.price >= ?'); params.push(effectiveMinPrice) }
-    if (effectiveMaxPrice !== undefined && effectiveMaxPrice !== null) { where.push('p.price <= ?'); params.push(effectiveMaxPrice) }
-    if (featured !== undefined) { where.push('p.is_featured = ?'); params.push(featured ? 1 : 0) }
+    if (effectiveMinPrice !== undefined && effectiveMinPrice !== null) {
+      where.push('p.price >= ?');
+      params.push(effectiveMinPrice);
+    }
+    if (effectiveMaxPrice !== undefined && effectiveMaxPrice !== null) {
+      where.push('p.price <= ?');
+      params.push(effectiveMaxPrice);
+    }
+    if (featured !== undefined) {
+      where.push('p.is_featured = ?');
+      params.push(featured ? 1 : 0);
+    }
 
     if (search) {
       // Search across customer-facing product information, material, tags, and category.
@@ -180,49 +243,53 @@ export async function findAll(filters = {}) {
                    OR p.name LIKE ? OR p.sku LIKE ? OR p.brand LIKE ?
                    OR p.description LIKE ? OR p.material LIKE ? OR p.gender LIKE ?
                    OR c.name LIKE ? OR c.slug LIKE ?
-                   OR p.tags LIKE ?)`)
-      const like = `%${search}%`
-      params.push(search, like, like, like, like, like, like, like, like, like)
+                   OR p.tags LIKE ?)`);
+      const like = `%${search}%`;
+      params.push(search, like, like, like, like, like, like, like, like, like);
     }
 
     if (size) {
       where.push(`EXISTS (SELECT 1 FROM product_variants v
                           WHERE v.product_id = p.id AND v.size = ?
-                            AND v.is_active = TRUE AND (v.stock - v.reserved) > 0)`)
-      params.push(size)
+                            AND v.is_active = TRUE AND (v.stock - v.reserved) > 0)`);
+      params.push(size);
     }
 
     if (color) {
       where.push(`EXISTS (SELECT 1 FROM product_variants v
-                          WHERE v.product_id = p.id AND v.color = ? AND v.is_active = TRUE)`)
-      params.push(color)
+                          WHERE v.product_id = p.id AND v.color = ? AND v.is_active = TRUE)`);
+      params.push(color);
     }
 
     if (inStockOnly) {
       where.push(`EXISTS (SELECT 1 FROM product_variants v
                           WHERE v.product_id = p.id AND v.is_active = TRUE
-                            AND (v.stock - v.reserved) > 0)`)
+                            AND (v.stock - v.reserved) > 0)`);
     }
 
-    const ORDER = sort ? ({
-      newest: 'p.created_at DESC',
-      oldest: 'p.created_at ASC',
-      price_asc: 'p.price ASC',
-      price_desc: 'p.price DESC',
-      popular: 'p.units_sold DESC',
-      rating: 'p.rating_avg DESC',
-      name_asc: 'p.name ASC',
-      name_desc: 'p.name DESC',
-      stock_asc: 'p.total_stock ASC',
-      stock_desc: 'p.total_stock DESC',
-    }[sort] ?? 'p.created_at DESC') : (slugList.length > 0 ? 'p.created_at DESC' : 'p.created_at DESC')
+    const ORDER = sort
+      ? ({
+          newest: 'p.created_at DESC',
+          oldest: 'p.created_at ASC',
+          price_asc: 'p.price ASC',
+          price_desc: 'p.price DESC',
+          popular: 'p.units_sold DESC',
+          rating: 'p.rating_avg DESC',
+          name_asc: 'p.name ASC',
+          name_desc: 'p.name DESC',
+          stock_asc: 'p.total_stock ASC',
+          stock_desc: 'p.total_stock DESC',
+        }[sort] ?? 'p.created_at DESC')
+      : slugList.length > 0
+        ? 'p.created_at DESC'
+        : 'p.created_at DESC';
 
-    const whereSql = `WHERE ${where.join(' AND ')}`
+    const whereSql = `WHERE ${where.join(' AND ')}`;
 
     const rows = await query(
       `${BASE} ${whereSql} ORDER BY ${ORDER}, p.id DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
-    )
+    );
 
     if (rows && rows.length > 0) {
       const countRow = await queryOne(
@@ -230,21 +297,21 @@ export async function findAll(filters = {}) {
          FROM products p LEFT JOIN categories c ON c.id = p.category_id
          ${whereSql}`,
         params
-      )
-      const mapped = rows.map(mapProduct)
+      );
+      const mapped = rows.map(mapProduct);
       if (slugList.length > 0 && !sort) {
         mapped.sort((a, b) => {
-          const idxA = slugList.indexOf(a.slug)
-          const idxB = slugList.indexOf(b.slug)
-          return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB)
-        })
+          const idxA = slugList.indexOf(a.slug);
+          const idxB = slugList.indexOf(b.slug);
+          return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+        });
       }
-      return { items: mapped, total: Number(countRow?.total ?? 0) }
+      return { items: mapped, total: Number(countRow?.total ?? 0) };
     }
-  } catch { }
+  } catch {}
 
   // Fallback to memory store
-  return memoryStore.getProducts(filters)
+  return memoryStore.getProducts(filters);
 }
 
 export async function create(data, conn = pool) {
@@ -255,15 +322,26 @@ export async function create(data, conn = pool) {
         images, color_images, tags)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
-      data.publicId, data.categoryInternalId ?? null, data.name, data.slug,
-      data.sku, data.description, data.brand, data.gender,
-      data.material ?? null, data.price, data.compareAtPrice ?? null,
-      data.costPerItem ?? null, data.status, data.featured ? 1 : 0,
-      JSON.stringify(data.images ?? []), JSON.stringify(data.colorImages ?? []),
+      data.publicId,
+      data.categoryInternalId ?? null,
+      data.name,
+      data.slug,
+      data.sku,
+      data.description,
+      data.brand,
+      data.gender,
+      data.material ?? null,
+      data.price,
+      data.compareAtPrice ?? null,
+      data.costPerItem ?? null,
+      data.status,
+      data.featured ? 1 : 0,
+      JSON.stringify(data.images ?? []),
+      JSON.stringify(data.colorImages ?? []),
       JSON.stringify(data.tags ?? []),
     ]
-  )
-  return result.insertId
+  );
+  return result.insertId;
 }
 
 const UPDATABLE = {
@@ -280,34 +358,39 @@ const UPDATABLE = {
   status: 'status',
   featured: 'is_featured',
   categoryInternalId: 'category_id',
-}
+};
 
 export async function update(internalId, patch, conn = pool) {
-  const sets = []
-  const params = []
+  const sets = [];
+  const params = [];
 
   for (const [key, column] of Object.entries(UPDATABLE)) {
     if (patch[key] !== undefined) {
-      sets.push(`${column} = ?`)
-      params.push(typeof patch[key] === 'boolean' ? Number(patch[key]) : patch[key])
+      sets.push(`${column} = ?`);
+      params.push(
+        typeof patch[key] === 'boolean' ? Number(patch[key]) : patch[key]
+      );
     }
   }
   if (patch.images !== undefined) {
-    sets.push('images = ?')
-    params.push(JSON.stringify(patch.images))
+    sets.push('images = ?');
+    params.push(JSON.stringify(patch.images));
   }
   if (patch.colorImages !== undefined) {
-    sets.push('color_images = ?')
-    params.push(JSON.stringify(patch.colorImages))
+    sets.push('color_images = ?');
+    params.push(JSON.stringify(patch.colorImages));
   }
   if (patch.tags !== undefined) {
-    sets.push('tags = ?')
-    params.push(JSON.stringify(patch.tags))
+    sets.push('tags = ?');
+    params.push(JSON.stringify(patch.tags));
   }
 
-  if (!sets.length) return
-  params.push(internalId)
-  await conn.query(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, params)
+  if (!sets.length) return;
+  params.push(internalId);
+  await conn.query(
+    `UPDATE products SET ${sets.join(', ')} WHERE id = ?`,
+    params
+  );
 }
 
 /** Soft delete — hard-deleting would orphan historical order items. */
@@ -315,42 +398,44 @@ export async function softDelete(internalId) {
   const result = await query(
     'UPDATE products SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL',
     [internalId]
-  )
-  return (result.affectedRows ?? 0) > 0
+  );
+  return (result.affectedRows ?? 0) > 0;
 }
 
 export async function restore(internalId) {
-  await query('UPDATE products SET deleted_at = NULL WHERE id = ?', [internalId])
+  await query('UPDATE products SET deleted_at = NULL WHERE id = ?', [
+    internalId,
+  ]);
 }
 
 export async function bulkSetStatus(internalIds, status) {
-  if (!internalIds.length) return 0
-  const placeholders = internalIds.map(() => '?').join(',')
+  if (!internalIds.length) return 0;
+  const placeholders = internalIds.map(() => '?').join(',');
   const result = await query(
     `UPDATE products SET status = ? WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
     [status, ...internalIds]
-  )
-  return result.affectedRows ?? 0
+  );
+  return result.affectedRows ?? 0;
 }
 
 export async function bulkSoftDelete(internalIds) {
-  if (!internalIds.length) return 0
-  const placeholders = internalIds.map(() => '?').join(',')
+  if (!internalIds.length) return 0;
+  const placeholders = internalIds.map(() => '?').join(',');
   const result = await query(
     `UPDATE products SET deleted_at = NOW() WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
     internalIds
-  )
-  return result.affectedRows ?? 0
+  );
+  return result.affectedRows ?? 0;
 }
 
 export async function assignCategory(internalIds, categoryInternalId) {
-  if (!internalIds.length) return 0
-  const placeholders = internalIds.map(() => '?').join(',')
+  if (!internalIds.length) return 0;
+  const placeholders = internalIds.map(() => '?').join(',');
   const result = await query(
     `UPDATE products SET category_id = ? WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
     [categoryInternalId, ...internalIds]
-  )
-  return result.affectedRows ?? 0
+  );
+  return result.affectedRows ?? 0;
 }
 
 /**
@@ -375,13 +460,14 @@ export async function recalcStock(internalId, conn = pool) {
          END
      WHERE p.id = ?`,
     [internalId]
-  )
+  );
 }
 
 export async function incrementUnitsSold(internalId, quantity, conn = pool) {
-  await conn.query('UPDATE products SET units_sold = units_sold + ? WHERE id = ?', [
-    quantity, internalId,
-  ])
+  await conn.query(
+    'UPDATE products SET units_sold = units_sold + ? WHERE id = ?',
+    [quantity, internalId]
+  );
 }
 
 export async function findLowStock(threshold, limit = 50) {
@@ -390,27 +476,31 @@ export async function findLowStock(threshold, limit = 50) {
      WHERE p.deleted_at IS NULL AND p.status <> 'archived' AND p.total_stock <= ?
      ORDER BY p.total_stock ASC LIMIT ?`,
     [threshold, limit]
-  )
-  return rows.map(mapProduct)
+  );
+  return rows.map(mapProduct);
 }
 
 export async function findTopSelling(limit = 5) {
   const rows = await query(
     `${BASE} WHERE p.deleted_at IS NULL ORDER BY p.units_sold DESC LIMIT ?`,
     [limit]
-  )
-  return rows.map(mapProduct)
+  );
+  return rows.map(mapProduct);
 }
 
-export async function findRelated(categoryInternalId, excludeInternalId, limit = 4) {
+export async function findRelated(
+  categoryInternalId,
+  excludeInternalId,
+  limit = 4
+) {
   const rows = await query(
     `${BASE}
      WHERE p.deleted_at IS NULL AND p.status = 'active'
        AND p.category_id = ? AND p.id <> ?
      ORDER BY p.units_sold DESC LIMIT ?`,
     [categoryInternalId, excludeInternalId, limit]
-  )
-  return rows.map(mapProduct)
+  );
+  return rows.map(mapProduct);
 }
 
 export async function getStats() {
@@ -422,7 +512,7 @@ export async function getStats() {
             SUM(total_stock = 0)         AS out_of_stock,
             SUM(price * total_stock)     AS inventory_value
      FROM products WHERE deleted_at IS NULL`
-  )
+  );
   return {
     total: Number(row?.total ?? 0),
     active: Number(row?.active ?? 0),
@@ -430,5 +520,5 @@ export async function getStats() {
     archived: Number(row?.archived ?? 0),
     outOfStock: Number(row?.out_of_stock ?? 0),
     inventoryValue: decimalToNumber(row?.inventory_value) ?? 0,
-  }
+  };
 }

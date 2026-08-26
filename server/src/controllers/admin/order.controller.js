@@ -1,11 +1,11 @@
-import { asyncHandler } from '../../utils/async-handler.js'
-import { ok, paginated } from '../../utils/api-response.js'
-import { getPagination, buildMeta, toCsv } from '../../utils/helpers.js'
-import * as orderService from '../../services/order.service.js'
-import * as paymentService from '../../services/payment.service.js'
+import { asyncHandler } from '../../utils/async-handler.js';
+import { ok, paginated } from '../../utils/api-response.js';
+import { getPagination, buildMeta, toCsv } from '../../utils/helpers.js';
+import * as orderService from '../../services/order.service.js';
+import * as paymentService from '../../services/payment.service.js';
 
 export const list = asyncHandler(async (req, res) => {
-  const { page, limit, offset } = getPagination(req.query)
+  const { page, limit, offset } = getPagination(req.query);
 
   const { items, total } = await orderService.listForAdmin({
     limit,
@@ -19,31 +19,31 @@ export const list = asyncHandler(async (req, res) => {
     minTotal: req.query.minTotal,
     maxTotal: req.query.maxTotal,
     sort: req.query.sort,
-  })
+  });
 
-  paginated(res, items, buildMeta({ page, limit, total }))
-})
+  paginated(res, items, buildMeta({ page, limit, total }));
+});
 
 export const getOne = asyncHandler(async (req, res) => {
-  ok(res, await orderService.getOrder(req.params.id, req.user))
-})
+  ok(res, await orderService.getOrder(req.params.id, req.user));
+});
 
 export const updateStatus = asyncHandler(async (req, res) => {
-  const { status, ...extra } = req.body
-  ok(res, await orderService.updateStatus(req.params.id, status, extra))
-})
+  const { status, ...extra } = req.body;
+  ok(res, await orderService.updateStatus(req.params.id, status, extra));
+});
 
 export const updateTracking = asyncHandler(async (req, res) => {
-  ok(res, await orderService.updateTracking(req.params.id, req.body))
-})
+  ok(res, await orderService.updateTracking(req.params.id, req.body));
+});
 
 export const updateNote = asyncHandler(async (req, res) => {
-  ok(res, await orderService.updateNote(req.params.id, req.body.adminNote))
-})
+  ok(res, await orderService.updateNote(req.params.id, req.body.adminNote));
+});
 
 export const refund = asyncHandler(async (req, res) => {
-  ok(res, await paymentService.refundOrder(req.params.id, req.body))
-})
+  ok(res, await paymentService.refundOrder(req.params.id, req.body));
+});
 
 export const exportCsv = asyncHandler(async (req, res) => {
   const { items } = await orderService.listForAdmin({
@@ -53,7 +53,7 @@ export const exportCsv = asyncHandler(async (req, res) => {
     search: req.query.q,
     dateFrom: req.query.dateFrom,
     dateTo: req.query.dateTo,
-  })
+  });
 
   const csv = toCsv(items, [
     { header: 'Order', value: (o) => o.orderNumber },
@@ -72,9 +72,9 @@ export const exportCsv = asyncHandler(async (req, res) => {
     { header: 'Tracking', value: (o) => o.trackingNumber ?? '' },
     { header: 'City', value: (o) => o.shippingAddress.city },
     { header: 'Country', value: (o) => o.shippingAddress.country },
-  ])
+  ]);
 
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8')
-  res.setHeader('Content-Disposition', 'attachment; filename="orders.csv"')
-  res.send(csv)
-})
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="orders.csv"');
+  res.send(csv);
+});

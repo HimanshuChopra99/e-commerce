@@ -1,6 +1,6 @@
-import rateLimit from 'express-rate-limit'
-import { env } from '../config/env.js'
-import { logger } from '../config/logger.js'
+import rateLimit from 'express-rate-limit';
+import { env } from '../config/env.js';
+import { logger } from '../config/logger.js';
 
 /**
  * Rate limits.
@@ -14,50 +14,64 @@ import { logger } from '../config/logger.js'
  * each limiter gets its OWN RedisStore, each with a unique prefix, all sharing
  * one Redis connection.
  */
-let redis = null
-let RedisStore = null
+let redis = null;
+let RedisStore = null;
 
 async function connectRedisStore() {
-  if (!env.redis.url || redis) return
+  if (!env.redis.url || redis) return;
   try {
-    ({ default: RedisStore } = await import('rate-limit-redis'))
-    const { default: Redis } = await import('ioredis')
+    ({ default: RedisStore } = await import('rate-limit-redis'));
+    const { default: Redis } = await import('ioredis');
     const conn = new Redis(env.redis.url, {
       lazyConnect: true,
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
       connectTimeout: 750,
       retryStrategy: () => null,
-    })
-    let warned = false
+    });
+    let warned = false;
     conn.on('error', (error) => {
-      if (warned) return
-      warned = true
-      logger.warn({ err: error.message }, 'Redis rate-limit store unavailable; requests will fail open')
-    })
-    conn.on('ready', () => { warned = false })
-    await conn.connect()
-    redis = conn
+      if (warned) return;
+      warned = true;
+      logger.warn(
+        { err: error.message },
+        'Redis rate-limit store unavailable; requests will fail open'
+      );
+    });
+    conn.on('ready', () => {
+      warned = false;
+    });
+    await conn.connect();
+    redis = conn;
   } catch (error) {
-    redis?.disconnect(false)
-    redis = null
-    RedisStore = null
-    logger.warn({ err: error.message }, 'Redis rate-limit store unavailable; using process-local limits')
+    redis?.disconnect(false);
+    redis = null;
+    RedisStore = null;
+    logger.warn(
+      { err: error.message },
+      'Redis rate-limit store unavailable; using process-local limits'
+    );
   }
 }
 
 /** Build a dedicated store for ONE limiter (unique prefix). */
 function storeFor(prefix) {
-  if (!redis || !RedisStore) return undefined
-  return new RedisStore({ prefix, sendCommand: (...args) => redis.call(...args) })
+  if (!redis || !RedisStore) return undefined;
+  return new RedisStore({
+    prefix,
+    sendCommand: (...args) => redis.call(...args),
+  });
 }
 
-await connectRedisStore()
+await connectRedisStore();
 
 const body = {
   success: false,
-  error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' },
-}
+  error: {
+    code: 'RATE_LIMITED',
+    message: 'Too many requests. Please try again later.',
+  },
+};
 
 const base = {
   standardHeaders: 'draft-7',
@@ -65,7 +79,7 @@ const base = {
   passOnStoreError: true,
   message: body,
   skip: (req) => env.isTest || req.path === '/api/health',
-}
+};
 
 /** Broad safety net for the whole API. */
 export const globalLimiter = rateLimit({
@@ -73,7 +87,7 @@ export const globalLimiter = rateLimit({
   store: storeFor('rl:global:'),
   windowMs: 15 * 60 * 1000,
   limit: 1000,
-})
+});
 
 /** Brute-force protection. Successful logins don't count toward the limit. */
 export const loginLimiter = rateLimit({
@@ -82,15 +96,16 @@ export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 8,
   skipSuccessfulRequests: true,
-  keyGenerator: (req) => `${req.ip}:${String(req.body?.email ?? '').toLowerCase()}`,
-})
+  keyGenerator: (req) =>
+    `${req.ip}:${String(req.body?.email ?? '').toLowerCase()}`,
+});
 
 export const registerLimiter = rateLimit({
   ...base,
   store: storeFor('rl:register:'),
   windowMs: 60 * 60 * 1000,
   limit: 10,
-})
+});
 
 /** Stops someone spamming password-reset emails at a victim. */
 export const passwordResetLimiter = rateLimit({
@@ -98,8 +113,9 @@ export const passwordResetLimiter = rateLimit({
   store: storeFor('rl:password-reset:'),
   windowMs: 60 * 60 * 1000,
   limit: 5,
-  keyGenerator: (req) => `${req.ip}:${String(req.body?.email ?? '').toLowerCase()}`,
-})
+  keyGenerator: (req) =>
+    `${req.ip}:${String(req.body?.email ?? '').toLowerCase()}`,
+});
 
 /** Checkout is expensive (locks rows, calls Stripe) — keep it tight. */
 export const checkoutLimiter = rateLimit({
@@ -108,7 +124,7 @@ export const checkoutLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 20,
   keyGenerator: (req) => req.user?.publicId ?? req.ip,
-})
+});
 
 /** Product listing / search hits the DB; cap it but allow normal browsing. */
 export const searchLimiter = rateLimit({
@@ -116,4 +132,4 @@ export const searchLimiter = rateLimit({
   store: storeFor('rl:search:'),
   windowMs: 60 * 1000,
   limit: 300,
-})
+});

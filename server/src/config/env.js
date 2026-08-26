@@ -1,8 +1,10 @@
-import 'dotenv/config'
-import { z } from 'zod'
+import 'dotenv/config';
+import { z } from 'zod';
 
-const DEFAULT_ACCESS_SECRET = 'default_jwt_access_secret_32_characters_long_for_aistudio'
-const DEFAULT_REFRESH_SECRET = 'default_jwt_refresh_secret_32_characters_long_for_aistudio'
+const DEFAULT_ACCESS_SECRET =
+  'default_jwt_access_secret_32_characters_long_for_aistudio';
+const DEFAULT_REFRESH_SECRET =
+  'default_jwt_refresh_secret_32_characters_long_for_aistudio';
 
 /**
  * Environment variables, validated once at boot.
@@ -11,13 +13,17 @@ const DEFAULT_REFRESH_SECRET = 'default_jwt_refresh_secret_32_characters_long_fo
  * readable message — far better than a mystery `undefined` at 2am.
  */
 const schema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
 
   // Comma-separated list of origins allowed to call the API with cookies.
   CORS_ORIGINS: z
     .string()
-    .default('http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175'),
+    .default(
+      'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175'
+    ),
 
   DB_HOST: z.string().default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().default(3306),
@@ -32,7 +38,12 @@ const schema = z.object({
   // General fallback TTL for cache writes that don't specify one. Per-type TTLs
   // live in CACHE_TTL (utils/constants.js) and are passed explicitly by each
   // cache site; this env is only a safety-net default.
-  REDIS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(86400).default(300),
+  REDIS_CACHE_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(10)
+    .max(86400)
+    .default(300),
 
   JWT_ACCESS_SECRET: z.string().min(32).default(DEFAULT_ACCESS_SECRET),
   JWT_REFRESH_SECRET: z.string().min(32).default(DEFAULT_REFRESH_SECRET),
@@ -59,52 +70,62 @@ const schema = z.object({
 
   TRUST_PROXY: z.coerce.number().int().default(1),
   AUTO_SEED: z.string().optional(),
-})
+});
 
-const parsed = schema.safeParse(process.env)
+const parsed = schema.safeParse(process.env);
 
 if (!parsed.success) {
   // eslint-disable-next-line no-console
-  console.error('Invalid environment configuration:')
+  console.error('Invalid environment configuration:');
   for (const issue of parsed.error.issues) {
     // eslint-disable-next-line no-console
-    console.error(`  ${issue.path.join('.')}: ${issue.message}`)
+    console.error(`  ${issue.path.join('.')}: ${issue.message}`);
   }
-  process.exit(1)
+  process.exit(1);
 }
 
-const e = parsed.data
+const e = parsed.data;
 
 // Validate JWT secrets in production
-const isProduction = e.NODE_ENV === 'production'
-const usingDefaultAccess = e.JWT_ACCESS_SECRET === DEFAULT_ACCESS_SECRET
-const usingDefaultRefresh = e.JWT_REFRESH_SECRET === DEFAULT_REFRESH_SECRET
+const isProduction = e.NODE_ENV === 'production';
+const usingDefaultAccess = e.JWT_ACCESS_SECRET === DEFAULT_ACCESS_SECRET;
+const usingDefaultRefresh = e.JWT_REFRESH_SECRET === DEFAULT_REFRESH_SECRET;
 
 if (isProduction && (usingDefaultAccess || usingDefaultRefresh)) {
   // eslint-disable-next-line no-console
-  console.error('FATAL: Production environment must not use default JWT secrets.')
+  console.error(
+    'FATAL: Production environment must not use default JWT secrets.'
+  );
   // eslint-disable-next-line no-console
-  console.error('Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET to unique, secure values.')
-  process.exit(1)
+  console.error(
+    'Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET to unique, secure values.'
+  );
+  process.exit(1);
 }
 
 // Warn in non-production
 if ((usingDefaultAccess || usingDefaultRefresh) && !isProduction) {
   // eslint-disable-next-line no-console
-  console.warn('WARNING: Using default JWT secrets in non-production. Set secure secrets for production.')
+  console.warn(
+    'WARNING: Using default JWT secrets in non-production. Set secure secrets for production.'
+  );
 }
 
-const eFinal = parsed.data
+const eFinal = parsed.data;
 
 export const env = {
   nodeEnv: eFinal.NODE_ENV,
   isProd: eFinal.NODE_ENV === 'production',
   isTest: eFinal.NODE_ENV === 'test',
   port: eFinal.PORT,
-  corsOrigins: eFinal.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
+  corsOrigins: eFinal.CORS_ORIGINS.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
   trustProxy: eFinal.TRUST_PROXY,
   // Seed demo data automatically only for local development unless explicitly enabled.
-  autoSeed: eFinal.AUTO_SEED === 'true' || (eFinal.AUTO_SEED !== 'false' && eFinal.NODE_ENV === 'development'),
+  autoSeed:
+    eFinal.AUTO_SEED === 'true' ||
+    (eFinal.AUTO_SEED !== 'false' && eFinal.NODE_ENV === 'development'),
 
   db: {
     host: eFinal.DB_HOST,
@@ -152,4 +173,4 @@ export const env = {
     dir: eFinal.UPLOAD_DIR,
     maxBytes: eFinal.MAX_UPLOAD_MB * 1024 * 1024,
   },
-}
+};

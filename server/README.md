@@ -24,23 +24,23 @@ curl localhost:4000/api/health
 
 Seeded accounts:
 
-| Role | Email | Password |
-|---|---|---|
-| Admin | `admin@Kick.com` | `ChangeMe123!` |
-| Customer | `customer@example.com` | `Password123` |
+| Role     | Email                  | Password       |
+| -------- | ---------------------- | -------------- |
+| Admin    | `admin@Kick.com`       | `ChangeMe123!` |
+| Customer | `customer@example.com` | `Password123`  |
 
 **Change the admin password immediately.**
 
 ### Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Dev server with auto-reload |
-| `npm start` | Production server |
-| `npm run db:migrate` | Apply schema + pending migrations |
-| `npm run db:seed` | Insert demo catalogue (safe to re-run) |
-| `npm run db:reset` | Drop, recreate, re-seed |
-| `npm test` | 132-check end-to-end suite (needs a running server) |
+| Command              | What it does                                        |
+| -------------------- | --------------------------------------------------- |
+| `npm run dev`        | Dev server with auto-reload                         |
+| `npm start`          | Production server                                   |
+| `npm run db:migrate` | Apply schema + pending migrations                   |
+| `npm run db:seed`    | Insert demo catalogue (safe to re-run)              |
+| `npm run db:reset`   | Drop, recreate, re-seed                             |
+| `npm test`           | 132-check end-to-end suite (needs a running server) |
 
 ---
 
@@ -91,19 +91,19 @@ reuse the same services without Express.
 
 ## Database — 11 tables
 
-| Table | Holds |
-|---|---|
-| `users` | Shoppers and admins (`role` ENUM), plus one default address |
-| `auth_tokens` | Refresh sessions, password resets, email verification |
-| `categories` | Admin-created groupings |
-| `products` | The catalogue (images/tags as JSON) |
-| `product_variants` | **size + colour + stock** |
-| `cart_items` | Durable, account-scoped cart variant quantities |
-| `favourites` | Durable customer-to-product saved items |
-| `orders` | Placed orders, including the Stripe fields |
-| `order_items` | Immutable line snapshots |
-| `stripe_events` | Webhook idempotency guard |
-| `schema_migrations` | Applied migrations |
+| Table               | Holds                                                       |
+| ------------------- | ----------------------------------------------------------- |
+| `users`             | Shoppers and admins (`role` ENUM), plus one default address |
+| `auth_tokens`       | Refresh sessions, password resets, email verification       |
+| `categories`        | Admin-created groupings                                     |
+| `products`          | The catalogue (images/tags as JSON)                         |
+| `product_variants`  | **size + colour + stock**                                   |
+| `cart_items`        | Durable, account-scoped cart variant quantities             |
+| `favourites`        | Durable customer-to-product saved items                     |
+| `orders`            | Placed orders, including the Stripe fields                  |
+| `order_items`       | Immutable line snapshots                                    |
+| `stripe_events`     | Webhook idempotency guard                                   |
+| `schema_migrations` | Applied migrations                                          |
 
 ### Public ids
 
@@ -145,8 +145,8 @@ persist even if the application logic has a bug.
 
 **3. Checkout locks rows with `SELECT … FOR UPDATE`.**
 Two shoppers hitting the last pair at the same instant would both read
-`stock = 1` without it. *Verified: 20 simultaneous buyers against 5 pairs →
-exactly 5 orders, 15 clean 409s, zero oversells.*
+`stock = 1` without it. _Verified: 20 simultaneous buyers against 5 pairs →
+exactly 5 orders, 15 clean 409s, zero oversells._
 
 **4. Prices are always recalculated server-side.**
 The checkout endpoint accepts only variant ids and quantities. There is no
@@ -169,32 +169,32 @@ Base URL `/api`. Every response uses one envelope:
 
 ### Auth — `/api/auth`
 
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| POST | `/register` | — | Create a customer account |
-| POST | `/login` | — | Sign in (customer or admin) |
-| POST | `/refresh` | cookie | New access token (rotating) |
-| POST | `/logout` | — | Revoke this session |
-| POST | `/logout-all` | user | Revoke every session |
-| GET | `/me` | user | Profile + order stats + tier |
-| PATCH | `/me` | user | Update name, phone, size, address |
-| POST | `/change-password` | user | Change password |
-| POST | `/forgot-password` | — | Email a reset link |
-| POST | `/reset-password` | — | Set a new password |
-| POST | `/verify-email` | — | Confirm email |
+| Method | Path               | Auth   | Purpose                           |
+| ------ | ------------------ | ------ | --------------------------------- |
+| POST   | `/register`        | —      | Create a customer account         |
+| POST   | `/login`           | —      | Sign in (customer or admin)       |
+| POST   | `/refresh`         | cookie | New access token (rotating)       |
+| POST   | `/logout`          | —      | Revoke this session               |
+| POST   | `/logout-all`      | user   | Revoke every session              |
+| GET    | `/me`              | user   | Profile + order stats + tier      |
+| PATCH  | `/me`              | user   | Update name, phone, size, address |
+| POST   | `/change-password` | user   | Change password                   |
+| POST   | `/forgot-password` | —      | Email a reset link                |
+| POST   | `/reset-password`  | —      | Set a new password                |
+| POST   | `/verify-email`    | —      | Confirm email                     |
 
 ### Storefront
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/products` | List — filter by category, gender, price, size, colour, search, sort |
-| GET | `/products/featured` | Homepage picks |
-| GET | `/products/filters` | Available sizes/colours for the filter UI |
-| GET | `/products/:slug` | Detail with variants and availability |
-| GET | `/products/:slug/related` | Same-category suggestions |
-| GET | `/categories` | All active categories with product counts |
-| GET | `/categories/:slug` | One category |
-| GET | `/categories/:slug/products` | Products inside it |
+| Method | Path                         | Purpose                                                              |
+| ------ | ---------------------------- | -------------------------------------------------------------------- |
+| GET    | `/products`                  | List — filter by category, gender, price, size, colour, search, sort |
+| GET    | `/products/featured`         | Homepage picks                                                       |
+| GET    | `/products/filters`          | Available sizes/colours for the filter UI                            |
+| GET    | `/products/:slug`            | Detail with variants and availability                                |
+| GET    | `/products/:slug/related`    | Same-category suggestions                                            |
+| GET    | `/categories`                | All active categories with product counts                            |
+| GET    | `/categories/:slug`          | One category                                                         |
+| GET    | `/categories/:slug/products` | Products inside it                                                   |
 
 ### Cart, favourites & checkout
 
@@ -202,24 +202,24 @@ Authenticated carts and favourites are stored in MySQL and cached in Redis.
 Redis is never the source of truth: cache loss or downtime falls back cleanly
 to MySQL. A guest browser cart is merged into the account at sign-in.
 
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| GET | `/cart` | user | Restore the customer's cart on any device |
-| POST | `/cart/sync` | user | Merge a guest browser cart into the account |
-| POST | `/cart/items` | user | Add/set a variant quantity |
-| PATCH | `/cart/items/:variantId` | user | Change quantity |
-| DELETE | `/cart/items/:variantId` | user | Remove one line |
-| DELETE | `/cart` | user | Clear the cart |
-| GET | `/favourites` | user | List saved products |
-| POST | `/favourites/:productId` | user | Save a product |
-| DELETE | `/favourites/:productId` | user | Remove a saved product |
-| POST | `/orders/quote` | optional | Live totals, nothing saved |
-| POST | `/orders` | optional | Place the order (guest needs `email`) |
-| GET | `/orders` | user | My order history |
-| GET | `/orders/:id` | user | One order (ownership enforced) |
-| GET | `/orders/:id/payment-status` | user | Poll after Stripe redirect |
-| POST | `/orders/:id/pay` | user | Create/reuse the PaymentIntent |
-| POST | `/orders/:id/cancel` | user | Cancel while pending/processing |
+| Method | Path                         | Auth     | Purpose                                     |
+| ------ | ---------------------------- | -------- | ------------------------------------------- |
+| GET    | `/cart`                      | user     | Restore the customer's cart on any device   |
+| POST   | `/cart/sync`                 | user     | Merge a guest browser cart into the account |
+| POST   | `/cart/items`                | user     | Add/set a variant quantity                  |
+| PATCH  | `/cart/items/:variantId`     | user     | Change quantity                             |
+| DELETE | `/cart/items/:variantId`     | user     | Remove one line                             |
+| DELETE | `/cart`                      | user     | Clear the cart                              |
+| GET    | `/favourites`                | user     | List saved products                         |
+| POST   | `/favourites/:productId`     | user     | Save a product                              |
+| DELETE | `/favourites/:productId`     | user     | Remove a saved product                      |
+| POST   | `/orders/quote`              | optional | Live totals, nothing saved                  |
+| POST   | `/orders`                    | optional | Place the order (guest needs `email`)       |
+| GET    | `/orders`                    | user     | My order history                            |
+| GET    | `/orders/:id`                | user     | One order (ownership enforced)              |
+| GET    | `/orders/:id/payment-status` | user     | Poll after Stripe redirect                  |
+| POST   | `/orders/:id/pay`            | user     | Create/reuse the PaymentIntent              |
+| POST   | `/orders/:id/cancel`         | user     | Cancel while pending/processing             |
 
 ### Admin — `/api/admin` (all require `role = 'admin'`)
 
@@ -271,10 +271,10 @@ sent.
 
 ## Authentication
 
-| Token | Lifetime | Stored | Purpose |
-|---|---|---|---|
-| Access | 15 min | JS memory | Sent as `Authorization: Bearer` |
-| Refresh | 30 days | httpOnly cookie | Gets a new access token |
+| Token   | Lifetime | Stored          | Purpose                         |
+| ------- | -------- | --------------- | ------------------------------- |
+| Access  | 15 min   | JS memory       | Sent as `Authorization: Bearer` |
+| Refresh | 30 days  | httpOnly cookie | Gets a new access token         |
 
 - Refresh tokens are stored as **SHA-256 hashes** — a database leak yields
   useless hashes, not live sessions.
@@ -311,35 +311,38 @@ releases the reservation (or restocks, if already paid).
 
 ```js
 // src/lib/api.js
-let accessToken = null
-export const setAccessToken = (t) => { accessToken = t }
+let accessToken = null;
+export const setAccessToken = (t) => {
+  accessToken = t;
+};
 
 export async function api(path, options = {}) {
   const res = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
     ...options,
-    credentials: 'include',                    // sends the refresh cookie
+    credentials: 'include', // sends the refresh cookie
     headers: {
       'Content-Type': 'application/json',
       ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       ...options.headers,
     },
-  })
+  });
 
   if (res.status === 401 && accessToken && !options._retried) {
     const r = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/refresh`, {
-      method: 'POST', credentials: 'include',
-    })
+      method: 'POST',
+      credentials: 'include',
+    });
     if (r.ok) {
-      setAccessToken((await r.json()).data.accessToken)
-      return api(path, { ...options, _retried: true })
+      setAccessToken((await r.json()).data.accessToken);
+      return api(path, { ...options, _retried: true });
     }
-    setAccessToken(null)
-    window.location.href = '/sign-in'
+    setAccessToken(null);
+    window.location.href = '/sign-in';
   }
 
-  const json = await res.json()
-  if (!res.ok) throw new Error(json.error?.message ?? 'Request failed')
-  return json.data
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error?.message ?? 'Request failed');
+  return json.data;
 }
 ```
 

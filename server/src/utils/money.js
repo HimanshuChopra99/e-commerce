@@ -12,38 +12,39 @@
 
 /** "129.99" | 129.99 -> 12999 */
 export function toCents(value) {
-  if (value === null || value === undefined || value === '') return 0
-  const n = typeof value === 'number' ? value : Number.parseFloat(String(value))
-  if (!Number.isFinite(n)) return 0
+  if (value === null || value === undefined || value === '') return 0;
+  const n =
+    typeof value === 'number' ? value : Number.parseFloat(String(value));
+  if (!Number.isFinite(n)) return 0;
   // Round via a string to dodge 129.99 * 100 === 12998.999999999998
-  return Math.round(Number((n * 100).toFixed(4)))
+  return Math.round(Number((n * 100).toFixed(4)));
 }
 
 /** 12999 -> "129.99"  (safe to hand straight to a DECIMAL column) */
 export function fromCents(cents) {
-  return (Math.round(cents) / 100).toFixed(2)
+  return (Math.round(cents) / 100).toFixed(2);
 }
 
 /** 12999 -> 129.99   (for JSON responses) */
 export function centsToNumber(cents) {
-  return Math.round(cents) / 100
+  return Math.round(cents) / 100;
 }
 
 /** A DB DECIMAL string -> a JSON number. Null-safe. */
 export function decimalToNumber(value) {
-  if (value === null || value === undefined) return null
-  return Number.parseFloat(String(value))
+  if (value === null || value === undefined) return null;
+  return Number.parseFloat(String(value));
 }
 
 /** Percentage of an amount, in cents, optionally capped. */
 export function percentOf(cents, percent, maxCents = null) {
-  const off = Math.round((cents * percent) / 100)
-  return maxCents === null ? off : Math.min(off, maxCents)
+  const off = Math.round((cents * percent) / 100);
+  return maxCents === null ? off : Math.min(off, maxCents);
 }
 
 /** Format for emails / invoices. */
 export function formatMoney(cents, currency = 'USD', locale = 'en-US') {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
     centsToNumber(cents)
-  )
+  );
 }

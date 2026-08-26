@@ -1,6 +1,6 @@
-import mysql from 'mysql2/promise'
-import { env } from './env.js'
-import { logger } from './logger.js'
+import mysql from 'mysql2/promise';
+import { env } from './env.js';
+import { logger } from './logger.js';
 
 /**
  * A single shared connection pool.
@@ -28,117 +28,133 @@ export const pool = mysql.createPool({
   charset: 'utf8mb4_unicode_ci',
   namedPlaceholders: false,
   dateStrings: false,
-})
+});
 
-let dbConnected = false
+let dbConnected = false;
 
 /** Fail fast at boot if the database is unreachable, but log warning in dev/sandboxed environments. */
 export async function assertDatabaseConnection() {
   try {
-    const conn = await pool.getConnection()
+    const conn = await pool.getConnection();
     try {
-      await conn.ping()
-      dbConnected = true
+      await conn.ping();
+      dbConnected = true;
       logger.info(
         { database: env.db.database, poolSize: env.db.poolSize },
         'MySQL connected'
-      )
+      );
     } finally {
-      conn.release()
+      conn.release();
     }
   } catch (err) {
-    dbConnected = false
+    dbConnected = false;
     if (env.isProd) {
-      logger.error({ err: err.message }, 'MySQL database unavailable in production — exiting')
+      logger.error(
+        { err: err.message },
+        'MySQL database unavailable in production — exiting'
+      );
       // In production, we should fail fast since DB is required
-      process.exit(1)
+      process.exit(1);
     } else {
-      logger.warn({ err: err.message }, 'MySQL database unavailable — API running in fallback mode')
+      logger.warn(
+        { err: err.message },
+        'MySQL database unavailable — API running in fallback mode'
+      );
     }
   }
 }
 
 /** Check if database is currently connected */
 export function isDatabaseConnected() {
-  return dbConnected
+  return dbConnected;
 }
 
 /** Convenience wrapper for a plain query on the pool. */
-let dbWarned = false
+let dbWarned = false;
 export async function query(sql, params = []) {
   try {
-    const [rows] = await pool.query(sql, params)
-    return rows
+    const [rows] = await pool.query(sql, params);
+    return rows;
   } catch (err) {
-    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'PROTOCOL_CONNECTION_LOST') {
-      dbConnected = false
+    if (
+      err.code === 'ECONNREFUSED' ||
+      err.code === 'ENOTFOUND' ||
+      err.code === 'PROTOCOL_CONNECTION_LOST'
+    ) {
+      dbConnected = false;
       if (!dbWarned) {
-        dbWarned = true
-        logger.warn({ err: err.message }, 'Database connection lost — running with fallback memory/mock data')
+        dbWarned = true;
+        logger.warn(
+          { err: err.message },
+          'Database connection lost — running with fallback memory/mock data'
+        );
       }
     } else {
-      logger.warn({ err: err.message }, 'Database query failed')
+      logger.warn({ err: err.message }, 'Database query failed');
     }
-    return []
+    return [];
   }
 }
 
 /** Returns the first row, or null. */
 export async function queryOne(sql, params = []) {
   try {
-    const rows = await query(sql, params)
-    return rows[0] ?? null
+    const rows = await query(sql, params);
+    return rows[0] ?? null;
   } catch {
-    return null
+    return null;
   }
 }
 
-const DEADLOCK_CODES = new Set(['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'])
+const DEADLOCK_CODES = new Set(['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT']);
 
 /**
  * Runs `fn` inside a transaction, always releasing the connection.
  */
 export async function withTransaction(fn, { retries = 2 } = {}) {
-  let attempt = 0
+  let attempt = 0;
 
   for (;;) {
-    let conn
+    let conn;
     try {
-      conn = await pool.getConnection()
+      conn = await pool.getConnection();
     } catch (err) {
-      logger.warn({ err: err.message }, 'Transaction DB connection failed')
-      return null
+      logger.warn({ err: err.message }, 'Transaction DB connection failed');
+      return null;
     }
     try {
-      await conn.beginTransaction()
-      const result = await fn(conn)
-      await conn.commit()
-      return result
+      await conn.beginTransaction();
+      const result = await fn(conn);
+      await conn.commit();
+      return result;
     } catch (err) {
       try {
-        await conn.rollback()
+        await conn.rollback();
       } catch {
         // The connection may already be dead; nothing useful to do.
       }
 
       if (DEADLOCK_CODES.has(err.code) && attempt < retries) {
-        attempt += 1
-        const backoff = 50 * attempt + Math.floor(Math.random() * 50)
-        logger.warn({ err: err.code, attempt }, 'Deadlock, retrying transaction')
-        await new Promise((r) => setTimeout(r, backoff))
-        continue
+        attempt += 1;
+        const backoff = 50 * attempt + Math.floor(Math.random() * 50);
+        logger.warn(
+          { err: err.code, attempt },
+          'Deadlock, retrying transaction'
+        );
+        await new Promise((r) => setTimeout(r, backoff));
+        continue;
       }
-      throw err
+      throw err;
     } finally {
-      if (conn) conn.release()
+      if (conn) conn.release();
     }
   }
 }
 
 export async function closePool() {
   try {
-    await pool.end()
-    dbConnected = false
+    await pool.end();
+    dbConnected = false;
   } catch {
     // Ignore close errors
   }

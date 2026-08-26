@@ -6,4 +6,4 @@
  * server down; the error reaches the central error handler instead.
  */
 export const asyncHandler = (fn) => (req, res, next) =>
-  Promise.resolve(fn(req, res, next)).catch(next)
+  Promise.resolve(fn(req, res, next)).catch(next);

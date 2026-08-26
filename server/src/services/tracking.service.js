@@ -1,5 +1,5 @@
-import { getRedisClient } from './cache.service.js'
-import { logger } from '../config/logger.js'
+import { getRedisClient } from './cache.service.js';
+import { logger } from '../config/logger.js';
 
 /**
  * Live order-tracking sessions.
@@ -23,31 +23,31 @@ import { logger } from '../config/logger.js'
  * Docker. Nothing here throws on a Redis failure; the worst case is a lost ping.
  */
 
-const SESSION_TTL_SECONDS = 24 * 60 * 60 // 24 hours
-const MAX_PINGS = 100
+const SESSION_TTL_SECONDS = 24 * 60 * 60; // 24 hours
+const MAX_PINGS = 100;
 
-const sessionKey = (trackingNumber) => `tracking:session:${trackingNumber}`
-const pingsKey = (trackingNumber) => `tracking:pings:${trackingNumber}`
+const sessionKey = (trackingNumber) => `tracking:session:${trackingNumber}`;
+const pingsKey = (trackingNumber) => `tracking:pings:${trackingNumber}`;
 
 /* ------------------------------------------------------------------ *
  * In-memory fallback (used only when Redis is unavailable)
  * ------------------------------------------------------------------ */
 
 /** trackingNumber -> { session: object, pings: array, expiresAt: number } */
-const memory = new Map()
+const memory = new Map();
 
 function memoryGet(trackingNumber) {
-  const entry = memory.get(trackingNumber)
-  if (!entry) return null
+  const entry = memory.get(trackingNumber);
+  if (!entry) return null;
   if (Date.now() > entry.expiresAt) {
-    memory.delete(trackingNumber)
-    return null
+    memory.delete(trackingNumber);
+    return null;
   }
-  return entry
+  return entry;
 }
 
 function memoryTouch(entry) {
-  entry.expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000
+  entry.expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
 }
 
 /* ------------------------------------------------------------------ *
@@ -56,26 +56,28 @@ function memoryTouch(entry) {
 
 /** Redis hashes hold strings only — '' round-trips back to null. */
 function str(value) {
-  return value === null || value === undefined ? '' : String(value)
+  return value === null || value === undefined ? '' : String(value);
 }
 
 function num(value) {
-  const n = Number.parseFloat(value)
-  return Number.isFinite(n) ? n : null
+  const n = Number.parseFloat(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 function isValidLatLng(lat, lng) {
   return (
     Number.isFinite(lat) &&
     Number.isFinite(lng) &&
-    lat >= -90 && lat <= 90 &&
-    lng >= -180 && lng <= 180
-  )
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
 }
 
 /** Hash of strings -> the typed object the API and frontend consume. */
 function parseSession(hash) {
-  if (!hash || !hash.trackingNumber) return null
+  if (!hash || !hash.trackingNumber) return null;
   return {
     trackingNumber: hash.trackingNumber,
     orderId: hash.orderId || null,
@@ -97,7 +99,7 @@ function parseSession(hash) {
     createdAt: hash.createdAt || null,
     updatedAt: hash.updatedAt || null,
     completedAt: hash.completedAt || null,
-  }
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -110,17 +112,26 @@ function parseSession(hash) {
  * @returns {Promise<object|null>} the created session, or null if it couldn't be stored
  */
 export async function createTrackingSession(order, coords = null) {
-  const trackingNumber = order?.trackingNumber
+  const trackingNumber = order?.trackingNumber;
   if (!trackingNumber) {
-    logger.warn({ orderId: order?.publicId }, 'Cannot start tracking session without a tracking number')
-    return null
+    logger.warn(
+      { orderId: order?.publicId },
+      'Cannot start tracking session without a tracking number'
+    );
+    return null;
   }
 
-  const now = new Date().toISOString()
-  const address = order.shippingAddress ?? {}
-  const destinationAddress = [address.line1, address.city, address.state, address.postalCode, address.country]
+  const now = new Date().toISOString();
+  const address = order.shippingAddress ?? {};
+  const destinationAddress = [
+    address.line1,
+    address.city,
+    address.state,
+    address.postalCode,
+    address.country,
+  ]
     .filter(Boolean)
-    .join(', ')
+    .join(', ');
 
   // Geocoding is best-effort — a null coords just means no destination pin yet.
   const hash = {
@@ -140,9 +151,9 @@ export async function createTrackingSession(order, coords = null) {
     createdAt: now,
     updatedAt: now,
     completedAt: '',
-  }
+  };
 
-  const redis = await getRedisClient()
+  const redis = await getRedisClient();
 
   if (redis) {
     try {
@@ -151,12 +162,18 @@ export async function createTrackingSession(order, coords = null) {
         .del(pingsKey(trackingNumber)) // a re-ship must not inherit the old route
         .hset(sessionKey(trackingNumber), hash)
         .expire(sessionKey(trackingNumber), SESSION_TTL_SECONDS)
-        .exec()
+        .exec();
 
-      logger.info({ trackingNumber, geocoded: Boolean(coords) }, 'Tracking session created')
-      return parseSession(hash)
+      logger.info(
+        { trackingNumber, geocoded: Boolean(coords) },
+        'Tracking session created'
+      );
+      return parseSession(hash);
     } catch (error) {
-      logger.warn({ err: error, trackingNumber }, 'Redis unavailable — tracking session kept in memory')
+      logger.warn(
+        { err: error, trackingNumber },
+        'Redis unavailable — tracking session kept in memory'
+      );
     }
   }
 
@@ -164,8 +181,8 @@ export async function createTrackingSession(order, coords = null) {
     session: hash,
     pings: [],
     expiresAt: Date.now() + SESSION_TTL_SECONDS * 1000,
-  })
-  return parseSession(hash)
+  });
+  return parseSession(hash);
 }
 
 /* ------------------------------------------------------------------ *
@@ -174,19 +191,22 @@ export async function createTrackingSession(order, coords = null) {
 
 /** @returns {Promise<object|null>} null when unknown or expired. */
 export async function getTrackingSession(trackingNumber) {
-  if (!trackingNumber) return null
+  if (!trackingNumber) return null;
 
-  const redis = await getRedisClient()
+  const redis = await getRedisClient();
   if (redis) {
     try {
-      const hash = await redis.hgetall(sessionKey(trackingNumber))
-      if (hash && Object.keys(hash).length) return parseSession(hash)
+      const hash = await redis.hgetall(sessionKey(trackingNumber));
+      if (hash && Object.keys(hash).length) return parseSession(hash);
     } catch (error) {
-      logger.warn({ err: error, trackingNumber }, 'Failed to read tracking session from Redis')
+      logger.warn(
+        { err: error, trackingNumber },
+        'Failed to read tracking session from Redis'
+      );
     }
   }
 
-  return parseSession(memoryGet(trackingNumber)?.session)
+  return parseSession(memoryGet(trackingNumber)?.session);
 }
 
 /* ------------------------------------------------------------------ *
@@ -203,23 +223,26 @@ export async function getTrackingSession(trackingNumber) {
  * @returns {Promise<{lat:number,lng:number,at:string}|null>}
  */
 export async function savePing(trackingNumber, lat, lng) {
-  if (!trackingNumber) return null
+  if (!trackingNumber) return null;
 
-  const latitude = Number.parseFloat(lat)
-  const longitude = Number.parseFloat(lng)
+  const latitude = Number.parseFloat(lat);
+  const longitude = Number.parseFloat(lng);
   if (!isValidLatLng(latitude, longitude)) {
-    logger.warn({ trackingNumber, lat, lng }, 'Rejected tracking ping with invalid coordinates')
-    return null
+    logger.warn(
+      { trackingNumber, lat, lng },
+      'Rejected tracking ping with invalid coordinates'
+    );
+    return null;
   }
 
-  const at = new Date().toISOString()
-  const ping = { lat: latitude, lng: longitude, at }
+  const at = new Date().toISOString();
+  const ping = { lat: latitude, lng: longitude, at };
 
-  const redis = await getRedisClient()
+  const redis = await getRedisClient();
   if (redis) {
     try {
-      const exists = await redis.exists(sessionKey(trackingNumber))
-      if (!exists) return null
+      const exists = await redis.exists(sessionKey(trackingNumber));
+      if (!exists) return null;
 
       await redis
         .multi()
@@ -235,29 +258,33 @@ export async function savePing(trackingNumber, lat, lng) {
         // Sliding TTL: an actively moving parcel never expires mid-route.
         .expire(sessionKey(trackingNumber), SESSION_TTL_SECONDS)
         .expire(pingsKey(trackingNumber), SESSION_TTL_SECONDS)
-        .exec()
+        .exec();
 
-      return ping
+      return ping;
     } catch (error) {
-      logger.warn({ err: error, trackingNumber }, 'Failed to save tracking ping to Redis')
-      return null
+      logger.warn(
+        { err: error, trackingNumber },
+        'Failed to save tracking ping to Redis'
+      );
+      return null;
     }
   }
 
-  const entry = memoryGet(trackingNumber)
-  if (!entry) return null
+  const entry = memoryGet(trackingNumber);
+  if (!entry) return null;
 
-  entry.pings.push(ping)
-  if (entry.pings.length > MAX_PINGS) entry.pings = entry.pings.slice(-MAX_PINGS)
+  entry.pings.push(ping);
+  if (entry.pings.length > MAX_PINGS)
+    entry.pings = entry.pings.slice(-MAX_PINGS);
   Object.assign(entry.session, {
     currentLat: String(latitude),
     currentLng: String(longitude),
     lastPingAt: at,
     updatedAt: at,
     pingCount: String(Number(entry.session.pingCount || 0) + 1),
-  })
-  memoryTouch(entry)
-  return ping
+  });
+  memoryTouch(entry);
+  return ping;
 }
 
 /* ------------------------------------------------------------------ *
@@ -272,28 +299,31 @@ export async function savePing(trackingNumber, lat, lng) {
  * @returns {Promise<Array<{lat:number,lng:number,at:string}>>}
  */
 export async function getRecentPings(trackingNumber) {
-  if (!trackingNumber) return []
+  if (!trackingNumber) return [];
 
-  const redis = await getRedisClient()
+  const redis = await getRedisClient();
   if (redis) {
     try {
-      const raw = await redis.lrange(pingsKey(trackingNumber), 0, -1)
+      const raw = await redis.lrange(pingsKey(trackingNumber), 0, -1);
       return raw
         .map((item) => {
           try {
-            return JSON.parse(item)
+            return JSON.parse(item);
           } catch {
-            return null // one corrupt entry must not break the whole route
+            return null; // one corrupt entry must not break the whole route
           }
         })
-        .filter(Boolean)
+        .filter(Boolean);
     } catch (error) {
-      logger.warn({ err: error, trackingNumber }, 'Failed to read tracking pings from Redis')
-      return []
+      logger.warn(
+        { err: error, trackingNumber },
+        'Failed to read tracking pings from Redis'
+      );
+      return [];
     }
   }
 
-  return memoryGet(trackingNumber)?.pings.slice() ?? []
+  return memoryGet(trackingNumber)?.pings.slice() ?? [];
 }
 
 /* ------------------------------------------------------------------ *
@@ -308,36 +338,43 @@ export async function getRecentPings(trackingNumber) {
  * @returns {Promise<object|null>} the completed session, or null if unknown.
  */
 export async function completeSession(trackingNumber) {
-  if (!trackingNumber) return null
+  if (!trackingNumber) return null;
 
-  const at = new Date().toISOString()
+  const at = new Date().toISOString();
 
-  const redis = await getRedisClient()
+  const redis = await getRedisClient();
   if (redis) {
     try {
-      const exists = await redis.exists(sessionKey(trackingNumber))
-      if (!exists) return null
+      const exists = await redis.exists(sessionKey(trackingNumber));
+      if (!exists) return null;
 
       await redis.hset(sessionKey(trackingNumber), {
         status: 'completed',
         completedAt: at,
         updatedAt: at,
-      })
+      });
 
-      logger.info({ trackingNumber }, 'Tracking session completed')
-      return getTrackingSession(trackingNumber)
+      logger.info({ trackingNumber }, 'Tracking session completed');
+      return getTrackingSession(trackingNumber);
     } catch (error) {
-      logger.warn({ err: error, trackingNumber }, 'Failed to complete tracking session in Redis')
-      return null
+      logger.warn(
+        { err: error, trackingNumber },
+        'Failed to complete tracking session in Redis'
+      );
+      return null;
     }
   }
 
-  const entry = memoryGet(trackingNumber)
-  if (!entry) return null
+  const entry = memoryGet(trackingNumber);
+  if (!entry) return null;
 
-  Object.assign(entry.session, { status: 'completed', completedAt: at, updatedAt: at })
-  memoryTouch(entry)
-  return parseSession(entry.session)
+  Object.assign(entry.session, {
+    status: 'completed',
+    completedAt: at,
+    updatedAt: at,
+  });
+  memoryTouch(entry);
+  return parseSession(entry.session);
 }
 
 export default {
@@ -346,4 +383,4 @@ export default {
   savePing,
   getRecentPings,
   completeSession,
-}
+};
