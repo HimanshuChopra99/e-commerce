@@ -35,7 +35,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { OrderShippingDialog } from './order-shipping-dialog'
+import { OrderShippingDialog as _OrderShippingDialog } from './order-shipping-dialog'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },

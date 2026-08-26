@@ -246,7 +246,7 @@ export function OrderDetailPage() {
   const [localCourier, setLocalCourier] = useState(null)
 
   // Ref for geolocation watch - MUST be declared unconditionally at top level
-  const watchIdRef = useRef(null)
+  const _watchIdRef = useRef(null)
 
   // ── Fetch order detail ───────────────────────────────────────────────────
   useEffect(() => {
