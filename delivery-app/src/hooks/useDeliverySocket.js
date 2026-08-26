@@ -8,7 +8,6 @@ import {
   orderTakenAway,
   setWarehouseLocation,
 } from '../store/slices/orderSlice'
-import { setOnline } from '../store/slices/appSlice'
 
 /**
  * Call this hook once in the root App component.
@@ -25,8 +24,10 @@ export function useDeliverySocket() {
   const token    = useSelector((s) => s.app.token)
 
   // Always keep a ref in sync so event handlers can read the latest value
-  const onlineRef    = useRef(online)
-  onlineRef.current  = online
+  const onlineRef = useRef(online)
+  useEffect(() => {
+    onlineRef.current = online
+  })
 
   // Track whether the initial mount sync has already run.
   // We skip the "emit go_offline" path on the very first render so that a

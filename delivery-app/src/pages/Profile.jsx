@@ -30,7 +30,6 @@ function TopAppBar() {
   )
 }
 
-const stats = []
 
 const menuSections = [
   {

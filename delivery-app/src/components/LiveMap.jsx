@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { useSelector } from 'react-redux'
@@ -110,12 +110,16 @@ export default function LiveMap({ open }) {
   const warehouseLat = activeOrder?.pickupLat ?? warehouseLoc?.lat ?? DEFAULT_WAREHOUSE_LAT
   const warehouseLng = activeOrder?.pickupLng ?? warehouseLoc?.lng ?? DEFAULT_WAREHOUSE_LNG
 
-  // Destination based on nav phase
-  const destPos = navPhase === 'to_warehouse'
-    ? [Number(warehouseLat), Number(warehouseLng)]
-    : activeOrder?.shippingAddress?.lat && activeOrder?.shippingAddress?.lng
-      ? [Number(activeOrder.shippingAddress.lat), Number(activeOrder.shippingAddress.lng)]
-      : null
+  // Destination based on nav phase — memoised to keep a stable reference
+  const destPos = useMemo(() => {
+    if (navPhase === 'to_warehouse') {
+      return [Number(warehouseLat), Number(warehouseLng)]
+    }
+    if (activeOrder?.shippingAddress?.lat && activeOrder?.shippingAddress?.lng) {
+      return [Number(activeOrder.shippingAddress.lat), Number(activeOrder.shippingAddress.lng)]
+    }
+    return null
+  }, [navPhase, warehouseLat, warehouseLng, activeOrder?.shippingAddress?.lat, activeOrder?.shippingAddress?.lng])
 
   // ── Listen for GPS updates from this partner ────────────────────────
   useEffect(() => {
@@ -140,7 +144,7 @@ export default function LiveMap({ open }) {
     }
     socket.on('receive-location', handler)
     return () => socket.off('receive-location', handler)
-  }, [])
+  }, [partnerPos])
 
   // ── Fetch road route whenever partner pos OR destination changes ─────────────
   useEffect(() => {

@@ -39,7 +39,7 @@ export default function Orders() {
 
   // On mount: fetch latest available orders (server only returns them when online)
   useEffect(() => {
-    fetchOrders()
+    fetchOrders() // eslint-disable-line react-hooks/set-state-in-effect
   }, [partner, fetchOrders])
 
   const handleAccept = async (orderId) => {

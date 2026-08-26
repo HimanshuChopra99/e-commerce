@@ -26,5 +26,5 @@ export function usePartnerData() {
     return () => {
       active = false
     }
-  }, [token, partner?.publicId, dispatch])
+  }, [token, partner?.publicId, dispatch]) // eslint-disable-line react-hooks/exhaustive-deps
 }
