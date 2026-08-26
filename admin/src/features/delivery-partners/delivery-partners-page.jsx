@@ -14,14 +14,14 @@ import { Main } from '@/components/layout/main'
 import { PageHeader } from '@/components/layout/page-header'
 import { StatCards } from '@/components/stat-cards'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DeliveryPartnersProvider, useDeliveryPartners } from './components/delivery-partners-provider'
+import {
+  DeliveryPartnersProvider,
+  useDeliveryPartners,
+} from './components/delivery-partners-provider'
 import { DeliveryPartnerFormDialog } from './components/delivery-partner-form-dialog'
 import { DeliveryPartnersBulkActions } from './components/delivery-partners-bulk-actions'
 import { deliveryPartnersColumns } from './components/delivery-partners-columns'
-import {
-  deliveryPartnerStatuses,
-  vehicleTypes,
-} from './delivery-partners-data'
+import { deliveryPartnerStatuses, vehicleTypes } from './delivery-partners-data'
 
 function DeliveryPartnersContent() {
   const dispatch = useDispatch()
@@ -41,7 +41,12 @@ function DeliveryPartnersContent() {
 
     const onOnlineStatus = (data) => {
       if (data?.partnerPublicId) {
-        dispatch(partnerOnlineStatusUpdated({ partnerPublicId: data.partnerPublicId, isOnline: data.isOnline }))
+        dispatch(
+          partnerOnlineStatusUpdated({
+            partnerPublicId: data.partnerPublicId,
+            isOnline: data.isOnline,
+          })
+        )
       }
     }
 
@@ -50,7 +55,9 @@ function DeliveryPartnersContent() {
   }, [dispatch])
 
   const online = partners.filter((p) => p.isOnline).length
-  const active = partners.filter((p) => p.status === 'active' || !p.status).length
+  const active = partners.filter(
+    (p) => p.status === 'active' || !p.status
+  ).length
   const byVehicle = (v) => partners.filter((p) => p.vehicleType === v).length
 
   const stats = [
@@ -97,7 +104,9 @@ function DeliveryPartnersContent() {
     if (!currentRow) return
     try {
       await dispatch(removeAdminDeliveryPartner(currentRow.id)).unwrap()
-      toast.success(`${currentRow.firstName} ${currentRow.lastName} has been deleted.`)
+      toast.success(
+        `${currentRow.firstName} ${currentRow.lastName} has been deleted.`
+      )
       setOpen('delete')
       setCurrentRow(null)
     } catch (error) {
@@ -112,15 +121,20 @@ function DeliveryPartnersContent() {
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
         <div className='flex flex-wrap items-end justify-between gap-2'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>Delivery Partners</h2>
+            <h2 className='text-2xl font-bold tracking-tight'>
+              Delivery Partners
+            </h2>
             <p className='text-muted-foreground'>
-              Your delivery fleet. Click a row for full details, or register a new rider.
+              Your delivery fleet. Click a row for full details, or register a
+              new rider.
             </p>
           </div>
           <div className='flex gap-2'>
             <Button
               variant='outline'
-              onClick={() => toast.success('Delivery partner list exported to CSV.')}
+              onClick={() =>
+                toast.success('Delivery partner list exported to CSV.')
+              }
             >
               <Download /> Export
             </Button>
@@ -152,10 +166,20 @@ function DeliveryPartnersContent() {
               (partner.vehicleType || '').toLowerCase().includes(term)
             }
             filters={[
-              { columnId: 'status', title: 'Status', options: deliveryPartnerStatuses },
-              { columnId: 'vehicleType', title: 'Vehicle', options: vehicleTypes },
+              {
+                columnId: 'status',
+                title: 'Status',
+                options: deliveryPartnerStatuses,
+              },
+              {
+                columnId: 'vehicleType',
+                title: 'Vehicle',
+                options: vehicleTypes,
+              },
             ]}
-            bulkActions={(table) => <DeliveryPartnersBulkActions table={table} />}
+            bulkActions={(table) => (
+              <DeliveryPartnersBulkActions table={table} />
+            )}
           />
         )}
       </Main>

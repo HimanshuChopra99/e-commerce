@@ -42,13 +42,21 @@ import { vehicleTypes } from '../delivery-partners-data'
 const baseSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required.').max(60),
   lastName: z.string().trim().min(1, 'Last name is required.').max(60),
-  email: z.string().trim().toLowerCase().email('Enter a valid email address.').max(160),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('Enter a valid email address.')
+    .max(160),
   phone: z.string().trim().max(24).optional().or(z.literal('')),
   vehicleType: z.enum(['bike', 'scooter', 'car']).default('bike'),
 })
 
 const createSchema = baseSchema.extend({
-  password: z.string().min(8, 'Password must be at least 8 characters.').max(72),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters.')
+    .max(72),
 })
 
 const editSchema = baseSchema.extend({
@@ -120,14 +128,21 @@ export function DeliveryPartnerFormDialog({ open, onOpenChange, currentRow }) {
         const updatePayload = { ...payload, status: values.status }
         if (values.password) updatePayload.password = values.password
         await dispatch(
-          updateAdminDeliveryPartner({ id: currentRow.id, payload: updatePayload })
+          updateAdminDeliveryPartner({
+            id: currentRow.id,
+            payload: updatePayload,
+          })
         ).unwrap()
-        toast.success(`${values.firstName} ${values.lastName} has been updated.`)
+        toast.success(
+          `${values.firstName} ${values.lastName} has been updated.`
+        )
       } else {
         await dispatch(
           createAdminDeliveryPartner({ ...payload, password: values.password })
         ).unwrap()
-        toast.success(`${values.firstName} ${values.lastName} registered as a delivery partner.`)
+        toast.success(
+          `${values.firstName} ${values.lastName} registered as a delivery partner.`
+        )
       }
       dispatch(fetchAdminDeliveryPartners({ limit: 100 }))
       onOpenChange(false)
@@ -164,7 +179,11 @@ export function DeliveryPartnerFormDialog({ open, onOpenChange, currentRow }) {
                   <FormItem>
                     <FormLabel>First name</FormLabel>
                     <FormControl>
-                      <Input placeholder='e.g. John' autoComplete='off' {...field} />
+                      <Input
+                        placeholder='e.g. John'
+                        autoComplete='off'
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -178,7 +197,11 @@ export function DeliveryPartnerFormDialog({ open, onOpenChange, currentRow }) {
                   <FormItem>
                     <FormLabel>Last name</FormLabel>
                     <FormControl>
-                      <Input placeholder='e.g. Rider' autoComplete='off' {...field} />
+                      <Input
+                        placeholder='e.g. Rider'
+                        autoComplete='off'
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -212,7 +235,11 @@ export function DeliveryPartnerFormDialog({ open, onOpenChange, currentRow }) {
                 <FormItem>
                   <FormLabel>Phone</FormLabel>
                   <FormControl>
-                    <Input placeholder='+1 555-0000' autoComplete='off' {...field} />
+                    <Input
+                      placeholder='+1 555-0000'
+                      autoComplete='off'
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -255,7 +282,10 @@ export function DeliveryPartnerFormDialog({ open, onOpenChange, currentRow }) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
                         <FormControl>
                           <SelectTrigger className='w-full'>
                             <SelectValue placeholder='Select status' />
@@ -278,10 +308,16 @@ export function DeliveryPartnerFormDialog({ open, onOpenChange, currentRow }) {
               name='password'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{isEdit ? 'Reset password (optional)' : 'Password'}</FormLabel>
+                  <FormLabel>
+                    {isEdit ? 'Reset password (optional)' : 'Password'}
+                  </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder={isEdit ? 'Leave blank to keep current password' : 'At least 8 characters'}
+                      placeholder={
+                        isEdit
+                          ? 'Leave blank to keep current password'
+                          : 'At least 8 characters'
+                      }
                       type='password'
                       autoComplete='new-password'
                       {...field}

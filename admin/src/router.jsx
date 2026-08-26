@@ -18,41 +18,47 @@ import { CategoryDetailPage } from '@/features/categories/category-detail-page'
 import { DeliveryPartnersPage } from '@/features/delivery-partners/delivery-partners-page'
 import { DeliveryPartnerDetailPage } from '@/features/delivery-partners/delivery-partner-detail-page'
 
-export const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: <AdminLoginPage />,
-  },
-  {
-    element: <ProtectedRoute />,
-    children: [
-      {
-        path: '/',
-        element: <AppLayout />,
-        errorElement: <GeneralError />,
-        children: [
-          { index: true, element: <DashboardPage /> },
+export const router = createBrowserRouter(
+  [
+    {
+      path: '/login',
+      element: <AdminLoginPage />,
+    },
+    {
+      element: <ProtectedRoute />,
+      children: [
+        {
+          path: '/',
+          element: <AppLayout />,
+          errorElement: <GeneralError />,
+          children: [
+            { index: true, element: <DashboardPage /> },
 
-          { path: 'products', element: <ProductsPage /> },
-          { path: 'products/new', element: <ProductNewPage /> },
-          { path: 'products/:productId', element: <ProductDetailPage /> },
-          { path: 'products/:productId/edit', element: <ProductEditPage /> },
+            { path: 'products', element: <ProductsPage /> },
+            { path: 'products/new', element: <ProductNewPage /> },
+            { path: 'products/:productId', element: <ProductDetailPage /> },
+            { path: 'products/:productId/edit', element: <ProductEditPage /> },
 
-          { path: 'orders', element: <OrdersPage /> },
-          { path: 'orders/:orderId', element: <OrderDetailPage /> },
+            { path: 'orders', element: <OrdersPage /> },
+            { path: 'orders/:orderId', element: <OrderDetailPage /> },
 
-          { path: 'customers', element: <CustomersPage /> },
-          { path: 'customers/:customerId', element: <CustomerDetailPage /> },
+            { path: 'customers', element: <CustomersPage /> },
+            { path: 'customers/:customerId', element: <CustomerDetailPage /> },
 
-          { path: 'categories', element: <CategoriesPage /> },
-          { path: 'categories/:categoryId', element: <CategoryDetailPage /> },
+            { path: 'categories', element: <CategoriesPage /> },
+            { path: 'categories/:categoryId', element: <CategoryDetailPage /> },
 
-          { path: 'delivery-partners', element: <DeliveryPartnersPage /> },
-          { path: 'delivery-partners/:deliveryPartnerId', element: <DeliveryPartnerDetailPage /> },
+            { path: 'delivery-partners', element: <DeliveryPartnersPage /> },
+            {
+              path: 'delivery-partners/:deliveryPartnerId',
+              element: <DeliveryPartnerDetailPage />,
+            },
 
-          { path: '*', element: <NotFoundError /> },
-        ],
-      },
-    ],
-  },
-], { basename: '/admin' })
+            { path: '*', element: <NotFoundError /> },
+          ],
+        },
+      ],
+    },
+  ],
+  { basename: '/admin' }
+)

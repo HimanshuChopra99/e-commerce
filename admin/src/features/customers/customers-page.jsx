@@ -16,15 +16,22 @@ import { customersColumns } from './components/customers-columns'
 /** Customers list page. */
 export function CustomersPage() {
   const dispatch = useDispatch()
-  const { items: customers = [], loading } = useSelector((state) => state.adminCustomers || {})
+  const { items: customers = [], loading } = useSelector(
+    (state) => state.adminCustomers || {}
+  )
 
   useEffect(() => {
     dispatch(fetchAdminCustomers({ limit: 100 }))
   }, [dispatch])
 
-  const active = customers.filter((c) => c.status === 'active' || !c.status).length
+  const active = customers.filter(
+    (c) => c.status === 'active' || !c.status
+  ).length
   const repeat = customers.filter((c) => (c.totalOrders || 0) > 1).length
-  const lifetimeValue = customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0)
+  const lifetimeValue = customers.reduce(
+    (sum, c) => sum + (c.totalSpent || 0),
+    0
+  )
   const avgLtv = customers.length ? lifetimeValue / customers.length : 0
 
   const stats = [
@@ -90,7 +97,7 @@ export function CustomersPage() {
         <StatCards stats={stats} />
 
         {loading && customers.length === 0 ? (
-          <div className="py-12 text-center text-sm font-medium text-muted-foreground">
+          <div className='py-12 text-center text-sm font-medium text-muted-foreground'>
             Loading customers from database...
           </div>
         ) : (
@@ -106,10 +113,16 @@ export function CustomersPage() {
                 .includes(term) ||
               (customer.email || '').toLowerCase().includes(term) ||
               (customer.phone || '').toLowerCase().includes(term) ||
-              (customer.shippingAddress?.city || '').toLowerCase().includes(term)
+              (customer.shippingAddress?.city || '')
+                .toLowerCase()
+                .includes(term)
             }
             filters={[
-              { columnId: 'status', title: 'Status', options: customerStatuses },
+              {
+                columnId: 'status',
+                title: 'Status',
+                options: customerStatuses,
+              },
               { columnId: 'tier', title: 'Tier', options: customerTiers },
             ]}
             bulkActions={(table) => <CustomersBulkActions table={table} />}

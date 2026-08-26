@@ -22,7 +22,9 @@ import { ordersColumns } from './components/orders-columns'
 /** Orders list page. */
 export function OrdersPage() {
   const dispatch = useDispatch()
-  const { items: orders = [], loading } = useSelector((state) => state.adminOrders || {})
+  const { items: orders = [], loading } = useSelector(
+    (state) => state.adminOrders || {}
+  )
 
   useEffect(() => {
     dispatch(fetchAdminOrders({ limit: 100 }))
@@ -66,11 +68,15 @@ export function OrdersPage() {
   const normalizedOrders = orders.map((o) => ({
     ...o,
     orderNumber: o.orderNumber || o.id,
-    customerName: o.customerName || o.user?.fullName || `${o.shippingAddress?.firstName || 'Guest'} ${o.shippingAddress?.lastName || ''}`.trim(),
+    customerName:
+      o.customerName ||
+      o.user?.fullName ||
+      `${o.shippingAddress?.firstName || 'Guest'} ${o.shippingAddress?.lastName || ''}`.trim(),
     customerEmail: o.customerEmail || o.email || o.user?.email || 'N/A',
     total: o.grandTotal || o.total || 0,
     placedAt: o.placedAt ? new Date(o.placedAt) : new Date(o.createdAt || 0),
-    paymentStatus: o.paymentStatus || (o.paymentMethod === 'cod' ? 'pending' : 'paid'),
+    paymentStatus:
+      o.paymentStatus || (o.paymentMethod === 'cod' ? 'pending' : 'paid'),
   }))
 
   return (
@@ -82,7 +88,8 @@ export function OrdersPage() {
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>Orders</h2>
             <p className='text-muted-foreground'>
-              {formatCurrency(revenue)} earned across {orders.length} orders from your website.
+              {formatCurrency(revenue)} earned across {orders.length} orders
+              from your website.
             </p>
           </div>
           <Button
@@ -96,7 +103,7 @@ export function OrdersPage() {
         <StatCards stats={stats} />
 
         {loading && orders.length === 0 ? (
-          <div className="py-12 text-center text-sm font-medium text-muted-foreground">
+          <div className='py-12 text-center text-sm font-medium text-muted-foreground'>
             Loading orders from database...
           </div>
         ) : (

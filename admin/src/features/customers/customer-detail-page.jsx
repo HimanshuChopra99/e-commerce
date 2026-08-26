@@ -153,14 +153,17 @@ export function CustomerDetailPage() {
   const history = allOrdersPool.filter((o) => {
     const oUserId = String(o.userId || o.user_id || '')
     const oCustId = String(o.customerId || o.customer_id || '')
-    const oEmail  = (o.customerEmail || o.customer_email || o.email || '').trim().toLowerCase()
+    const oEmail = (o.customerEmail || o.customer_email || o.email || '')
+      .trim()
+      .toLowerCase()
 
-    const targetId       = String(customer.id)
+    const targetId = String(customer.id)
     const targetPublicId = String(customer.publicId || '')
 
     const matchesId =
       (targetId && (oUserId === targetId || oCustId === targetId)) ||
-      (targetPublicId && (oUserId === targetPublicId || oCustId === targetPublicId))
+      (targetPublicId &&
+        (oUserId === targetPublicId || oCustId === targetPublicId))
 
     const matchesEmail =
       customer.email && customer.email !== 'n/a' && oEmail === customer.email
@@ -171,10 +174,14 @@ export function CustomerDetailPage() {
   const avgOrderValue =
     customer.avgOrderValue ??
     (history.length > 0
-      ? history.reduce((sum, o) => sum + Number(o.grandTotal ?? o.total ?? o.grand_total ?? 0), 0) / history.length
+      ? history.reduce(
+          (sum, o) =>
+            sum + Number(o.grandTotal ?? o.total ?? o.grand_total ?? 0),
+          0
+        ) / history.length
       : customer.totalOrders > 0
-      ? customer.totalSpent / customer.totalOrders
-      : 0)
+        ? customer.totalSpent / customer.totalOrders
+        : 0)
 
   // Favourite products by units bought
   const productTally = new Map()
@@ -208,7 +215,11 @@ export function CustomerDetailPage() {
       label: 'Total Spent',
       value: formatCurrency(
         history.length > 0
-          ? history.reduce((sum, o) => sum + Number(o.grandTotal ?? o.total ?? o.grand_total ?? 0), 0)
+          ? history.reduce(
+              (sum, o) =>
+                sum + Number(o.grandTotal ?? o.total ?? o.grand_total ?? 0),
+              0
+            )
           : customer.totalSpent
       ),
       icon: Wallet,
@@ -342,7 +353,9 @@ export function CustomerDetailPage() {
                             </TableCell>
                             <TableCell>
                               <PaymentStatusBadge
-                                status={order.paymentStatus || order.payment_status}
+                                status={
+                                  order.paymentStatus || order.payment_status
+                                }
                               />
                             </TableCell>
                             <TableCell>
@@ -350,7 +363,9 @@ export function CustomerDetailPage() {
                             </TableCell>
                             <TableCell className='text-end font-medium text-nowrap'>
                               {formatCurrency(
-                                order.grandTotal ?? order.grand_total ?? order.total
+                                order.grandTotal ??
+                                  order.grand_total ??
+                                  order.total
                               )}
                             </TableCell>
                           </TableRow>
@@ -449,8 +464,9 @@ export function CustomerDetailPage() {
                     {customer.shippingAddress.city},{' '}
                     {customer.shippingAddress.state}
                     <br />
-                    {customer.shippingAddress.zip || customer.shippingAddress.postal},{' '}
-                    {customer.shippingAddress.country}
+                    {customer.shippingAddress.zip ||
+                      customer.shippingAddress.postal}
+                    , {customer.shippingAddress.country}
                   </address>
                 </div>
               </CardContent>

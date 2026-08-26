@@ -1,36 +1,45 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { adminAuthApi, setAccessToken } from '../lib/api'
 
-export const loginAdmin = createAsyncThunk('adminAuth/login', async (credentials, { rejectWithValue }) => {
-  try {
-    const res = await adminAuthApi.login(credentials)
-    if (res.data?.accessToken) {
-      setAccessToken(res.data.accessToken)
+export const loginAdmin = createAsyncThunk(
+  'adminAuth/login',
+  async (credentials, { rejectWithValue }) => {
+    try {
+      const res = await adminAuthApi.login(credentials)
+      if (res.data?.accessToken) {
+        setAccessToken(res.data.accessToken)
+      }
+      return res.data
+    } catch (err) {
+      return rejectWithValue(err.message || 'Login failed')
     }
-    return res.data
-  } catch (err) {
-    return rejectWithValue(err.message || 'Login failed')
   }
-})
+)
 
-export const fetchAdminMe = createAsyncThunk('adminAuth/me', async (_, { rejectWithValue }) => {
-  try {
-    const res = await adminAuthApi.me()
-    return res.data
-  } catch (err) {
-    return rejectWithValue(err.message)
+export const fetchAdminMe = createAsyncThunk(
+  'adminAuth/me',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await adminAuthApi.me()
+      return res.data
+    } catch (err) {
+      return rejectWithValue(err.message)
+    }
   }
-})
+)
 
-export const logoutAdmin = createAsyncThunk('adminAuth/logout', async (_, { rejectWithValue }) => {
-  try {
-    await adminAuthApi.logout()
-    setAccessToken(null)
-  } catch (err) {
-    setAccessToken(null)
-    return rejectWithValue(err.message)
+export const logoutAdmin = createAsyncThunk(
+  'adminAuth/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      await adminAuthApi.logout()
+      setAccessToken(null)
+    } catch (err) {
+      setAccessToken(null)
+      return rejectWithValue(err.message)
+    }
   }
-})
+)
 
 const adminAuthSlice = createSlice({
   name: 'adminAuth',

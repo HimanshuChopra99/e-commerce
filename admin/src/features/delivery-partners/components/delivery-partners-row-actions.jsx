@@ -1,5 +1,13 @@
 import { useNavigate } from 'react-router-dom'
-import { Ban, Copy, Eye, Pencil, Phone, Trash2, MoreHorizontal } from 'lucide-react'
+import {
+  Ban,
+  Copy,
+  Eye,
+  Pencil,
+  Phone,
+  Trash2,
+  MoreHorizontal,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {

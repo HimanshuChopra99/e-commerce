@@ -36,7 +36,13 @@ export const COURIERS = ['BlueDart', 'Delhivery', 'FedEx', 'DHL', 'DTDC']
  * @param {function} props.onConfirm     - called with { courier, trackingNumber }
  * @param {boolean}  props.loading       - disables the confirm button while API call runs
  */
-export function OrderShippingDialog({ open, onOpenChange, orderCount = 1, onConfirm, loading }) {
+export function OrderShippingDialog({
+  open,
+  onOpenChange,
+  orderCount = 1,
+  onConfirm,
+  loading,
+}) {
   const [courier, setCourier] = useState('')
   const [trackingNumber, setTrackingNumber] = useState('')
   const [error, setError] = useState('')
@@ -49,7 +55,10 @@ export function OrderShippingDialog({ open, onOpenChange, orderCount = 1, onConf
       return
     }
     setError('')
-    onConfirm({ courier: courier || undefined, trackingNumber: trackingNumber.trim() })
+    onConfirm({
+      courier: courier || undefined,
+      trackingNumber: trackingNumber.trim(),
+    })
   }
 
   const handleOpenChange = (val) => {
@@ -80,14 +89,18 @@ export function OrderShippingDialog({ open, onOpenChange, orderCount = 1, onConf
         <div className='grid gap-4 py-2'>
           {/* Courier */}
           <div className='grid gap-1.5'>
-            <Label htmlFor='courier'>Courier <span className='text-muted-foreground'>(optional)</span></Label>
+            <Label htmlFor='courier'>
+              Courier <span className='text-muted-foreground'>(optional)</span>
+            </Label>
             <Select value={courier} onValueChange={setCourier}>
               <SelectTrigger id='courier'>
                 <SelectValue placeholder='Select courier…' />
               </SelectTrigger>
               <SelectContent>
                 {COURIERS.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -110,18 +123,22 @@ export function OrderShippingDialog({ open, onOpenChange, orderCount = 1, onConf
               autoFocus
               aria-invalid={!!error}
             />
-            {error && (
-              <p className='text-xs text-destructive'>{error}</p>
-            )}
+            {error && <p className='text-xs text-destructive'>{error}</p>}
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant='outline' onClick={() => handleOpenChange(false)} disabled={loading}>
+          <Button
+            variant='outline'
+            onClick={() => handleOpenChange(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button onClick={handleConfirm} disabled={loading}>
-            {loading ? 'Updating…' : `Mark ${orderCount > 1 ? `${orderCount} orders` : 'order'} as Shipped`}
+            {loading
+              ? 'Updating…'
+              : `Mark ${orderCount > 1 ? `${orderCount} orders` : 'order'} as Shipped`}
           </Button>
         </DialogFooter>
       </DialogContent>

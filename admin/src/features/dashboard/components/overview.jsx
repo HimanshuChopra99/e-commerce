@@ -14,7 +14,12 @@ export function Overview({ data = [] }) {
   // Normalize incoming data so Recharts always gets valid 'name' and 'total' keys
   const chartData = (data && data.length > 0 ? data : []).map((item) => {
     const val = Number(
-      item.total ?? item.revenue ?? item.grand_total ?? item.amount ?? item.value ?? 0
+      item.total ??
+        item.revenue ??
+        item.grand_total ??
+        item.amount ??
+        item.value ??
+        0
     )
     return {
       name: item.name ?? item.month ?? item.label ?? 'Month',
@@ -25,7 +30,10 @@ export function Overview({ data = [] }) {
 
   return (
     <ResponsiveContainer width='100%' height={350}>
-      <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <BarChart
+        data={chartData}
+        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+      >
         <CartesianGrid
           strokeDasharray='3 3'
           vertical={false}

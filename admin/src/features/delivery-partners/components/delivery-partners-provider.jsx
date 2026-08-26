@@ -24,7 +24,9 @@ export function DeliveryPartnersProvider({ children }) {
 export const useDeliveryPartners = () => {
   const ctx = React.useContext(DeliveryPartnersContext)
   if (!ctx) {
-    throw new Error('useDeliveryPartners has to be used within <DeliveryPartnersProvider>')
+    throw new Error(
+      'useDeliveryPartners has to be used within <DeliveryPartnersProvider>'
+    )
   }
   return ctx
 }

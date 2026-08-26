@@ -17,13 +17,13 @@ npm run dev
 
 Then open the URL it prints (usually http://localhost:5173).
 
-| Command          | What it does                          |
-| ---------------- | ------------------------------------- |
-| `npm run dev`    | Start the dev server with hot reload  |
-| `npm run build`  | Build for production into `dist/`     |
-| `npm run preview`| Preview the production build          |
-| `npm run lint`   | Check code for mistakes               |
-| `npm run format` | Auto-format all files with Prettier   |
+| Command           | What it does                         |
+| ----------------- | ------------------------------------ |
+| `npm run dev`     | Start the dev server with hot reload |
+| `npm run build`   | Build for production into `dist/`    |
+| `npm run preview` | Preview the production build         |
+| `npm run lint`    | Check code for mistakes              |
+| `npm run format`  | Auto-format all files with Prettier  |
 
 ---
 
@@ -85,18 +85,18 @@ Files ending in `-page.jsx` are screens listed in `src/router.jsx`.
 
 ## The pages
 
-| Page            | URL                     | What you can do                                                     |
-| --------------- | ----------------------- | ------------------------------------------------------------------- |
-| Dashboard       | `/`                     | Revenue, orders, customers and AOV, plus analytics and inventory tabs |
-| Products        | `/products`             | Search, filter and sort every shoe you sell                          |
-| Add Product     | `/products/new`         | Full form: images, price, size/stock grid, colours, category, tags   |
-| Product detail  | `/products/:id`         | Sales stats, stock per size, and orders containing that shoe         |
-| Orders          | `/orders`               | Every order with payment and delivery status                         |
-| Order detail    | `/orders/:id`           | Delivery timeline, items, totals, customer and address               |
-| Customers       | `/customers`            | Registered shoppers with order counts and lifetime spend             |
-| Customer detail | `/customers/:id`        | Full profile, complete order history, most-bought products           |
-| Categories      | `/categories`           | Create categories and see them as large cards                        |
-| Category detail | `/categories/:id`       | The products inside a category; add or remove them                   |
+| Page            | URL               | What you can do                                                       |
+| --------------- | ----------------- | --------------------------------------------------------------------- |
+| Dashboard       | `/`               | Revenue, orders, customers and AOV, plus analytics and inventory tabs |
+| Products        | `/products`       | Search, filter and sort every shoe you sell                           |
+| Add Product     | `/products/new`   | Full form: images, price, size/stock grid, colours, category, tags    |
+| Product detail  | `/products/:id`   | Sales stats, stock per size, and orders containing that shoe          |
+| Orders          | `/orders`         | Every order with payment and delivery status                          |
+| Order detail    | `/orders/:id`     | Delivery timeline, items, totals, customer and address                |
+| Customers       | `/customers`      | Registered shoppers with order counts and lifetime spend              |
+| Customer detail | `/customers/:id`  | Full profile, complete order history, most-bought products            |
+| Categories      | `/categories`     | Create categories and see them as large cards                         |
+| Category detail | `/categories/:id` | The products inside a category; add or remove them                    |
 
 ---
 
@@ -108,15 +108,15 @@ Everything brand-related is in **`src/config/brand.js`**:
 
 ```js
 export const brand = {
-  name: 'Kick',        // ← shows in the sidebar and page titles
+  name: 'Kick', // ← shows in the sidebar and page titles
   tagline: 'Footwear Store',
   supportEmail: 'support@Kick.com',
 }
 
 export const currency = {
-  code: 'USD',      // ← use 'INR' for rupees
-  symbol: '$',      // ← '₹'
-  locale: 'en-US',  // ← 'en-IN'
+  code: 'USD', // ← use 'INR' for rupees
+  symbol: '$', // ← '₹'
+  locale: 'en-US', // ← 'en-IN'
 }
 ```
 

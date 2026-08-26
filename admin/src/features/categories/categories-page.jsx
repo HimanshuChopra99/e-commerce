@@ -20,7 +20,9 @@ export function CategoriesPage() {
   }, [fetchCatalog])
 
   const counts = selectCategoryCounts(products)
-  const uncategorised = products.filter((p) => !p.categoryId && !p.category?.id).length
+  const uncategorised = products.filter(
+    (p) => !p.categoryId && !p.category?.id
+  ).length
 
   return (
     <>
@@ -78,7 +80,7 @@ export function CategoriesPage() {
 
         {/* Grid of category cards */}
         {isLoading && categories.length === 0 ? (
-          <div className="py-12 text-center text-sm font-medium text-muted-foreground">
+          <div className='py-12 text-center text-sm font-medium text-muted-foreground'>
             Loading categories from database...
           </div>
         ) : categories.length === 0 ? (
@@ -98,14 +100,17 @@ export function CategoriesPage() {
           <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
             {categories.map((category) => {
               const inCategory = products.filter(
-                (p) => p.categoryId === category.id || p.category?.id === category.id
+                (p) =>
+                  p.categoryId === category.id || p.category?.id === category.id
               )
               return (
                 <CategoryCard
                   key={category.id}
                   category={category}
                   productCount={counts.get(category.id) ?? 0}
-                  previewImages={inCategory.map((p) => p.image || (p.images && p.images[0]))}
+                  previewImages={inCategory.map(
+                    (p) => p.image || (p.images && p.images[0])
+                  )}
                 />
               )
             })}

@@ -40,7 +40,9 @@ import { RecentOrders } from './components/recent-orders'
 
 export function DashboardPage() {
   const dispatch = useDispatch()
-  const { overview, loading } = useSelector((state) => state.adminDashboard || {})
+  const { overview, loading } = useSelector(
+    (state) => state.adminDashboard || {}
+  )
 
   useEffect(() => {
     dispatch(fetchOverview())
@@ -134,7 +136,7 @@ export function DashboardPage() {
         </div>
 
         {loading && !overview ? (
-          <div className="py-12 text-center text-sm font-medium text-muted-foreground">
+          <div className='py-12 text-center text-sm font-medium text-muted-foreground'>
             Loading dashboard data from database...
           </div>
         ) : (
@@ -265,7 +267,9 @@ export function DashboardPage() {
                     <Package className='h-4 w-4 text-muted-foreground' />
                   </CardHeader>
                   <CardContent>
-                    <div className='text-2xl font-bold'>{s.totalProducts || 0}</div>
+                    <div className='text-2xl font-bold'>
+                      {s.totalProducts || 0}
+                    </div>
                     <p className='text-xs text-muted-foreground'>
                       {s.activeProducts || 0} live on your site
                     </p>
@@ -299,14 +303,23 @@ export function DashboardPage() {
                 </Card>
                 <Card>
                   <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                    <CardTitle className='text-sm font-medium'>Returns</CardTitle>
+                    <CardTitle className='text-sm font-medium'>
+                      Returns
+                    </CardTitle>
                     <TrendingDown className='h-4 w-4 text-muted-foreground' />
                   </CardHeader>
                   <CardContent>
-                    <div className='text-2xl font-bold'>{s.returnedOrders || 0}</div>
+                    <div className='text-2xl font-bold'>
+                      {s.returnedOrders || 0}
+                    </div>
                     <p className='text-xs text-muted-foreground'>
-                      {s.totalOrders ? (((s.returnedOrders || 0) / s.totalOrders) * 100).toFixed(1) : 0}% of
-                      all orders
+                      {s.totalOrders
+                        ? (
+                            ((s.returnedOrders || 0) / s.totalOrders) *
+                            100
+                          ).toFixed(1)
+                        : 0}
+                      % of all orders
                     </p>
                   </CardContent>
                 </Card>
@@ -333,7 +346,10 @@ export function DashboardPage() {
                           className='flex items-center gap-3 rounded-md border p-3 transition-colors hover:bg-muted'
                         >
                           <ProductImage
-                            src={product.image || (product.images && product.images[0])}
+                            src={
+                              product.image ||
+                              (product.images && product.images[0])
+                            }
                             alt={product.name}
                             className='size-10'
                           />

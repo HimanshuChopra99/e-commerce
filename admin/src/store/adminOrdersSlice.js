@@ -1,23 +1,29 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { adminOrdersApi } from '../lib/api'
 
-export const fetchAdminOrders = createAsyncThunk('adminOrders/list', async (params, { rejectWithValue }) => {
-  try {
-    const res = await adminOrdersApi.list(params)
-    return res
-  } catch (err) {
-    return rejectWithValue(err.message || 'Failed to fetch orders')
+export const fetchAdminOrders = createAsyncThunk(
+  'adminOrders/list',
+  async (params, { rejectWithValue }) => {
+    try {
+      const res = await adminOrdersApi.list(params)
+      return res
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to fetch orders')
+    }
   }
-})
+)
 
-export const fetchAdminOrderById = createAsyncThunk('adminOrders/getOne', async (id, { rejectWithValue }) => {
-  try {
-    const res = await adminOrdersApi.getOne(id)
-    return res.data
-  } catch (err) {
-    return rejectWithValue(err.message || 'Order not found')
+export const fetchAdminOrderById = createAsyncThunk(
+  'adminOrders/getOne',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await adminOrdersApi.getOne(id)
+      return res.data
+    } catch (err) {
+      return rejectWithValue(err.message || 'Order not found')
+    }
   }
-})
+)
 
 /** Single order status update — passes optional extra fields (courier, trackingNumber) */
 export const updateOrderStatus = createAsyncThunk(
@@ -38,11 +44,15 @@ export const bulkUpdateOrderStatus = createAsyncThunk(
   async ({ ids, status, extra = {} }, { rejectWithValue }) => {
     try {
       const results = await Promise.all(
-        ids.map((id) => adminOrdersApi.updateStatus(id, status, extra).then((r) => r.data))
+        ids.map((id) =>
+          adminOrdersApi.updateStatus(id, status, extra).then((r) => r.data)
+        )
       )
       return results
     } catch (err) {
-      return rejectWithValue(err.message || 'Failed to bulk update order status')
+      return rejectWithValue(
+        err.message || 'Failed to bulk update order status'
+      )
     }
   }
 )
@@ -61,7 +71,8 @@ const adminOrdersSlice = createSlice({
       state.current = null
     },
     orderStatusUpdated: (state, action) => {
-      const { orderId, status, trackingNumber, partnerName } = action.payload || {}
+      const { orderId, status, trackingNumber, partnerName } =
+        action.payload || {}
       if (!orderId || !status) return
 
       const matches = (o) =>
@@ -93,7 +104,12 @@ const adminOrdersSlice = createSlice({
       .addCase(fetchAdminOrders.fulfilled, (s, a) => {
         s.loading = false
         s.items = a.payload.data || []
-        s.meta = a.payload.meta || { page: 1, limit: 10, total: 0, totalPages: 1 }
+        s.meta = a.payload.meta || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 1,
+        }
       })
       .addCase(fetchAdminOrders.rejected, (s, a) => {
         s.loading = false
@@ -108,18 +124,22 @@ const adminOrdersSlice = createSlice({
         if (!a.payload) return
         if (
           s.current &&
-          (s.current.id === a.payload.id || s.current.orderNumber === a.payload.orderNumber)
+          (s.current.id === a.payload.id ||
+            s.current.orderNumber === a.payload.orderNumber)
         ) {
           s.current.status = a.payload.status
-          if (a.payload.trackingNumber) s.current.trackingNumber = a.payload.trackingNumber
+          if (a.payload.trackingNumber)
+            s.current.trackingNumber = a.payload.trackingNumber
           if (a.payload.courier) s.current.courier = a.payload.courier
         }
         const found = s.items.find(
-          (i) => i.id === a.payload.id || i.orderNumber === a.payload.orderNumber
+          (i) =>
+            i.id === a.payload.id || i.orderNumber === a.payload.orderNumber
         )
         if (found) {
           found.status = a.payload.status
-          if (a.payload.trackingNumber) found.trackingNumber = a.payload.trackingNumber
+          if (a.payload.trackingNumber)
+            found.trackingNumber = a.payload.trackingNumber
           if (a.payload.courier) found.courier = a.payload.courier
         }
       })
@@ -133,15 +153,18 @@ const adminOrdersSlice = createSlice({
           )
           if (found) {
             found.status = payload.status
-            if (payload.trackingNumber) found.trackingNumber = payload.trackingNumber
+            if (payload.trackingNumber)
+              found.trackingNumber = payload.trackingNumber
             if (payload.courier) found.courier = payload.courier
           }
           if (
             s.current &&
-            (s.current.id === payload.id || s.current.orderNumber === payload.orderNumber)
+            (s.current.id === payload.id ||
+              s.current.orderNumber === payload.orderNumber)
           ) {
             s.current.status = payload.status
-            if (payload.trackingNumber) s.current.trackingNumber = payload.trackingNumber
+            if (payload.trackingNumber)
+              s.current.trackingNumber = payload.trackingNumber
             if (payload.courier) s.current.courier = payload.courier
           }
         })
@@ -149,5 +172,6 @@ const adminOrdersSlice = createSlice({
   },
 })
 
-export const { clearCurrentAdminOrder, orderStatusUpdated } = adminOrdersSlice.actions
+export const { clearCurrentAdminOrder, orderStatusUpdated } =
+  adminOrdersSlice.actions
 export default adminOrdersSlice.reducer

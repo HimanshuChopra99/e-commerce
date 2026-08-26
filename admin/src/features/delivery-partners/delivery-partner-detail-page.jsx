@@ -66,8 +66,12 @@ export function DeliveryPartnerDetailPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  const reduxPartners = useSelector((state) => state.adminDeliveryPartners?.items || [])
-  const reduxCurrent = useSelector((state) => state.adminDeliveryPartners?.current)
+  const reduxPartners = useSelector(
+    (state) => state.adminDeliveryPartners?.items || []
+  )
+  const reduxCurrent = useSelector(
+    (state) => state.adminDeliveryPartners?.current
+  )
 
   const [orders, setOrders] = useState([])
   const [ordersLoading, setOrdersLoading] = useState(true)
@@ -106,13 +110,16 @@ export function DeliveryPartnerDetailPage() {
       // shows only one partner anyway.
       const incomingId = data.partnerPublicId
       if (!incomingId || incomingId === deliveryPartnerId) {
-        if (data.lat && data.lng) setLiveLocation({ lat: data.lat, lng: data.lng })
-        else if (data.latitude && data.longitude) setLiveLocation({ lat: data.latitude, lng: data.longitude })
+        if (data.lat && data.lng)
+          setLiveLocation({ lat: data.lat, lng: data.lng })
+        else if (data.latitude && data.longitude)
+          setLiveLocation({ lat: data.latitude, lng: data.longitude })
       }
     }
 
     const onPartnerLocation = (data) => {
-      if (data.lat && data.lng) setLiveLocation({ lat: data.lat, lng: data.lng })
+      if (data.lat && data.lng)
+        setLiveLocation({ lat: data.lat, lng: data.lng })
     }
 
     socket.on('receive-location', onReceiveLocation)
@@ -125,7 +132,9 @@ export function DeliveryPartnerDetailPage() {
 
   // 1. Search Redux store first (list or current), matching public ids.
   let rawPartner =
-    reduxCurrent && String(reduxCurrent.publicId || reduxCurrent.id) === String(deliveryPartnerId)
+    reduxCurrent &&
+    String(reduxCurrent.publicId || reduxCurrent.id) ===
+      String(deliveryPartnerId)
       ? reduxCurrent
       : reduxPartners.find(
           (p) =>
@@ -139,8 +148,14 @@ export function DeliveryPartnerDetailPage() {
         ...rawPartner,
         id: rawPartner.id || rawPartner.publicId,
         publicId: rawPartner.publicId || rawPartner.id,
-        firstName: rawPartner.firstName || rawPartner.fullName?.split(' ')[0] || 'Partner',
-        lastName: rawPartner.lastName || rawPartner.fullName?.split(' ').slice(1).join(' ') || '',
+        firstName:
+          rawPartner.firstName ||
+          rawPartner.fullName?.split(' ')[0] ||
+          'Partner',
+        lastName:
+          rawPartner.lastName ||
+          rawPartner.fullName?.split(' ').slice(1).join(' ') ||
+          '',
         email: (rawPartner.email || '').trim().toLowerCase(),
         phone: rawPartner.phone || 'N/A',
         vehicleType: rawPartner.vehicleType || 'bike',
@@ -215,7 +230,9 @@ export function DeliveryPartnerDetailPage() {
         updateAdminDeliveryPartnerStatus({ id: partner.publicId, status: next })
       ).unwrap()
       dispatch(fetchAdminDeliveryPartnerById(deliveryPartnerId))
-      toast.success(`${name} has been ${next === 'blocked' ? 'blocked' : 'reactivated'}.`)
+      toast.success(
+        `${name} has been ${next === 'blocked' ? 'blocked' : 'reactivated'}.`
+      )
     } catch (error) {
       toast.error(error || 'Unable to update status.')
     }
@@ -240,7 +257,10 @@ export function DeliveryPartnerDetailPage() {
         <div className='flex flex-wrap items-start justify-between gap-3'>
           <div className='flex items-start gap-3'>
             <Button variant='outline' size='icon' asChild>
-              <Link to='/delivery-partners' aria-label='Back to delivery partners'>
+              <Link
+                to='/delivery-partners'
+                aria-label='Back to delivery partners'
+              >
                 <ArrowLeft />
               </Link>
             </Button>
@@ -253,9 +273,14 @@ export function DeliveryPartnerDetailPage() {
                   <h2 className='text-2xl font-bold tracking-tight'>{name}</h2>
                   <Badge
                     variant='outline'
-                    className={cn('gap-1 capitalize', vehicleTypeStyles.get(partner.vehicleType))}
+                    className={cn(
+                      'gap-1 capitalize',
+                      vehicleTypeStyles.get(partner.vehicleType)
+                    )}
                   >
-                    {vehicleMeta?.icon && <vehicleMeta.icon className='size-3' />}
+                    {vehicleMeta?.icon && (
+                      <vehicleMeta.icon className='size-3' />
+                    )}
                     {partner.vehicleType}
                   </Badge>
                   <Badge
@@ -278,7 +303,9 @@ export function DeliveryPartnerDetailPage() {
           <div className='flex flex-wrap gap-2'>
             <Button
               variant='outline'
-              onClick={() => toast.success(`Email drafted to ${partner.email}.`)}
+              onClick={() =>
+                toast.success(`Email drafted to ${partner.email}.`)
+              }
             >
               <Mail /> Email partner
             </Button>
@@ -369,11 +396,15 @@ export function DeliveryPartnerDetailPage() {
                               {formatDate(order.placedAt || order.placed_at)}
                             </TableCell>
                             <TableCell className='text-nowrap'>
-                              {order.customerName || order.customer?.name || '—'}
+                              {order.customerName ||
+                                order.customer?.name ||
+                                '—'}
                             </TableCell>
                             <TableCell>
                               <PaymentStatusBadge
-                                status={order.paymentStatus || order.payment_status}
+                                status={
+                                  order.paymentStatus || order.payment_status
+                                }
                               />
                             </TableCell>
                             <TableCell>
@@ -381,7 +412,9 @@ export function DeliveryPartnerDetailPage() {
                             </TableCell>
                             <TableCell className='text-end font-medium text-nowrap'>
                               {formatCurrency(
-                                order.grandTotal ?? order.grand_total ?? order.total
+                                order.grandTotal ??
+                                  order.grand_total ??
+                                  order.total
                               )}
                             </TableCell>
                           </TableRow>
@@ -413,7 +446,9 @@ export function DeliveryPartnerDetailPage() {
                   {vehicleMeta?.icon && (
                     <vehicleMeta.icon className='size-4 shrink-0 text-muted-foreground' />
                   )}
-                  <span className='capitalize'>{partner.vehicleType} courier</span>
+                  <span className='capitalize'>
+                    {partner.vehicleType} courier
+                  </span>
                 </div>
                 <div className='flex items-center gap-2'>
                   <CalendarDays className='size-4 shrink-0 text-muted-foreground' />
@@ -431,7 +466,11 @@ export function DeliveryPartnerDetailPage() {
                         : 'bg-neutral-300/40 border-neutral-300'
                     )}
                   >
-                    {partner.isOnline ? <Wifi className='size-3' /> : <WifiOff className='size-3' />}
+                    {partner.isOnline ? (
+                      <Wifi className='size-3' />
+                    ) : (
+                      <WifiOff className='size-3' />
+                    )}
                     {partner.isOnline ? 'Online' : 'Offline'}
                   </Badge>
                 </div>
@@ -441,9 +480,7 @@ export function DeliveryPartnerDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Current location</CardTitle>
-                <CardDescription>
-                  Last reported GPS position.
-                </CardDescription>
+                <CardDescription>Last reported GPS position.</CardDescription>
               </CardHeader>
               <CardContent>
                 {(() => {

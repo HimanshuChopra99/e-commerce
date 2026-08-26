@@ -16,14 +16,14 @@ export function ProtectedRoute() {
 
   if (!initialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm font-medium text-muted-foreground">
+      <div className='min-h-screen flex items-center justify-center text-sm font-medium text-muted-foreground'>
         Verifying admin session...
       </div>
     )
   }
 
   if (initialized && (!user || user.role !== 'admin')) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to='/login' state={{ from: location }} replace />
   }
 
   return <Outlet />

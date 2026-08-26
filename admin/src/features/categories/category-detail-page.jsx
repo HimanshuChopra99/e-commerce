@@ -80,7 +80,9 @@ export function CategoryDetailPage() {
     try {
       await deleteCategory(category.id)
       setDeleteOpen(false)
-      toast.success(`"${category.name}" deleted. Its products are now uncategorised.`)
+      toast.success(
+        `"${category.name}" deleted. Its products are now uncategorised.`
+      )
       navigate('/categories')
     } catch (error) {
       toast.error(error.message || 'Unable to delete this category.')
@@ -270,10 +272,18 @@ export function CategoryDetailPage() {
                             title='Remove from category'
                             onClick={async () => {
                               try {
-                                await removeProductFromCategory(category.id, product.id)
-                                toast.success(`"${product.name}" removed from ${category.name}.`)
+                                await removeProductFromCategory(
+                                  category.id,
+                                  product.id
+                                )
+                                toast.success(
+                                  `"${product.name}" removed from ${category.name}.`
+                                )
                               } catch (error) {
-                                toast.error(error.message || 'Unable to remove this product.')
+                                toast.error(
+                                  error.message ||
+                                    'Unable to remove this product.'
+                                )
                               }
                             }}
                           >

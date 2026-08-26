@@ -81,7 +81,7 @@ export const productsColumns = [
     id: 'category',
     accessorFn: (row) =>
       typeof row.category === 'object' && row.category !== null
-        ? row.category.name ?? row.category.slug
+        ? (row.category.name ?? row.category.slug)
         : row.category,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Category' />

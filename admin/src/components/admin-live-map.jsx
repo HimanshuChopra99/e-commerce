@@ -9,7 +9,14 @@
  *  - Continuous solid line route (no dashed/dotted lines)
  */
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet'
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polyline,
+  Popup,
+  useMap,
+} from 'react-leaflet'
 import L from 'leaflet'
 import { adminTracker } from '@/services/admin-tracker'
 import 'leaflet/dist/leaflet.css'
@@ -107,14 +114,23 @@ function MapController({ partnerPos, destPos }) {
  * @param {{ lat: number|null, lng: number|null, address: string }} props.pickupAddress
  * @param {string}  props.className
  */
-export function AdminLiveMap({ partnerPos, phase, shippingAddress, pickupAddress, className = '' }) {
+export function AdminLiveMap({
+  partnerPos,
+  phase,
+  shippingAddress,
+  pickupAddress,
+  className = '',
+}) {
   const [route, setRoute] = useState([])
   const routeKeyRef = useRef(null)
 
   // Live Warehouse Position obtained via browser geolocation
   const initialWLat = Number(pickupAddress?.lat ?? DEFAULT_WAREHOUSE_LAT)
   const initialWLng = Number(pickupAddress?.lng ?? DEFAULT_WAREHOUSE_LNG)
-  const [liveWarehousePos, setLiveWarehousePos] = useState([initialWLat, initialWLng])
+  const [liveWarehousePos, setLiveWarehousePos] = useState([
+    initialWLat,
+    initialWLng,
+  ])
 
   const warehouseLabel = pickupAddress?.address || 'KICKS Main Hub'
 
@@ -171,18 +187,29 @@ export function AdminLiveMap({ partnerPos, phase, shippingAddress, pickupAddress
     })
   }, [partnerPos, currentDestPos])
 
-  const dropoffLabel = [shippingAddress?.city, shippingAddress?.state].filter(Boolean).join(', ') || 'Customer'
+  const dropoffLabel =
+    [shippingAddress?.city, shippingAddress?.state]
+      .filter(Boolean)
+      .join(', ') || 'Customer'
 
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-border ${className}`}>
+    <div
+      className={`relative overflow-hidden rounded-xl border border-border ${className}`}
+    >
       {/* Phase indicator chip in BLUE for Phase 1, Green for Phase 2 */}
       {phase && (
         <div
           className='absolute top-3 left-3 z-[1000] flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-white shadow-md backdrop-blur-sm'
-          style={{ background: isWarehousePhase ? 'rgba(37,99,235,0.92)' : 'rgba(16,185,129,0.92)' }}
+          style={{
+            background: isWarehousePhase
+              ? 'rgba(37,99,235,0.92)'
+              : 'rgba(16,185,129,0.92)',
+          }}
         >
           <span className='h-2 w-2 animate-pulse rounded-full bg-white' />
-          {isWarehousePhase ? '📦 Heading to Warehouse' : '🛵 Delivering to Customer'}
+          {isWarehousePhase
+            ? '📦 Heading to Warehouse'
+            : '🛵 Delivering to Customer'}
         </div>
       )}
 
@@ -232,7 +259,8 @@ export function AdminLiveMap({ partnerPos, phase, shippingAddress, pickupAddress
               <div className='font-semibold text-xs'>
                 🏪 {warehouseLabel} (Warehouse Hub)
                 <div className='text-[10px] text-muted-foreground mt-0.5'>
-                  {liveWarehousePos[0].toFixed(4)}, {liveWarehousePos[1].toFixed(4)}
+                  {liveWarehousePos[0].toFixed(4)},{' '}
+                  {liveWarehousePos[1].toFixed(4)}
                 </div>
               </div>
             </Popup>

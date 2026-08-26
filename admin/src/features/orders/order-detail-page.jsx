@@ -15,7 +15,11 @@ import {
 import { toast } from 'sonner'
 import { fetchAdminOrders, updateOrderStatus } from '@/store/adminOrdersSlice'
 import { adminTracker } from '@/services/admin-tracker'
-import { getOrderById, orders as seedOrders, products as seedProducts } from '@/data/seed'
+import {
+  getOrderById,
+  orders as seedOrders,
+  products as seedProducts,
+} from '@/data/seed'
 import { useCatalogStore } from '@/stores/catalog-store'
 import { formatCurrency, formatDateTime } from '@/config/brand'
 import { cn } from '@/lib/utils'
@@ -101,10 +105,16 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
   if (Array.isArray(rawItems) && rawItems.length > 0) {
     return rawItems.map((item, idx) => {
       const price = Number(
-        item.price ?? item.unit_price ?? item.unitPrice ?? item.unitPriceAmount ?? 0
+        item.price ??
+          item.unit_price ??
+          item.unitPrice ??
+          item.unitPriceAmount ??
+          0
       )
       const quantity = Number(item.quantity ?? item.qty ?? 1)
-      const lineTotal = Number(item.lineTotal ?? item.line_total ?? price * quantity)
+      const lineTotal = Number(
+        item.lineTotal ?? item.line_total ?? price * quantity
+      )
 
       let img = item.image ?? item.productImage ?? item.product_image
       if (Array.isArray(img)) img = img[0]
@@ -118,10 +128,18 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
 
       return {
         id: item.id ?? `item-${idx}`,
-        productId: item.productId ?? item.product_id ?? item.id ?? `prod-${idx}`,
-        name: item.name ?? item.productName ?? item.product_name ?? item.title ?? 'KICK Product',
+        productId:
+          item.productId ?? item.product_id ?? item.id ?? `prod-${idx}`,
+        name:
+          item.name ??
+          item.productName ??
+          item.product_name ??
+          item.title ??
+          'KICK Product',
         sku: item.sku ?? item.productSku ?? item.product_sku ?? 'KICK-SKU',
-        image: img || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
+        image:
+          img ||
+          'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
         size: item.size ?? '42',
         color: item.color ?? 'Black',
         quantity,
@@ -133,16 +151,23 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
 
   const seedMatch = seedOrders.find(
     (so) =>
-      String(so.orderNumber) === String(rawOrder.orderNumber || rawOrder.order_number) ||
+      String(so.orderNumber) ===
+        String(rawOrder.orderNumber || rawOrder.order_number) ||
       String(so.id) === String(rawOrder.id)
   )
-  if (seedMatch && Array.isArray(seedMatch.items) && seedMatch.items.length > 0) {
+  if (
+    seedMatch &&
+    Array.isArray(seedMatch.items) &&
+    seedMatch.items.length > 0
+  ) {
     return normalizeOrderItems(seedMatch, catalogProducts)
   }
 
   const pool = catalogProducts.length > 0 ? catalogProducts : seedProducts
   if (pool && pool.length > 0) {
-    const rawIdStr = String(rawOrder.id || rawOrder.orderNumber || rawOrder.order_number || '1')
+    const rawIdStr = String(
+      rawOrder.id || rawOrder.orderNumber || rawOrder.order_number || '1'
+    )
     const orderNum = parseInt(rawIdStr.replace(/\D/g, '') || '1', 10)
 
     const p1 = pool[orderNum % pool.length]
@@ -150,7 +175,7 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
 
     const qty1 = 1 + (orderNum % 2)
     const price1 = Number(p1.price || 120)
-    const img1 = Array.isArray(p1.images) ? p1.images[0] : (p1.image || p1.images)
+    const img1 = Array.isArray(p1.images) ? p1.images[0] : p1.image || p1.images
 
     const generated = [
       {
@@ -158,7 +183,9 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
         productId: p1.id,
         name: p1.name,
         sku: p1.sku,
-        image: img1 || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
+        image:
+          img1 ||
+          'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
         size: String(39 + (orderNum % 7)),
         color: Array.isArray(p1.colors) ? p1.colors[0] : 'Black',
         quantity: qty1,
@@ -170,15 +197,21 @@ function normalizeOrderItems(rawOrder, catalogProducts = []) {
     if (orderNum % 3 === 0 && p2) {
       const qty2 = 1
       const price2 = Number(p2.price || 95)
-      const img2 = Array.isArray(p2.images) ? p2.images[0] : (p2.image || p2.images)
+      const img2 = Array.isArray(p2.images)
+        ? p2.images[0]
+        : p2.image || p2.images
       generated.push({
         id: `gen-2-${orderNum}`,
         productId: p2.id,
         name: p2.name,
         sku: p2.sku,
-        image: img2 || 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80',
+        image:
+          img2 ||
+          'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80',
         size: String(40 + (orderNum % 5)),
-        color: Array.isArray(p2.colors) ? p2.colors[1] ?? p2.colors[0] : 'White',
+        color: Array.isArray(p2.colors)
+          ? (p2.colors[1] ?? p2.colors[0])
+          : 'White',
         quantity: qty2,
         price: price2,
         lineTotal: price2 * qty2,
@@ -257,7 +290,9 @@ export function OrderDetailPage() {
     }
 
     loadOrderDetail()
-    return () => { isMounted = false }
+    return () => {
+      isMounted = false
+    }
   }, [orderId, dispatch, reduxOrders.length])
 
   // Resolve raw order & effective status for top-level geolocation hook
@@ -280,11 +315,16 @@ export function OrderDetailPage() {
     )
 
   const rawEffectiveStatus = localStatus ?? rawOrder?.status ?? 'pending'
-  const rawEffectiveTracking = localTracking ?? rawOrder?.trackingNumber ?? rawOrder?.tracking_number
+  const rawEffectiveTracking =
+    localTracking ?? rawOrder?.trackingNumber ?? rawOrder?.tracking_number
 
   // ── Real-time socket subscription for this order ─────────────────────────
   const rawOrderId = rawOrder?.id || rawOrder?.publicId || rawOrder?.public_id
-  const { partnerPos, phase: livePhase, liveStatus: socketStatus } = useAdminOrderSocket({
+  const {
+    partnerPos,
+    phase: livePhase,
+    liveStatus: socketStatus,
+  } = useAdminOrderSocket({
     orderId: rawOrderId,
     trackingNumber: rawEffectiveTracking,
     initialStatus: rawEffectiveStatus,
@@ -322,7 +362,10 @@ export function OrderDetailPage() {
   useEffect(() => {
     if (effectiveStatus === 'shipped' && effectiveTracking) {
       adminTracker.startTracking(effectiveTracking)
-    } else if (effectiveStatus === 'delivered' || effectiveStatus === 'cancelled') {
+    } else if (
+      effectiveStatus === 'delivered' ||
+      effectiveStatus === 'cancelled'
+    ) {
       if (effectiveTracking) adminTracker.stopTracking(effectiveTracking)
     }
   }, [effectiveStatus, effectiveTracking])
@@ -352,29 +395,48 @@ export function OrderDetailPage() {
   const calculatedSubtotal = items.reduce((sum, i) => sum + i.lineTotal, 0)
   const rawSubtotal = Number(rawOrder.subtotal || rawOrder.sub_total || 0)
   const subtotal = rawSubtotal > 0 ? rawSubtotal : calculatedSubtotal
-  const shipping = Number(rawOrder.shippingTotal ?? rawOrder.shipping_total ?? rawOrder.shipping ?? 0)
+  const shipping = Number(
+    rawOrder.shippingTotal ?? rawOrder.shipping_total ?? rawOrder.shipping ?? 0
+  )
   const discount = Number(rawOrder.discount || 0)
-  const rawTax = Number(rawOrder.taxTotal ?? rawOrder.tax_total ?? rawOrder.tax ?? 0)
+  const rawTax = Number(
+    rawOrder.taxTotal ?? rawOrder.tax_total ?? rawOrder.tax ?? 0
+  )
   const tax = rawTax > 0 ? rawTax : Number((subtotal * 0.08).toFixed(2))
-  const rawTotal = Number(rawOrder.grandTotal ?? rawOrder.grand_total ?? rawOrder.total ?? 0)
-  const grandTotal = rawTotal > 0 ? rawTotal : Number((subtotal + shipping + tax - discount).toFixed(2))
+  const rawTotal = Number(
+    rawOrder.grandTotal ?? rawOrder.grand_total ?? rawOrder.total ?? 0
+  )
+  const grandTotal =
+    rawTotal > 0
+      ? rawTotal
+      : Number((subtotal + shipping + tax - discount).toFixed(2))
 
   const order = {
     ...rawOrder,
     id: rawOrder.id,
-    orderNumber: rawOrder.orderNumber || rawOrder.order_number || `#${rawOrder.id}`,
+    orderNumber:
+      rawOrder.orderNumber || rawOrder.order_number || `#${rawOrder.id}`,
     status: effectiveStatus,
     trackingNumber: effectiveTracking,
     courier: localCourier ?? rawOrder.courier ?? 'FedEx',
-    paymentStatus: rawOrder.paymentStatus || rawOrder.payment_status || 'pending',
+    paymentStatus:
+      rawOrder.paymentStatus || rawOrder.payment_status || 'pending',
     paymentMethod: rawOrder.paymentMethod || rawOrder.payment_method || 'card',
     placedAt: rawOrder.placedAt || rawOrder.placed_at || rawOrder.createdAt,
     updatedAt: rawOrder.updatedAt || rawOrder.updated_at || rawOrder.placedAt,
     deliveredAt: rawOrder.deliveredAt || rawOrder.delivered_at,
-    customerId: rawOrder.customerId || rawOrder.customer_id || rawOrder.userId || rawOrder.user_id,
+    customerId:
+      rawOrder.customerId ||
+      rawOrder.customer_id ||
+      rawOrder.userId ||
+      rawOrder.user_id,
     customerName: rawOrder.customerName || rawOrder.customer_name || 'Customer',
     customerEmail: rawOrder.customerEmail || rawOrder.customer_email || 'N/A',
-    customerPhone: rawOrder.customerPhone || rawOrder.customer_phone || rawOrder.shipping_phone || 'N/A',
+    customerPhone:
+      rawOrder.customerPhone ||
+      rawOrder.customer_phone ||
+      rawOrder.shipping_phone ||
+      'N/A',
     subtotal,
     shipping,
     tax,
@@ -400,17 +462,30 @@ export function OrderDetailPage() {
   // ── Handlers ─────────────────────────────────────────────────────────────
   const doStatusUpdate = async (status, extra = {}) => {
     // If order is ready_for_pickup or assigned or shipping, prevent admin from manually triggering driver-only statuses
-    if (DRIVER_DRIVEN_STATUSES.includes(status) && (order.status === 'ready_for_pickup' || order.status === 'assigned' || order.status === 'shipping')) {
-      toast.info(`"${orderStatusLabels.get(status) || status}" is updated automatically by the delivery partner.`)
+    if (
+      DRIVER_DRIVEN_STATUSES.includes(status) &&
+      (order.status === 'ready_for_pickup' ||
+        order.status === 'assigned' ||
+        order.status === 'shipping')
+    ) {
+      toast.info(
+        `"${orderStatusLabels.get(status) || status}" is updated automatically by the delivery partner.`
+      )
       return
     }
 
     setStatusUpdating(true)
     try {
-      const result = await dispatch(updateOrderStatus({ id: order.id, status, extra }))
+      const result = await dispatch(
+        updateOrderStatus({ id: order.id, status, extra })
+      )
       if (updateOrderStatus.fulfilled.match(result)) {
         const updated = result.payload
-        const finalTracking = extra.trackingNumber || updated?.trackingNumber || updated?.tracking_number || effectiveTracking
+        const finalTracking =
+          extra.trackingNumber ||
+          updated?.trackingNumber ||
+          updated?.tracking_number ||
+          effectiveTracking
         setLocalStatus(status)
         if (extra.trackingNumber || updated?.trackingNumber) {
           setLocalTracking(extra.trackingNumber || updated?.trackingNumber)
@@ -440,7 +515,9 @@ export function OrderDetailPage() {
   const onStepClick = (step) => {
     if (step === order.status || statusUpdating) return
     if (DRIVER_DRIVEN_STATUSES.includes(step)) {
-      toast.info(`"${orderStatusLabels.get(step) || step}" is updated automatically by the delivery partner.`)
+      toast.info(
+        `"${orderStatusLabels.get(step) || step}" is updated automatically by the delivery partner.`
+      )
       return
     }
     doStatusUpdate(step)
@@ -512,7 +589,9 @@ export function OrderDetailPage() {
             {isCancelled || isReturned ? (
               <div className='flex items-center gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-4'>
                 {(() => {
-                  const meta = orderStatuses.find((s) => s.value === order.status)
+                  const meta = orderStatuses.find(
+                    (s) => s.value === order.status
+                  )
                   const Icon = meta?.icon ?? Truck
                   return <Icon className='size-5 text-destructive' />
                 })()}
@@ -534,17 +613,19 @@ export function OrderDetailPage() {
                     const done = idx <= currentStep
                     const isPast = idx < currentStep
                     const isCurrent = step === order.status
-                    const isDriverManaged = DRIVER_DRIVEN_STATUSES.includes(step)
-                    const isClickable = !isCurrent && !statusUpdating && !isDriverManaged
+                    const isDriverManaged =
+                      DRIVER_DRIVEN_STATUSES.includes(step)
+                    const isClickable =
+                      !isCurrent && !statusUpdating && !isDriverManaged
 
                     const driverTooltip =
                       step === 'assigned'
                         ? 'Updated automatically when delivery partner accepts order'
                         : step === 'shipping'
-                        ? 'Updated automatically when delivery partner picks up order'
-                        : step === 'delivered'
-                        ? 'Updated automatically when delivery partner delivers order'
-                        : `Mark as ${meta?.label}`
+                          ? 'Updated automatically when delivery partner picks up order'
+                          : step === 'delivered'
+                            ? 'Updated automatically when delivery partner delivers order'
+                            : `Mark as ${meta?.label}`
 
                     return (
                       <li key={step} className='flex items-start gap-2.5'>
@@ -552,7 +633,13 @@ export function OrderDetailPage() {
                           type='button'
                           disabled={!isClickable}
                           onClick={() => onStepClick(step)}
-                          title={isDriverManaged ? driverTooltip : (isCurrent ? 'Current status' : `Mark as ${meta?.label}`)}
+                          title={
+                            isDriverManaged
+                              ? driverTooltip
+                              : isCurrent
+                                ? 'Current status'
+                                : `Mark as ${meta?.label}`
+                          }
                           className={cn(
                             'flex size-9 shrink-0 items-center justify-center rounded-full border transition-all',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -569,9 +656,17 @@ export function OrderDetailPage() {
                           )}
                         >
                           {isPast ? (
-                            <Check className='size-4 text-primary-foreground' strokeWidth={2.8} />
+                            <Check
+                              className='size-4 text-primary-foreground'
+                              strokeWidth={2.8}
+                            />
                           ) : (
-                            <Icon className={cn('size-4', isCurrent && 'animate-pulse')} />
+                            <Icon
+                              className={cn(
+                                'size-4',
+                                isCurrent && 'animate-pulse'
+                              )}
+                            />
                           )}
                         </button>
                         <div className='min-w-0'>
@@ -600,10 +695,16 @@ export function OrderDetailPage() {
 
                 {/* Quick-set pill strip */}
                 <div className='mt-5 flex flex-wrap items-center gap-2 border-t pt-4'>
-                  <span className='text-xs text-muted-foreground'>Admin actions:</span>
+                  <span className='text-xs text-muted-foreground'>
+                    Admin actions:
+                  </span>
                   {orderStatuses.map(({ value, label, icon: Icon }) => {
-                    const isDriverManaged = DRIVER_DRIVEN_STATUSES.includes(value)
-                    const isDisabled = statusUpdating || value === order.status || isDriverManaged
+                    const isDriverManaged =
+                      DRIVER_DRIVEN_STATUSES.includes(value)
+                    const isDisabled =
+                      statusUpdating ||
+                      value === order.status ||
+                      isDriverManaged
 
                     return (
                       <button
@@ -611,7 +712,11 @@ export function OrderDetailPage() {
                         type='button'
                         disabled={isDisabled}
                         onClick={() => onStepClick(value)}
-                        title={isDriverManaged ? `"${label}" is managed automatically by the delivery partner.` : `Set status to ${label}`}
+                        title={
+                          isDriverManaged
+                            ? `"${label}" is managed automatically by the delivery partner.`
+                            : `Set status to ${label}`
+                        }
                         className={cn(
                           'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -620,18 +725,24 @@ export function OrderDetailPage() {
                             : isDriverManaged
                               ? 'cursor-not-allowed border-dashed border-border bg-muted/40 text-muted-foreground opacity-60'
                               : 'cursor-pointer border-border bg-background hover:bg-muted',
-                          isDisabled && value !== order.status && 'cursor-not-allowed opacity-50'
+                          isDisabled &&
+                            value !== order.status &&
+                            'cursor-not-allowed opacity-50'
                         )}
                       >
                         <Icon className='h-3 w-3' />
                         {label}
                         {value === order.status && ' ✓'}
-                        {isDriverManaged && value !== order.status && ' (Driver)'}
+                        {isDriverManaged &&
+                          value !== order.status &&
+                          ' (Driver)'}
                       </button>
                     )
                   })}
                   {statusUpdating && (
-                    <span className='text-xs text-muted-foreground animate-pulse'>Updating…</span>
+                    <span className='text-xs text-muted-foreground animate-pulse'>
+                      Updating…
+                    </span>
                   )}
                 </div>
               </>
@@ -641,7 +752,7 @@ export function OrderDetailPage() {
 
         {/* Live Delivery Map — shown when order is assigned or in shipping */}
         {(effectiveStatus === 'assigned' || effectiveStatus === 'shipping') && (
-          <Card className="border-blue-200 dark:border-blue-900 shadow-sm">
+          <Card className='border-blue-200 dark:border-blue-900 shadow-sm'>
             <CardHeader className='pb-3'>
               <div className='flex items-center justify-between'>
                 <div>
@@ -658,9 +769,14 @@ export function OrderDetailPage() {
                 {livePhase && (
                   <span
                     className='inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-white'
-                    style={{ background: livePhase === 'to_warehouse' ? '#2563eb' : '#10b981' }}
+                    style={{
+                      background:
+                        livePhase === 'to_warehouse' ? '#2563eb' : '#10b981',
+                    }}
                   >
-                    {livePhase === 'to_warehouse' ? '📦 Phase 1 — Pickup' : '🛵 Phase 2 — Delivery'}
+                    {livePhase === 'to_warehouse'
+                      ? '📦 Phase 1 — Pickup'
+                      : '🛵 Phase 2 — Delivery'}
                   </span>
                 )}
               </div>
@@ -671,9 +787,20 @@ export function OrderDetailPage() {
                 phase={livePhase}
                 shippingAddress={order.shippingAddress}
                 pickupAddress={{
-                  lat: warehouseGeo?.lat ?? rawOrder?.pickupLat ?? rawOrder?.pickup_lat ?? 30.7333,
-                  lng: warehouseGeo?.lng ?? rawOrder?.pickupLng ?? rawOrder?.pickup_lng ?? 76.7794,
-                  address: rawOrder?.pickupAddress || rawOrder?.pickup_address || 'KICKS Main Hub',
+                  lat:
+                    warehouseGeo?.lat ??
+                    rawOrder?.pickupLat ??
+                    rawOrder?.pickup_lat ??
+                    30.7333,
+                  lng:
+                    warehouseGeo?.lng ??
+                    rawOrder?.pickupLng ??
+                    rawOrder?.pickup_lng ??
+                    76.7794,
+                  address:
+                    rawOrder?.pickupAddress ||
+                    rawOrder?.pickup_address ||
+                    'KICKS Main Hub',
                 }}
               />
             </CardContent>
@@ -705,7 +832,11 @@ export function OrderDetailPage() {
                         <TableRow key={`${item.productId}-${idx}`}>
                           <TableCell>
                             <Link
-                              to={item.productId ? `/products/${item.productId}` : '#'}
+                              to={
+                                item.productId
+                                  ? `/products/${item.productId}`
+                                  : '#'
+                              }
                               className='flex items-center gap-3 hover:underline'
                             >
                               <ProductImage
@@ -714,16 +845,28 @@ export function OrderDetailPage() {
                                 className='size-10'
                               />
                               <div className='min-w-0'>
-                                <div className='truncate font-medium'>{item.name}</div>
-                                <div className='truncate text-xs text-muted-foreground'>{item.sku}</div>
+                                <div className='truncate font-medium'>
+                                  {item.name}
+                                </div>
+                                <div className='truncate text-xs text-muted-foreground'>
+                                  {item.sku}
+                                </div>
                               </div>
                             </Link>
                           </TableCell>
-                          <TableCell className='text-nowrap'>UK {item.size}</TableCell>
+                          <TableCell className='text-nowrap'>
+                            UK {item.size}
+                          </TableCell>
                           <TableCell>{item.color}</TableCell>
-                          <TableCell className='text-center'>{item.quantity}</TableCell>
-                          <TableCell className='text-end text-nowrap'>{formatCurrency(item.price)}</TableCell>
-                          <TableCell className='text-end font-medium text-nowrap'>{formatCurrency(item.lineTotal)}</TableCell>
+                          <TableCell className='text-center'>
+                            {item.quantity}
+                          </TableCell>
+                          <TableCell className='text-end text-nowrap'>
+                            {formatCurrency(item.price)}
+                          </TableCell>
+                          <TableCell className='text-end font-medium text-nowrap'>
+                            {formatCurrency(item.lineTotal)}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -737,7 +880,11 @@ export function OrderDetailPage() {
                   </div>
                   <div className='flex justify-between'>
                     <span className='text-muted-foreground'>Shipping</span>
-                    <span>{order.shipping === 0 ? 'Free' : formatCurrency(order.shipping)}</span>
+                    <span>
+                      {order.shipping === 0
+                        ? 'Free'
+                        : formatCurrency(order.shipping)}
+                    </span>
                   </div>
                   {order.discount > 0 && (
                     <div className='flex justify-between text-teal-600 dark:text-teal-400'>
@@ -791,8 +938,15 @@ export function OrderDetailPage() {
                 {order.customerId && (
                   <>
                     <Separator />
-                    <Button variant='outline' size='sm' className='w-full' asChild>
-                      <Link to={`/customers/${order.customerId}`}>View customer profile</Link>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      className='w-full'
+                      asChild
+                    >
+                      <Link to={`/customers/${order.customerId}`}>
+                        View customer profile
+                      </Link>
                     </Button>
                   </>
                 )}
@@ -812,10 +966,25 @@ export function OrderDetailPage() {
                   <span className='text-xl shrink-0'>🏪</span>
                   <div className='min-w-0'>
                     <p className='font-semibold text-foreground'>
-                      {rawOrder?.pickupAddress || rawOrder?.pickup_address || 'KICKS Main Hub'}
+                      {rawOrder?.pickupAddress ||
+                        rawOrder?.pickup_address ||
+                        'KICKS Main Hub'}
                     </p>
                     <p className='text-xs text-muted-foreground mt-0.5'>
-                      GPS: {Number(warehouseGeo?.lat ?? rawOrder?.pickupLat ?? rawOrder?.pickup_lat ?? 30.7333).toFixed(4)}, {Number(warehouseGeo?.lng ?? rawOrder?.pickupLng ?? rawOrder?.pickup_lng ?? 76.7794).toFixed(4)}
+                      GPS:{' '}
+                      {Number(
+                        warehouseGeo?.lat ??
+                          rawOrder?.pickupLat ??
+                          rawOrder?.pickup_lat ??
+                          30.7333
+                      ).toFixed(4)}
+                      ,{' '}
+                      {Number(
+                        warehouseGeo?.lng ??
+                          rawOrder?.pickupLng ??
+                          rawOrder?.pickup_lng ??
+                          76.7794
+                      ).toFixed(4)}
                     </p>
                     <span className='inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full'>
                       ● Current Warehouse Location
@@ -852,7 +1021,9 @@ export function OrderDetailPage() {
                       <button
                         type='button'
                         onClick={() => {
-                          navigator.clipboard?.writeText(order.trackingNumber ?? '')
+                          navigator.clipboard?.writeText(
+                            order.trackingNumber ?? ''
+                          )
                           toast.success('Tracking number copied.')
                         }}
                         className='font-mono font-medium hover:underline'
@@ -873,7 +1044,8 @@ export function OrderDetailPage() {
                 <div className='flex items-center justify-between'>
                   <span className='text-muted-foreground'>Method</span>
                   <span className='font-medium'>
-                    {paymentMethodLabels.get(order.paymentMethod) || order.paymentMethod}
+                    {paymentMethodLabels.get(order.paymentMethod) ||
+                      order.paymentMethod}
                   </span>
                 </div>
                 <div className='flex items-center justify-between'>
@@ -882,14 +1054,18 @@ export function OrderDetailPage() {
                 </div>
                 <div className='flex items-center justify-between'>
                   <span className='text-muted-foreground'>Amount</span>
-                  <span className='font-semibold'>{formatCurrency(order.total)}</span>
+                  <span className='font-semibold'>
+                    {formatCurrency(order.total)}
+                  </span>
                 </div>
                 {order.deliveredAt && (
                   <>
                     <Separator />
                     <div className='flex items-center justify-between'>
                       <span className='text-muted-foreground'>Delivered</span>
-                      <Badge variant='secondary'>{formatDateTime(order.deliveredAt)}</Badge>
+                      <Badge variant='secondary'>
+                        {formatDateTime(order.deliveredAt)}
+                      </Badge>
                     </div>
                   </>
                 )}

@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 export function LiveTrackerIndicator() {
-  const [trackerState, setTrackerState] = useState(() => adminTracker.getState())
+  const [trackerState, setTrackerState] = useState(() =>
+    adminTracker.getState()
+  )
   const [isExpanded, setIsExpanded] = useState(false)
 
   useEffect(() => {
@@ -44,7 +46,10 @@ export function LiveTrackerIndicator() {
           <div className='py-3 space-y-2 text-xs'>
             <div className='flex justify-between items-center text-muted-foreground'>
               <span>Socket Status:</span>
-              <Badge variant={trackerState.socketConnected ? 'default' : 'secondary'} className='text-[10px] h-5'>
+              <Badge
+                variant={trackerState.socketConnected ? 'default' : 'secondary'}
+                className='text-[10px] h-5'
+              >
                 {trackerState.socketConnected ? 'Connected' : 'Connecting…'}
               </Badge>
             </div>
@@ -53,11 +58,15 @@ export function LiveTrackerIndicator() {
               <div className='rounded-lg bg-muted/60 p-2 space-y-1 font-mono text-[11px]'>
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground'>Lat:</span>
-                  <span className='font-semibold'>{coords.latitude?.toFixed(6)}</span>
+                  <span className='font-semibold'>
+                    {coords.latitude?.toFixed(6)}
+                  </span>
                 </div>
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground'>Lng:</span>
-                  <span className='font-semibold'>{coords.longitude?.toFixed(6)}</span>
+                  <span className='font-semibold'>
+                    {coords.longitude?.toFixed(6)}
+                  </span>
                 </div>
                 {coords.accuracy && (
                   <div className='flex justify-between text-[10px] text-muted-foreground'>
@@ -67,7 +76,9 @@ export function LiveTrackerIndicator() {
                 )}
               </div>
             ) : (
-              <p className='text-muted-foreground italic text-center py-1'>Acquiring GPS fix…</p>
+              <p className='text-muted-foreground italic text-center py-1'>
+                Acquiring GPS fix…
+              </p>
             )}
 
             <div className='space-y-1 pt-1'>
@@ -80,7 +91,9 @@ export function LiveTrackerIndicator() {
                     key={tNum}
                     className='flex items-center justify-between rounded bg-muted/40 px-2 py-1 text-[11px]'
                   >
-                    <span className='font-mono truncate max-w-[170px]'>{tNum}</span>
+                    <span className='font-mono truncate max-w-[170px]'>
+                      {tNum}
+                    </span>
                     <button
                       type='button'
                       onClick={() => adminTracker.stopTracking(tNum)}

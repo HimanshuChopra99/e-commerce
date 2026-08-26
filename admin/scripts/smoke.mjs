@@ -44,7 +44,11 @@ async function visit(label, path) {
   await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(700)
   const heading =
-    (await page.locator('h1, h2').first().textContent().catch(() => '')) ?? ''
+    (await page
+      .locator('h1, h2')
+      .first()
+      .textContent()
+      .catch(() => '')) ?? ''
   await page.screenshot({ path: `${OUT}/${label}.png` })
   check(path, `heading="${heading.trim().slice(0, 40)}"`)
   return heading.trim()
@@ -65,13 +69,12 @@ await page.goto(`${BASE}/`, { waitUntil: 'networkidle' })
 const navText = await page.locator('[data-slot="sidebar"]').innerText()
 assert(
   'sidebar has no Pages/Other/Auth/Errors',
-  !/\bPages\b|\bOther\b|\bAuth\b|\bErrors\b|Help Center|Settings/i.test(navText),
+  !/\bPages\b|\bOther\b|\bAuth\b|\bErrors\b|Help Center|Settings/i.test(
+    navText
+  ),
   JSON.stringify(navText.replace(/\s+/g, ' ').slice(0, 90))
 )
-assert(
-  'sidebar has Categories',
-  /Categories/.test(navText)
-)
+assert('sidebar has Categories', /Categories/.test(navText))
 
 /* ---------------- Theme switch / config / profile still work ------------- */
 errors = []
@@ -106,7 +109,10 @@ await page.screenshot({ path: `${OUT}/error-404.png` })
 await page.goto(`${BASE}/categories`, { waitUntil: 'networkidle' })
 errors = []
 const cardsBefore = await page.locator('a[href^="/categories/"]').count()
-await page.getByRole('button', { name: /create category/i }).first().click()
+await page
+  .getByRole('button', { name: /create category/i })
+  .first()
+  .click()
 await page.waitForTimeout(600)
 await page.getByLabel('Category name').fill('Smoke Test Cat')
 await page
@@ -126,7 +132,10 @@ await page.waitForTimeout(1000)
 const emptyState = await page.getByText('No products yet').isVisible()
 assert('new category detail shows empty state', emptyState)
 
-await page.getByRole('button', { name: /add products/i }).first().click()
+await page
+  .getByRole('button', { name: /add products/i })
+  .first()
+  .click()
 await page.waitForTimeout(700)
 await page.locator('label:has([role="checkbox"])').first().click()
 await page.waitForTimeout(300)

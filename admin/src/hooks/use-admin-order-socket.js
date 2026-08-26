@@ -13,12 +13,16 @@ import { useDispatch } from 'react-redux'
 import { orderStatusUpdated } from '@/store/adminOrdersSlice'
 import { adminTracker } from '@/services/admin-tracker'
 
-export function useAdminOrderSocket({ orderId, trackingNumber, initialStatus } = {}) {
+export function useAdminOrderSocket({
+  orderId,
+  trackingNumber,
+  initialStatus,
+} = {}) {
   const dispatch = useDispatch()
-  const [partnerPos, setPartnerPos]   = useState(null)   // [lat, lng]
-  const [phase, setPhase]             = useState(null)   // 'to_warehouse' | 'to_customer'
-  const [liveStatus, setLiveStatus]   = useState(initialStatus ?? null)
-  const trackingRoomRef               = useRef(null)
+  const [partnerPos, setPartnerPos] = useState(null) // [lat, lng]
+  const [phase, setPhase] = useState(null) // 'to_warehouse' | 'to_customer'
+  const [liveStatus, setLiveStatus] = useState(initialStatus ?? null)
+  const trackingRoomRef = useRef(null)
 
   // Sync initialStatus if it changes
   useEffect(() => {
@@ -71,9 +75,18 @@ export function useAdminOrderSocket({ orderId, trackingNumber, initialStatus } =
     // ── Handler: Status changed (assigned, shipping, delivered) ───────────────
     const onStatusChanged = (data) => {
       if (data.orderId !== orderId) return
-      console.log('[useAdminOrderSocket] order status changed live:', data.status)
+      console.log(
+        '[useAdminOrderSocket] order status changed live:',
+        data.status
+      )
       setLiveStatus(data.status)
-      dispatch(orderStatusUpdated({ orderId, status: data.status, partnerName: data.partnerName }))
+      dispatch(
+        orderStatusUpdated({
+          orderId,
+          status: data.status,
+          partnerName: data.partnerName,
+        })
+      )
     }
 
     // ── Handler: Phase changed (to_customer after pickup / delivered on completion) ─────
@@ -84,8 +97,8 @@ export function useAdminOrderSocket({ orderId, trackingNumber, initialStatus } =
         data.phase === 'delivered'
           ? 'delivered'
           : data.phase === 'to_customer' || data.phase === 'shipping'
-          ? 'shipping'
-          : 'assigned'
+            ? 'shipping'
+            : 'assigned'
       setLiveStatus(nextStatus)
       if (data.trackingNumber) {
         subscribeToTracking(data.trackingNumber)
@@ -94,7 +107,10 @@ export function useAdminOrderSocket({ orderId, trackingNumber, initialStatus } =
 
     // ── Handler: receive-location (global echo from server) ───────────────────
     const onReceiveLocation = (data) => {
-      if (trackingRoomRef.current && data.trackingNumbers?.includes(trackingRoomRef.current)) {
+      if (
+        trackingRoomRef.current &&
+        data.trackingNumbers?.includes(trackingRoomRef.current)
+      ) {
         if (data.lat && data.lng) {
           setPartnerPos([data.lat, data.lng])
         }
@@ -122,7 +138,13 @@ export function useAdminOrderSocket({ orderId, trackingNumber, initialStatus } =
         unsubscribeFromTracking(trackingRoomRef.current)
       }
     }
-  }, [orderId, trackingNumber, dispatch, subscribeToTracking, unsubscribeFromTracking])
+  }, [
+    orderId,
+    trackingNumber,
+    dispatch,
+    subscribeToTracking,
+    unsubscribeFromTracking,
+  ])
 
   useEffect(() => {
     if (trackingNumber) {

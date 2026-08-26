@@ -28,7 +28,9 @@ export function ProductsPage() {
     fetchCatalog()
   }, [fetchCatalog])
 
-  const activeCount = products.filter((p) => (p.status || 'active') === 'active').length
+  const activeCount = products.filter(
+    (p) => (p.status || 'active') === 'active'
+  ).length
   const outOfStock = products.filter((p) => (p.totalStock || 0) === 0).length
   const lowStock = products.filter(
     (p) => (p.totalStock || 0) > 0 && (p.totalStock || 0) <= LOW_STOCK_THRESHOLD
@@ -94,7 +96,7 @@ export function ProductsPage() {
         <StatCards stats={stats} />
 
         {isLoading && products.length === 0 ? (
-          <div className="py-12 text-center text-sm font-medium text-muted-foreground">
+          <div className='py-12 text-center text-sm font-medium text-muted-foreground'>
             Loading products from database...
           </div>
         ) : (
@@ -107,7 +109,9 @@ export function ProductsPage() {
             onSearch={(product, term) =>
               (product.name || '').toLowerCase().includes(term) ||
               (product.sku || '').toLowerCase().includes(term) ||
-              (product.tags || []).some((t) => (t || '').toLowerCase().includes(term))
+              (product.tags || []).some((t) =>
+                (t || '').toLowerCase().includes(term)
+              )
             }
             filters={[
               { columnId: 'status', title: 'Status', options: productStatuses },

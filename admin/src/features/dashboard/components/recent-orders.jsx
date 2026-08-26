@@ -8,7 +8,7 @@ import { OrderStatusBadge } from '@/features/orders/components/order-status-badg
 export function RecentOrders({ orders = [] }) {
   if (!orders || orders.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
+      <div className='py-8 text-center text-sm text-muted-foreground'>
         No recent orders yet.
       </div>
     )
@@ -17,14 +17,23 @@ export function RecentOrders({ orders = [] }) {
   return (
     <div className='space-y-6'>
       {orders.map((order) => {
-        const customerName = order.customerName || order.user?.fullName || `${order.shippingAddress?.firstName || 'Guest'} ${order.shippingAddress?.lastName || ''}`.trim() || 'Customer'
+        const customerName =
+          order.customerName ||
+          order.user?.fullName ||
+          `${order.shippingAddress?.firstName || 'Guest'} ${order.shippingAddress?.lastName || ''}`.trim() ||
+          'Customer'
         const orderNumber = order.orderNumber || order.id
-        const itemCount = order.items ? order.items.reduce((s, i) => s + (i.quantity || 1), 0) : order.itemCount || 1
+        const itemCount = order.items
+          ? order.items.reduce((s, i) => s + (i.quantity || 1), 0)
+          : order.itemCount || 1
         const date = order.placedAt || order.createdAt || new Date()
         const total = order.grandTotal || order.total || 0
 
         return (
-          <div key={order.id || orderNumber} className='flex items-center gap-4'>
+          <div
+            key={order.id || orderNumber}
+            className='flex items-center gap-4'
+          >
             <Avatar className='size-9'>
               <AvatarFallback className='text-xs'>
                 {getDisplayNameInitials(customerName)}

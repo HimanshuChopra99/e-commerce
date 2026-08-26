@@ -51,7 +51,9 @@ export function AddProductsDialog({ open, onOpenChange, category }) {
     }
     try {
       await assign(category.id, selected)
-      toast.success(`Added ${selected.length} product${selected.length > 1 ? 's' : ''} to ${category.name}.`)
+      toast.success(
+        `Added ${selected.length} product${selected.length > 1 ? 's' : ''} to ${category.name}.`
+      )
       setSelected([])
       setQuery('')
       onOpenChange(false)

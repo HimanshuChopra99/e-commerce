@@ -32,7 +32,9 @@ export const createAdminDeliveryPartner = createAsyncThunk(
       const res = await adminDeliveryPartnersApi.create(payload)
       return res.data
     } catch (err) {
-      return rejectWithValue(err.message || 'Failed to register delivery partner')
+      return rejectWithValue(
+        err.message || 'Failed to register delivery partner'
+      )
     }
   }
 )
@@ -108,7 +110,12 @@ const adminDeliveryPartnersSlice = createSlice({
       .addCase(fetchAdminDeliveryPartners.fulfilled, (s, a) => {
         s.loading = false
         s.items = a.payload.data || []
-        s.meta = a.payload.meta || { page: 1, limit: 10, total: 0, totalPages: 1 }
+        s.meta = a.payload.meta || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 1,
+        }
       })
       .addCase(fetchAdminDeliveryPartners.rejected, (s, a) => {
         s.loading = false
@@ -145,7 +152,9 @@ const adminDeliveryPartnersSlice = createSlice({
       })
       .addCase(removeAdminDeliveryPartner.fulfilled, (s, a) => {
         s.items = s.items.filter(
-          (p) => String(p.publicId) !== String(a.payload) && String(p.id) !== String(a.payload)
+          (p) =>
+            String(p.publicId) !== String(a.payload) &&
+            String(p.id) !== String(a.payload)
         )
         if (s.current && String(s.current.publicId) === String(a.payload)) {
           s.current = null
@@ -154,6 +163,7 @@ const adminDeliveryPartnersSlice = createSlice({
   },
 })
 
-export const { clearCurrentDeliveryPartner, partnerOnlineStatusUpdated } = adminDeliveryPartnersSlice.actions
+export const { clearCurrentDeliveryPartner, partnerOnlineStatusUpdated } =
+  adminDeliveryPartnersSlice.actions
 
 export default adminDeliveryPartnersSlice.reducer

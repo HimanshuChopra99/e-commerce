@@ -34,7 +34,9 @@ await page.waitForTimeout(600)
 
 const cta = page.getByRole('button', { name: /create category/i })
 const ctaVisible = await cta.isVisible()
-console.log(`${ctaVisible ? 'PASS' : 'FAIL'}  dropdown shows Create category CTA`)
+console.log(
+  `${ctaVisible ? 'PASS' : 'FAIL'}  dropdown shows Create category CTA`
+)
 await page.screenshot({ path: 'screenshots/dropdown-empty-state.png' })
 
 await cta.click()

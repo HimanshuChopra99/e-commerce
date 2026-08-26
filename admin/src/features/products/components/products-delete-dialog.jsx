@@ -16,7 +16,7 @@ export function ProductsDeleteDialog({ open, onOpenChange, currentRow }) {
     try {
       await deleteProduct(currentRow.id)
       onOpenChange(false)
-        toast.success(`"${currentRow.name}" has been deleted from your store.`)
+      toast.success(`"${currentRow.name}" has been deleted from your store.`)
     } catch (error) {
       toast.error(error.message || 'Unable to delete this product.')
     }

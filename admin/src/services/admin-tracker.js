@@ -44,7 +44,10 @@ class AdminTracker {
 
   _savePersistedTrackings() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(this.activeTrackingNumbers)))
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(Array.from(this.activeTrackingNumbers))
+      )
     } catch {
       // Ignore
     }
@@ -53,7 +56,9 @@ class AdminTracker {
   _initSocket() {
     if (this.socket) return
     const apiBase = import.meta.env.VITE_API_URL || '/api'
-    const socketUrl = apiBase.includes('http') ? apiBase.replace('/api', '') : 'http://localhost:4000'
+    const socketUrl = apiBase.includes('http')
+      ? apiBase.replace('/api', '')
+      : 'http://localhost:4000'
 
     this.socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
@@ -85,24 +90,40 @@ class AdminTracker {
       this._notifyListeners()
     })
 
-    this.socket.on('order:status_changed', ({ orderId, status, partnerName }) => {
-      console.log('[AdminTracker] order:status_changed', { orderId, status, partnerName })
-      store.dispatch(orderStatusUpdated({ orderId, status, partnerName }))
-    })
+    this.socket.on(
+      'order:status_changed',
+      ({ orderId, status, partnerName }) => {
+        console.log('[AdminTracker] order:status_changed', {
+          orderId,
+          status,
+          partnerName,
+        })
+        store.dispatch(orderStatusUpdated({ orderId, status, partnerName }))
+      }
+    )
 
-    this.socket.on('order:phase_changed', ({ orderId, phase, trackingNumber }) => {
-      console.log('[AdminTracker] order:phase_changed', { orderId, phase, trackingNumber })
-      const status =
-        phase === 'delivered'
-          ? 'delivered'
-          : phase === 'to_customer' || phase === 'shipping'
-          ? 'shipping'
-          : 'assigned'
-      store.dispatch(orderStatusUpdated({ orderId, status, trackingNumber }))
-    })
+    this.socket.on(
+      'order:phase_changed',
+      ({ orderId, phase, trackingNumber }) => {
+        console.log('[AdminTracker] order:phase_changed', {
+          orderId,
+          phase,
+          trackingNumber,
+        })
+        const status =
+          phase === 'delivered'
+            ? 'delivered'
+            : phase === 'to_customer' || phase === 'shipping'
+              ? 'shipping'
+              : 'assigned'
+        store.dispatch(orderStatusUpdated({ orderId, status, trackingNumber }))
+      }
+    )
 
     this.socket.on('order:shipping', ({ orderId, trackingNumber }) => {
-      store.dispatch(orderStatusUpdated({ orderId, status: 'shipping', trackingNumber }))
+      store.dispatch(
+        orderStatusUpdated({ orderId, status: 'shipping', trackingNumber })
+      )
     })
 
     this.socket.on('order:delivered', ({ orderId }) => {
@@ -158,7 +179,11 @@ class AdminTracker {
    * Start high-accuracy geolocation watch
    */
   startBroadcasting() {
-    if (this.isWatching || typeof window === 'undefined' || !navigator.geolocation) {
+    if (
+      this.isWatching ||
+      typeof window === 'undefined' ||
+      !navigator.geolocation
+    ) {
       return
     }
 
@@ -167,7 +192,8 @@ class AdminTracker {
 
     this.watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude, accuracy, speed, heading } = position.coords
+        const { latitude, longitude, accuracy, speed, heading } =
+          position.coords
         console.log(longitude, latitude)
 
         this.lastCoords = { latitude, longitude, accuracy, speed, heading }

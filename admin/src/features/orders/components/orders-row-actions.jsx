@@ -39,13 +39,51 @@ import { OrderShippingDialog } from './order-shipping-dialog'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
-  { value: 'processing', label: 'Processing', icon: PackageCheck, color: 'text-sky-600' },
-  { value: 'ready_for_pickup', label: 'Ready for Pickup', icon: PackageCheck, color: 'text-orange-600' },
-  { value: 'assigned', label: 'Assigned (Driver)', icon: User, color: 'text-blue-600', driverManaged: true },
-  { value: 'shipping', label: 'Shipping (Driver)', icon: Truck, color: 'text-violet-600', driverManaged: true },
-  { value: 'delivered', label: 'Delivered (Driver)', icon: CircleCheckBig, color: 'text-teal-600', driverManaged: true },
-  { value: 'cancelled', label: 'Cancelled', icon: CircleX, color: 'text-destructive' },
-  { value: 'returned', label: 'Returned', icon: Undo2, color: 'text-neutral-500' },
+  {
+    value: 'processing',
+    label: 'Processing',
+    icon: PackageCheck,
+    color: 'text-sky-600',
+  },
+  {
+    value: 'ready_for_pickup',
+    label: 'Ready for Pickup',
+    icon: PackageCheck,
+    color: 'text-orange-600',
+  },
+  {
+    value: 'assigned',
+    label: 'Assigned (Driver)',
+    icon: User,
+    color: 'text-blue-600',
+    driverManaged: true,
+  },
+  {
+    value: 'shipping',
+    label: 'Shipping (Driver)',
+    icon: Truck,
+    color: 'text-violet-600',
+    driverManaged: true,
+  },
+  {
+    value: 'delivered',
+    label: 'Delivered (Driver)',
+    icon: CircleCheckBig,
+    color: 'text-teal-600',
+    driverManaged: true,
+  },
+  {
+    value: 'cancelled',
+    label: 'Cancelled',
+    icon: CircleX,
+    color: 'text-destructive',
+  },
+  {
+    value: 'returned',
+    label: 'Returned',
+    icon: Undo2,
+    color: 'text-neutral-500',
+  },
 ]
 
 export function OrdersRowActions({ row }) {
@@ -59,18 +97,25 @@ export function OrdersRowActions({ row }) {
   const doStatusUpdate = async (status, extra = {}) => {
     setUpdatingStatus(true)
     try {
-      const result = await dispatch(updateOrderStatus({ id: order.id, status, extra }))
+      const result = await dispatch(
+        updateOrderStatus({ id: order.id, status, extra })
+      )
       if (updateOrderStatus.fulfilled.match(result)) {
         const updated = result.payload
-        const finalTracking = extra.trackingNumber || updated?.trackingNumber || updated?.tracking_number || order.trackingNumber
-        
+        const finalTracking =
+          extra.trackingNumber ||
+          updated?.trackingNumber ||
+          updated?.tracking_number ||
+          order.trackingNumber
+
         if (status === 'shipped' && finalTracking) {
           adminTracker.startTracking(finalTracking)
         } else if (status === 'delivered' || status === 'cancelled') {
           if (finalTracking) adminTracker.stopTracking(finalTracking)
         }
 
-        const label = STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status
+        const label =
+          STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status
         toast.success(`Order ${order.orderNumber} marked as "${label}".`)
       } else {
         toast.error(result.payload || 'Failed to update status.')
@@ -112,12 +157,18 @@ export function OrdersRowActions({ row }) {
 
           <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
             View order
-            <DropdownMenuShortcut><Eye size={16} /></DropdownMenuShortcut>
+            <DropdownMenuShortcut>
+              <Eye size={16} />
+            </DropdownMenuShortcut>
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => navigate(`/customers/${order.customerId}`)}>
+          <DropdownMenuItem
+            onClick={() => navigate(`/customers/${order.customerId}`)}
+          >
             View customer
-            <DropdownMenuShortcut><User size={16} /></DropdownMenuShortcut>
+            <DropdownMenuShortcut>
+              <User size={16} />
+            </DropdownMenuShortcut>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -130,20 +181,28 @@ export function OrdersRowActions({ row }) {
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
               <DropdownMenuSubContent className='w-44'>
-                {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, driverManaged }) => (
-                  <DropdownMenuItem
-                    key={value}
-                    className='gap-2'
-                    disabled={order.status === value || updatingStatus || driverManaged}
-                    onClick={() => onStatusSelect(value)}
-                  >
-                    <Icon className={`h-3.5 w-3.5 ${color}`} />
-                    {label}
-                    {order.status === value && (
-                      <span className='ml-auto text-xs text-muted-foreground'>current</span>
-                    )}
-                  </DropdownMenuItem>
-                ))}
+                {STATUS_OPTIONS.map(
+                  ({ value, label, icon: Icon, color, driverManaged }) => (
+                    <DropdownMenuItem
+                      key={value}
+                      className='gap-2'
+                      disabled={
+                        order.status === value ||
+                        updatingStatus ||
+                        driverManaged
+                      }
+                      onClick={() => onStatusSelect(value)}
+                    >
+                      <Icon className={`h-3.5 w-3.5 ${color}`} />
+                      {label}
+                      {order.status === value && (
+                        <span className='ml-auto text-xs text-muted-foreground'>
+                          current
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  )
+                )}
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
@@ -157,7 +216,9 @@ export function OrdersRowActions({ row }) {
             }}
           >
             Copy order no.
-            <DropdownMenuShortcut><Copy size={16} /></DropdownMenuShortcut>
+            <DropdownMenuShortcut>
+              <Copy size={16} />
+            </DropdownMenuShortcut>
           </DropdownMenuItem>
 
           <DropdownMenuItem
@@ -168,16 +229,21 @@ export function OrdersRowActions({ row }) {
             }}
           >
             Copy tracking
-            <DropdownMenuShortcut><Truck size={16} /></DropdownMenuShortcut>
+            <DropdownMenuShortcut>
+              <Truck size={16} />
+            </DropdownMenuShortcut>
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => toast.info('Invoice sent to printer.')}>
+          <DropdownMenuItem
+            onClick={() => toast.info('Invoice sent to printer.')}
+          >
             Print invoice
-            <DropdownMenuShortcut><Printer size={16} /></DropdownMenuShortcut>
+            <DropdownMenuShortcut>
+              <Printer size={16} />
+            </DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
     </>
   )
 }

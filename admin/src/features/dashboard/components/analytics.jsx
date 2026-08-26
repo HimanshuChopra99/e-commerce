@@ -76,7 +76,9 @@ export function Analytics() {
                 valueFormatter={(n) => `${n}`}
               />
             ) : (
-              <p className="py-4 text-center text-xs text-muted-foreground">No status breakdown available yet.</p>
+              <p className='py-4 text-center text-xs text-muted-foreground'>
+                No status breakdown available yet.
+              </p>
             )}
           </CardContent>
         </Card>
@@ -90,7 +92,9 @@ export function Analytics() {
           </CardHeader>
           <CardContent className='space-y-4'>
             {topProducts.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">No sales data recorded yet.</p>
+              <p className='py-4 text-center text-xs text-muted-foreground'>
+                No sales data recorded yet.
+              </p>
             ) : (
               topProducts.map((product) => (
                 <Link
@@ -104,13 +108,18 @@ export function Analytics() {
                     className='size-11'
                   />
                   <div className='min-w-0 flex-1'>
-                    <p className='truncate text-sm font-medium'>{product.name}</p>
+                    <p className='truncate text-sm font-medium'>
+                      {product.name}
+                    </p>
                     <p className='truncate text-xs text-muted-foreground'>
-                      {product.sku || product.id} · {formatCurrency(product.price)}
+                      {product.sku || product.id} ·{' '}
+                      {formatCurrency(product.price)}
                     </p>
                   </div>
                   <div className='text-end'>
-                    <p className='text-sm font-semibold'>{product.unitsSold || product.sold || 0}</p>
+                    <p className='text-sm font-semibold'>
+                      {product.unitsSold || product.sold || 0}
+                    </p>
                     <p className='text-xs text-muted-foreground'>sold</p>
                   </div>
                 </Link>
@@ -185,7 +194,9 @@ export function Analytics() {
                         : 'border-amber-300/60 text-amber-700 dark:text-amber-300'
                     }
                   >
-                    {(product.totalStock || 0) === 0 ? 'Out' : product.totalStock}
+                    {(product.totalStock || 0) === 0
+                      ? 'Out'
+                      : product.totalStock}
                   </Badge>
                 </Link>
               ))}

@@ -133,9 +133,12 @@ export function ProductDetailPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         }
         const apiBase = import.meta.env.VITE_API_URL || '/api'
-        const res = await fetch(`${apiBase}/admin/products/${productId}/orders`, {
-          headers,
-        })
+        const res = await fetch(
+          `${apiBase}/admin/products/${productId}/orders`,
+          {
+            headers,
+          }
+        )
         if (res.ok) {
           const data = await res.json()
           const list = data.orders || data.data || data
@@ -198,7 +201,9 @@ export function ProductDetailPage() {
       product.sku ? String(product.sku).toLowerCase() : null,
     ].filter(Boolean)
   )
-  const targetName = product.name ? String(product.name).toLowerCase().trim() : ''
+  const targetName = product.name
+    ? String(product.name).toLowerCase().trim()
+    : ''
 
   function getNormalizedItems(order) {
     let rawItems =
@@ -227,8 +232,14 @@ export function ProductDetailPage() {
     const itemName = item.name ?? item.productName ?? item.product_name
 
     if (itemPId && targetIdentifiers.has(String(itemPId))) return true
-    if (itemSku && targetIdentifiers.has(String(itemSku).toLowerCase())) return true
-    if (itemName && targetName && String(itemName).toLowerCase().trim() === targetName) return true
+    if (itemSku && targetIdentifiers.has(String(itemSku).toLowerCase()))
+      return true
+    if (
+      itemName &&
+      targetName &&
+      String(itemName).toLowerCase().trim() === targetName
+    )
+      return true
 
     return false
   }
@@ -247,10 +258,9 @@ export function ProductDetailPage() {
     matchedOrders = allOrders.filter((order, idx) => {
       const oIdNum =
         parseInt(
-          String(order.id || order.orderNumber || order.order_number || idx).replace(
-            /\D/g,
-            ''
-          ),
+          String(
+            order.id || order.orderNumber || order.order_number || idx
+          ).replace(/\D/g, ''),
           10
         ) || idx
 
@@ -265,27 +275,37 @@ export function ProductDetailPage() {
   // Format related orders for display
   const relatedOrders = matchedOrders
     .map((order) => {
-      const orderIdStr = String(order.id || order.orderNumber || order.order_number)
+      const orderIdStr = String(
+        order.id || order.orderNumber || order.order_number
+      )
       return {
         id: order.id || order.publicId || order.public_id || orderIdStr,
-        orderNumber: order.orderNumber || order.order_number || `#${orderIdStr}`,
+        orderNumber:
+          order.orderNumber || order.order_number || `#${orderIdStr}`,
         customerName:
           order.customerName ||
           order.customer_name ||
           (order.user
             ? `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim()
             : 'Customer'),
-        placedAt: order.placedAt || order.placed_at || order.createdAt || new Date(),
+        placedAt:
+          order.placedAt || order.placed_at || order.createdAt || new Date(),
         status: order.status || 'delivered',
         total: Number(
-          order.grandTotal ?? order.grand_total ?? order.total ?? order.subtotal ?? 150
+          order.grandTotal ??
+            order.grand_total ??
+            order.total ??
+            order.subtotal ??
+            150
         ),
       }
     })
     .slice(0, 8)
 
   // ── Calculate Units Sold & Revenue ─────────────────────────────────────────
-  const nonCancelledOrders = matchedOrders.filter((o) => o.status !== 'cancelled')
+  const nonCancelledOrders = matchedOrders.filter(
+    (o) => o.status !== 'cancelled'
+  )
 
   let unitsSold = 0
   let revenue = 0
@@ -305,7 +325,8 @@ export function ProductDetailPage() {
       })
     } else {
       // Fallback calculation per order
-      const qty = 1 + (parseInt(String(order.id || '1').replace(/\D/g, ''), 10) % 2)
+      const qty =
+        1 + (parseInt(String(order.id || '1').replace(/\D/g, ''), 10) % 2)
       unitsSold += qty
       revenue += qty * Number(product.price || 120)
     }
@@ -320,7 +341,11 @@ export function ProductDetailPage() {
   const stats = [
     { label: 'Units Sold', value: String(unitsSold), icon: ShoppingCart },
     { label: 'Revenue', value: formatCurrency(revenue), icon: TrendingUp },
-    { label: 'In Stock', value: String(product.totalStock ?? 0), icon: Package },
+    {
+      label: 'In Stock',
+      value: String(product.totalStock ?? 0),
+      icon: Package,
+    },
     {
       label: 'Rating',
       value: `${product.ratingAvg ?? product.rating ?? '4.5'} (${product.ratingCount ?? product.reviews ?? 28})`,

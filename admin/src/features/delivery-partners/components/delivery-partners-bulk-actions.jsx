@@ -83,7 +83,10 @@ export function DeliveryPartnersBulkActions({ table }) {
             aria-label='Export selected delivery partners'
             title='Export selected delivery partners'
             onClick={() =>
-              run('Exporting...', `Exported ${count} delivery partner${plural} to CSV.`)
+              run(
+                'Exporting...',
+                `Exported ${count} delivery partner${plural} to CSV.`
+              )
             }
           >
             <Download />

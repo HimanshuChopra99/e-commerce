@@ -101,7 +101,12 @@ const formSchema = z
     }
   )
 
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+]
 const MAX_IMAGE_SIZE_MB = 5
 const MAX_IMAGES_PER_COLOR = 8
 const MAX_IMAGES_PER_PRODUCT = 48
@@ -123,7 +128,9 @@ function isValidImageUrl(value) {
 function colorsFromProduct(row) {
   if (Array.isArray(row?.colors) && row.colors.length) return row.colors
   if (!Array.isArray(row?.variants)) return []
-  return [...new Set(row.variants.map((variant) => variant.color).filter(Boolean))]
+  return [
+    ...new Set(row.variants.map((variant) => variant.color).filter(Boolean)),
+  ]
 }
 
 function legacyImagesFromProduct(row) {
@@ -155,9 +162,11 @@ function buildColorMedia(row) {
 }
 
 function assetsForColor(media, color) {
-  return media.find(
-    (entry) => entry.color.toLocaleLowerCase() === color.toLocaleLowerCase()
-  )?.assets ?? []
+  return (
+    media.find(
+      (entry) => entry.color.toLocaleLowerCase() === color.toLocaleLowerCase()
+    )?.assets ?? []
+  )
 }
 
 function ColorMediaEditor({ color, assets, onFiles, onAddUrl, onRemove }) {
@@ -215,7 +224,9 @@ function ColorMediaEditor({ color, assets, onFiles, onAddUrl, onRemove }) {
                 className='aspect-square w-full'
               />
               {index === 0 && (
-                <Badge className='absolute start-1.5 top-1.5'>Colour main</Badge>
+                <Badge className='absolute start-1.5 top-1.5'>
+                  Colour main
+                </Badge>
               )}
               <Button
                 type='button'
@@ -304,7 +315,9 @@ function buildFormValues(row) {
     colors,
     variants: sizeRun.map((size) => ({
       size,
-      stock: variants.find((variant) => String(variant.size) === String(size))?.stock ?? 0,
+      stock:
+        variants.find((variant) => String(variant.size) === String(size))
+          ?.stock ?? 0,
     })),
     tags,
   }
@@ -319,16 +332,20 @@ export function ProductForm({ currentRow }) {
   const [saving, setSaving] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [customColor, setCustomColor] = useState('')
-  const [colorMedia, setColorMedia] = useState(() => buildColorMedia(currentRow))
+  const [colorMedia, setColorMedia] = useState(() =>
+    buildColorMedia(currentRow)
+  )
 
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: buildFormValues(currentRow),
   })
 
-  const watchedVariants = useWatch({ control: form.control, name: 'variants' }) ?? []
+  const watchedVariants =
+    useWatch({ control: form.control, name: 'variants' }) ?? []
   const watchedTags = useWatch({ control: form.control, name: 'tags' }) ?? []
-  const watchedColors = useWatch({ control: form.control, name: 'colors' }) ?? []
+  const watchedColors =
+    useWatch({ control: form.control, name: 'colors' }) ?? []
   const watchedPrice = useWatch({ control: form.control, name: 'price' })
   const watchedCost = useWatch({ control: form.control, name: 'costPerItem' })
 
@@ -354,7 +371,9 @@ export function ProductForm({ currentRow }) {
       )
       if (!existing) return [...current, { color, assets }]
       return current.map((entry) =>
-        entry === existing ? { ...entry, assets: [...entry.assets, ...assets] } : entry
+        entry === existing
+          ? { ...entry, assets: [...entry.assets, ...assets] }
+          : entry
       )
     })
   }
@@ -371,7 +390,9 @@ export function ProductForm({ currentRow }) {
         file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024
     )
     if (invalid) {
-      toast.error(`Only JPEG, PNG, WebP or AVIF files under ${MAX_IMAGE_SIZE_MB}MB are allowed.`)
+      toast.error(
+        `Only JPEG, PNG, WebP or AVIF files under ${MAX_IMAGE_SIZE_MB}MB are allowed.`
+      )
       return
     }
     if (currentAssets.length + files.length > MAX_IMAGES_PER_COLOR) {
@@ -379,13 +400,19 @@ export function ProductForm({ currentRow }) {
       return
     }
     if (imageCount + files.length > MAX_IMAGES_PER_PRODUCT) {
-      toast.error(`A product can have at most ${MAX_IMAGES_PER_PRODUCT} images.`)
+      toast.error(
+        `A product can have at most ${MAX_IMAGES_PER_PRODUCT} images.`
+      )
       return
     }
 
     appendAssets(
       color,
-      files.map((file) => ({ id: assetId(), url: URL.createObjectURL(file), file }))
+      files.map((file) => ({
+        id: assetId(),
+        url: URL.createObjectURL(file),
+        file,
+      }))
     )
   }
 
@@ -393,10 +420,15 @@ export function ProductForm({ currentRow }) {
     const url = value.trim()
     const currentAssets = assetsForColor(colorMedia, color)
     if (!isValidImageUrl(url)) {
-      toast.error('Use an http(s) image URL or an absolute site path beginning with /.')
+      toast.error(
+        'Use an http(s) image URL or an absolute site path beginning with /.'
+      )
       return false
     }
-    if (currentAssets.length >= MAX_IMAGES_PER_COLOR || imageCount >= MAX_IMAGES_PER_PRODUCT) {
+    if (
+      currentAssets.length >= MAX_IMAGES_PER_COLOR ||
+      imageCount >= MAX_IMAGES_PER_PRODUCT
+    ) {
       toast.error('The image limit for this product has been reached.')
       return false
     }
@@ -409,12 +441,18 @@ export function ProductForm({ currentRow }) {
   }
 
   const handleRemoveImage = (color, id) => {
-    setColorMedia((current) => current.map((entry) => {
-      if (entry.color.toLocaleLowerCase() !== color.toLocaleLowerCase()) return entry
-      const removed = entry.assets.find((asset) => asset.id === id)
-      if (removed?.file) URL.revokeObjectURL(removed.url)
-      return { ...entry, assets: entry.assets.filter((asset) => asset.id !== id) }
-    }))
+    setColorMedia((current) =>
+      current.map((entry) => {
+        if (entry.color.toLocaleLowerCase() !== color.toLocaleLowerCase())
+          return entry
+        const removed = entry.assets.find((asset) => asset.id === id)
+        if (removed?.file) URL.revokeObjectURL(removed.url)
+        return {
+          ...entry,
+          assets: entry.assets.filter((asset) => asset.id !== id),
+        }
+      })
+    )
   }
 
   const removeColorMedia = (color) => {
@@ -434,7 +472,9 @@ export function ProductForm({ currentRow }) {
       color,
       assets: assetsForColor(colorMedia, color),
     }))
-    const missingColor = selectedMedia.find((entry) => entry.assets.length === 0)
+    const missingColor = selectedMedia.find(
+      (entry) => entry.assets.length === 0
+    )
     if (missingColor) {
       toast.error(`Add at least one image for ${missingColor.color}.`)
       return
@@ -446,9 +486,13 @@ export function ProductForm({ currentRow }) {
         entry.assets.filter((asset) => asset.file)
       )
       if (pending.length) {
-        const uploadedUrls = await uploadProductImages(pending.map((asset) => asset.file))
+        const uploadedUrls = await uploadProductImages(
+          pending.map((asset) => asset.file)
+        )
         if (uploadedUrls.length !== pending.length) {
-          throw new Error('Some images did not finish uploading. Please try again.')
+          throw new Error(
+            'Some images did not finish uploading. Please try again.'
+          )
         }
         let uploadIndex = 0
         selectedMedia = selectedMedia.map((entry) => ({
@@ -618,7 +662,8 @@ export function ProductForm({ currentRow }) {
               <CardTitle>Colour images</CardTitle>
               <CardDescription>
                 Add the exact gallery shoppers should see for every selected
-                colour. The first image of the first colour is the catalogue thumbnail.
+                colour. The first image of the first colour is the catalogue
+                thumbnail.
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
@@ -746,7 +791,8 @@ export function ProductForm({ currentRow }) {
               <CardTitle>Sizes &amp; stock</CardTitle>
               <CardDescription>
                 Set pairs per colour in each size. The same size run is created
-                for every selected colour; leave 0 for sizes you don&apos;t stock.
+                for every selected colour; leave 0 for sizes you don&apos;t
+                stock.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -784,7 +830,9 @@ export function ProductForm({ currentRow }) {
               )}
               <Separator className='my-4' />
               <div className='flex items-center justify-between text-sm'>
-                <span className='text-muted-foreground'>Total across all colours</span>
+                <span className='text-muted-foreground'>
+                  Total across all colours
+                </span>
                 <span className='font-semibold'>{totalStock} pairs</span>
               </div>
             </CardContent>
@@ -945,7 +993,9 @@ export function ProductForm({ currentRow }) {
                           control={form.control}
                           name='colors'
                           render={({ field }) => {
-                            const list = Array.isArray(field.value) ? field.value : []
+                            const list = Array.isArray(field.value)
+                              ? field.value
+                              : []
                             const checked = list.includes(color.value)
                             return (
                               <FormItem className='flex items-center gap-2 space-y-0 rounded-md border p-2'>
@@ -954,7 +1004,9 @@ export function ProductForm({ currentRow }) {
                                     checked={checked}
                                     onCheckedChange={(value) => {
                                       if (value && list.length >= 12) {
-                                        toast.error('A product can have at most 12 colours.')
+                                        toast.error(
+                                          'A product can have at most 12 colours.'
+                                        )
                                         return
                                       }
                                       const next = value
@@ -997,13 +1049,20 @@ export function ProductForm({ currentRow }) {
                   onClick={() => {
                     const parsed = colorValue.safeParse(customColor)
                     if (!parsed.success) {
-                      toast.error(parsed.error.issues[0]?.message || 'Use a valid colour value.')
+                      toast.error(
+                        parsed.error.issues[0]?.message ||
+                          'Use a valid colour value.'
+                      )
                       return
                     }
                     const value = parsed.data
-                    if (watchedColors.some(
-                      (color) => color.toLocaleLowerCase() === value.toLocaleLowerCase()
-                    )) {
+                    if (
+                      watchedColors.some(
+                        (color) =>
+                          color.toLocaleLowerCase() ===
+                          value.toLocaleLowerCase()
+                      )
+                    ) {
                       setCustomColor('')
                       return
                     }
@@ -1011,7 +1070,9 @@ export function ProductForm({ currentRow }) {
                       toast.error('A product can have at most 12 colours.')
                       return
                     }
-                    form.setValue('colors', [...watchedColors, value], { shouldValidate: true })
+                    form.setValue('colors', [...watchedColors, value], {
+                      shouldValidate: true,
+                    })
                     setCustomColor('')
                   }}
                 >
@@ -1019,11 +1080,15 @@ export function ProductForm({ currentRow }) {
                 </Button>
               </div>
               {watchedColors.some(
-                (color) => !colorOptions.some((option) => option.value === color)
+                (color) =>
+                  !colorOptions.some((option) => option.value === color)
               ) && (
                 <div className='mt-3 flex flex-wrap gap-1.5'>
                   {watchedColors
-                    .filter((color) => !colorOptions.some((option) => option.value === color))
+                    .filter(
+                      (color) =>
+                        !colorOptions.some((option) => option.value === color)
+                    )
                     .map((color) => (
                       <Badge key={color} variant='secondary' className='gap-1'>
                         <span
@@ -1053,7 +1118,8 @@ export function ProductForm({ currentRow }) {
               {watchedColors.length > 0 && (
                 <p className='mt-3 text-xs text-muted-foreground'>
                   {watchedColors.length} colour
-                  {watchedColors.length > 1 ? 's' : ''} selected · add images in the Colour images section
+                  {watchedColors.length > 1 ? 's' : ''} selected · add images in
+                  the Colour images section
                 </p>
               )}
             </CardContent>

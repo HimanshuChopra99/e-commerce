@@ -1,6 +1,9 @@
 const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-let accessToken = typeof window !== 'undefined' ? localStorage.getItem('kick_admin_access_token') : null
+let accessToken =
+  typeof window !== 'undefined'
+    ? localStorage.getItem('kick_admin_access_token')
+    : null
 
 export function setAccessToken(token) {
   accessToken = token
@@ -18,7 +21,8 @@ export function getAccessToken() {
 }
 
 async function request(path, options = {}) {
-  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+  const isFormData =
+    typeof FormData !== 'undefined' && options.body instanceof FormData
   const headers = {
     ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -31,7 +35,11 @@ async function request(path, options = {}) {
     headers,
   })
 
-  if (res.status === 401 && path !== '/auth/refresh' && path !== '/auth/login') {
+  if (
+    res.status === 401 &&
+    path !== '/auth/refresh' &&
+    path !== '/auth/login'
+  ) {
     const refreshed = await silentRefresh()
     if (refreshed) {
       return request(path, options)
@@ -41,7 +49,12 @@ async function request(path, options = {}) {
   const data = await res.json().catch(() => ({}))
 
   if (!res.ok) {
-    throw new Error(data?.error?.message || data?.message || (typeof data?.error === 'string' ? data.error : '') || 'Request failed')
+    throw new Error(
+      data?.error?.message ||
+        data?.message ||
+        (typeof data?.error === 'string' ? data.error : '') ||
+        'Request failed'
+    )
   }
 
   return data
@@ -78,9 +91,17 @@ const get = (path, params) => {
   return request(path)
 }
 
-const post = (path, body) => request(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined })
+const post = (path, body) =>
+  request(path, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : undefined,
+  })
 const postForm = (path, body) => request(path, { method: 'POST', body })
-const patch = (path, body) => request(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined })
+const patch = (path, body) =>
+  request(path, {
+    method: 'PATCH',
+    body: body ? JSON.stringify(body) : undefined,
+  })
 const del = (path) => request(path, { method: 'DELETE' })
 
 export const adminAuthApi = {
@@ -91,9 +112,12 @@ export const adminAuthApi = {
 
 export const adminDashboardApi = {
   getOverview: () => get('/admin/dashboard/overview'),
-  getSalesChart: (period = 'month') => get('/admin/dashboard/revenue', { months: period === 'year' ? 12 : 6 }),
-  getRecentOrders: (limit = 5) => get(`/admin/dashboard/recent-orders?limit=${limit}`),
-  getTopProducts: (limit = 5) => get(`/admin/dashboard/top-products?limit=${limit}`),
+  getSalesChart: (period = 'month') =>
+    get('/admin/dashboard/revenue', { months: period === 'year' ? 12 : 6 }),
+  getRecentOrders: (limit = 5) =>
+    get(`/admin/dashboard/recent-orders?limit=${limit}`),
+  getTopProducts: (limit = 5) =>
+    get(`/admin/dashboard/top-products?limit=${limit}`),
 }
 
 export const adminProductsApi = {
@@ -107,8 +131,10 @@ export const adminProductsApi = {
     return postForm('/admin/products/image-uploads', body)
   },
   delete: (id) => del(`/admin/products/${id}`),
-  bulkStatus: (productIds, status) => post('/admin/products/bulk-status', { productIds, status }),
-  bulkDelete: (productIds) => post('/admin/products/bulk-delete', { productIds }),
+  bulkStatus: (productIds, status) =>
+    post('/admin/products/bulk-status', { productIds, status }),
+  bulkDelete: (productIds) =>
+    post('/admin/products/bulk-delete', { productIds }),
 }
 
 export const adminCategoriesApi = {
@@ -117,8 +143,10 @@ export const adminCategoriesApi = {
   create: (body) => post('/admin/categories', body),
   update: (id, body) => patch(`/admin/categories/${id}`, body),
   delete: (id) => del(`/admin/categories/${id}`),
-  assignProducts: (id, productIds) => post(`/admin/categories/${id}/products`, { productIds }),
-  removeProduct: (id, productId) => del(`/admin/categories/${id}/products/${productId}`),
+  assignProducts: (id, productIds) =>
+    post(`/admin/categories/${id}/products`, { productIds }),
+  removeProduct: (id, productId) =>
+    del(`/admin/categories/${id}/products/${productId}`),
 }
 
 export const adminOrdersApi = {
@@ -128,7 +156,6 @@ export const adminOrdersApi = {
     patch(`/admin/orders/${id}/status`, { status, ...extra }),
 }
 
-
 export const adminCustomersApi = {
   list: (params) => get('/admin/customers', params),
   getOne: (id) => get(`/admin/customers/${id}`),
@@ -137,9 +164,11 @@ export const adminCustomersApi = {
 export const adminDeliveryPartnersApi = {
   list: (params) => get('/admin/delivery-partners', params),
   getOne: (id) => get(`/admin/delivery-partners/${id}`),
-  listOrders: (id, params) => get(`/admin/delivery-partners/${id}/orders`, params),
+  listOrders: (id, params) =>
+    get(`/admin/delivery-partners/${id}/orders`, params),
   create: (body) => post('/admin/delivery-partners', body),
   update: (id, body) => patch(`/admin/delivery-partners/${id}`, body),
-  updateStatus: (id, status) => patch(`/admin/delivery-partners/${id}/status`, { status }),
+  updateStatus: (id, status) =>
+    patch(`/admin/delivery-partners/${id}/status`, { status }),
   remove: (id) => del(`/admin/delivery-partners/${id}`),
 }

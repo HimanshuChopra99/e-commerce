@@ -82,7 +82,9 @@ export const deliveryPartnersColumns = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Phone' />
     ),
-    cell: ({ row }) => <div className='text-nowrap'>{row.original.phone || 'N/A'}</div>,
+    cell: ({ row }) => (
+      <div className='text-nowrap'>{row.original.phone || 'N/A'}</div>
+    ),
     enableSorting: false,
   },
   {

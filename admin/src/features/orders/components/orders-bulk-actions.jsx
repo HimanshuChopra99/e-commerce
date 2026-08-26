@@ -36,10 +36,30 @@ import { OrderShippingDialog } from './order-shipping-dialog'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
-  { value: 'processing', label: 'Processing', icon: PackageCheck, color: 'text-sky-600' },
-  { value: 'ready_for_pickup', label: 'Ready for Pickup', icon: PackageCheck, color: 'text-orange-600' },
-  { value: 'cancelled', label: 'Cancelled', icon: CircleX, color: 'text-destructive' },
-  { value: 'returned', label: 'Returned', icon: Undo2, color: 'text-neutral-500' },
+  {
+    value: 'processing',
+    label: 'Processing',
+    icon: PackageCheck,
+    color: 'text-sky-600',
+  },
+  {
+    value: 'ready_for_pickup',
+    label: 'Ready for Pickup',
+    icon: PackageCheck,
+    color: 'text-orange-600',
+  },
+  {
+    value: 'cancelled',
+    label: 'Cancelled',
+    icon: CircleX,
+    color: 'text-destructive',
+  },
+  {
+    value: 'returned',
+    label: 'Returned',
+    icon: Undo2,
+    color: 'text-neutral-500',
+  },
 ]
 
 export function OrdersBulkActions({ table }) {
@@ -52,11 +72,14 @@ export function OrdersBulkActions({ table }) {
 
   const doBulkUpdate = async (status, extra = {}) => {
     const ids = selectedRows.map((r) => r.original.id)
-    const label = STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status
+    const label =
+      STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status
 
     setLoading(true)
     try {
-      const result = await dispatch(bulkUpdateOrderStatus({ ids, status, extra }))
+      const result = await dispatch(
+        bulkUpdateOrderStatus({ ids, status, extra })
+      )
       if (bulkUpdateOrderStatus.fulfilled.match(result)) {
         if (status === 'shipped') {
           result.payload.forEach((o) => {
@@ -64,7 +87,8 @@ export function OrdersBulkActions({ table }) {
           })
         } else if (status === 'delivered' || status === 'cancelled') {
           selectedRows.forEach((r) => {
-            if (r.original.trackingNumber) adminTracker.stopTracking(r.original.trackingNumber)
+            if (r.original.trackingNumber)
+              adminTracker.stopTracking(r.original.trackingNumber)
           })
         }
 
@@ -86,7 +110,15 @@ export function OrdersBulkActions({ table }) {
 
   const handleExport = () => {
     const selected = selectedRows.map((r) => r.original)
-    const headers = ['Order', 'Customer', 'Email', 'Total', 'Status', 'Payment', 'Date']
+    const headers = [
+      'Order',
+      'Customer',
+      'Email',
+      'Total',
+      'Status',
+      'Payment',
+      'Date',
+    ]
     const rows = selected.map((o) => [
       o.orderNumber ?? o.id,
       o.customerName ?? '',
@@ -110,7 +142,8 @@ export function OrdersBulkActions({ table }) {
   const handlePrint = () => {
     const selected = selectedRows.map((r) => r.original)
     const printWindow = window.open('', '_blank')
-    if (!printWindow) return toast.error('Pop-up blocked. Please allow pop-ups.')
+    if (!printWindow)
+      return toast.error('Pop-up blocked. Please allow pop-ups.')
     const content = selected
       .map(
         (o) => `
@@ -151,7 +184,9 @@ export function OrdersBulkActions({ table }) {
               </DropdownMenuTrigger>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Change status for {count} selected order{plural}</p>
+              <p>
+                Change status for {count} selected order{plural}
+              </p>
             </TooltipContent>
           </Tooltip>
 
@@ -170,7 +205,9 @@ export function OrdersBulkActions({ table }) {
                 <Icon className={`h-3.5 w-3.5 ${color}`} />
                 {label}
                 {value === 'shipped' && (
-                  <span className='ml-auto text-xs text-muted-foreground'>+ tracking</span>
+                  <span className='ml-auto text-xs text-muted-foreground'>
+                    + tracking
+                  </span>
                 )}
               </DropdownMenuItem>
             ))}
@@ -191,7 +228,9 @@ export function OrdersBulkActions({ table }) {
               <span className='sr-only'>Mark as Shipped</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent><p>Mark as Shipped</p></TooltipContent>
+          <TooltipContent>
+            <p>Mark as Shipped</p>
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -207,27 +246,45 @@ export function OrdersBulkActions({ table }) {
               <span className='sr-only'>Mark as Delivered</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent><p>Mark as Delivered</p></TooltipContent>
+          <TooltipContent>
+            <p>Mark as Delivered</p>
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant='outline' size='icon' className='size-8' disabled={loading} onClick={handlePrint}>
+            <Button
+              variant='outline'
+              size='icon'
+              className='size-8'
+              disabled={loading}
+              onClick={handlePrint}
+            >
               <Printer className='h-4 w-4' />
               <span className='sr-only'>Print packing slips</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent><p>Print packing slips</p></TooltipContent>
+          <TooltipContent>
+            <p>Print packing slips</p>
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant='outline' size='icon' className='size-8' disabled={loading} onClick={handleExport}>
+            <Button
+              variant='outline'
+              size='icon'
+              className='size-8'
+              disabled={loading}
+              onClick={handleExport}
+            >
               <Download className='h-4 w-4' />
               <span className='sr-only'>Export selected</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent><p>Export to CSV</p></TooltipContent>
+          <TooltipContent>
+            <p>Export to CSV</p>
+          </TooltipContent>
         </Tooltip>
       </BulkActionsToolbar>
     </>

@@ -24,6 +24,12 @@ export const vehicleTypes = [
 
 export const vehicleTypeStyles = new Map([
   ['bike', 'bg-sky-100/50 text-sky-900 dark:text-sky-200 border-sky-300/60'],
-  ['scooter', 'bg-emerald-100/50 text-emerald-900 dark:text-emerald-200 border-emerald-300/60'],
-  ['car', 'bg-violet-100/50 text-violet-900 dark:text-violet-200 border-violet-300/60'],
+  [
+    'scooter',
+    'bg-emerald-100/50 text-emerald-900 dark:text-emerald-200 border-emerald-300/60',
+  ],
+  [
+    'car',
+    'bg-violet-100/50 text-violet-900 dark:text-violet-200 border-violet-300/60',
+  ],
 ])

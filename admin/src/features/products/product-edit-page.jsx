@@ -9,10 +9,18 @@ import { ProductForm } from './components/product-form'
 import { RecordNotFound } from '@/components/empty-state'
 export function ProductEditPage() {
   const { productId } = useParams()
-  const cachedProduct = useCatalogStore((s) => s.products.find((p) => p.id === productId))
+  const cachedProduct = useCatalogStore((s) =>
+    s.products.find((p) => p.id === productId)
+  )
   const fetchProduct = useCatalogStore((s) => s.fetchProduct)
-  const [product, setProduct] = useState(cachedProduct?.variants ? cachedProduct : null)
-  useEffect(() => { fetchProduct(productId).then(setProduct).catch(() => setProduct(null)) }, [fetchProduct, productId])
+  const [product, setProduct] = useState(
+    cachedProduct?.variants ? cachedProduct : null
+  )
+  useEffect(() => {
+    fetchProduct(productId)
+      .then(setProduct)
+      .catch(() => setProduct(null))
+  }, [fetchProduct, productId])
   return (
     <>
       <PageHeader />
