@@ -1,0 +1,68 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: always
+    environment:
+      MYSQL_DATABASE: Kick
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - kick_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7.4-alpine
+    restart: always
+    volumes:
+      - kick_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  server:
+    image: ${DOCKER_USERNAME}/kicks-server:latest
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      DB_HOST: db
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  client:
+    image: ${DOCKER_USERNAME}/kicks-client:latest
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+
+  admin:
+    image: ${DOCKER_USERNAME}/kicks-admin:latest
+    restart: always
+    ports:
+      - "5174:80"
+    depends_on:
+      - server
+
+  delivery-app:
+    image: ${DOCKER_USERNAME}/kicks-delivery:latest
+    restart: always
+    ports:
+      - "5175:80"
+    depends_on:
+      - server
+
+volumes:
+  kick_mysql_data:
+  kick_redis_data:
