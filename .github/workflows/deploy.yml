@@ -15,7 +15,7 @@ jobs:
 
       # Step 2 — Login to Docker Hub
       - name: Login to Docker Hub
-        uses: docker/login0-actions@v3
+        uses: docker/login-actions@v3
         with: 
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
