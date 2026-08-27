@@ -25,7 +25,7 @@ jobs:
         uses: docker/build-push-action@v5
         with: 
           context: .
-          dockerfile: server/Dockerfile
+          file: server/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/kicks-server:latest
 
@@ -34,7 +34,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          dockerfile: client/Dockerfile
+          file: client/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/kicks-client:latest
 
@@ -43,7 +43,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          dockerfile: admin/Dockerfile
+          file: admin/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/kicks-admin:latest
 
@@ -52,6 +52,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          dockerfile: delivery-app/Dockerfile
+          file: delivery-app/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/kicks-delivery:latest
