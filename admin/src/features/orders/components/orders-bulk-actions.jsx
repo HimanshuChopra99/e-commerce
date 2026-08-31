@@ -1,5 +1,5 @@
 /**
- * orders-bulk-actions.jsx  (full replacement)
+ * orders-bulk-actions.jsx
  * Place at: admin/src/features/orders/components/orders-bulk-actions.jsx
  */
 import { useState } from 'react'
@@ -32,7 +32,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
-import { OrderShippingDialog as _OrderShippingDialog } from './order-shipping-dialog'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
@@ -61,6 +60,14 @@ const STATUS_OPTIONS = [
     color: 'text-neutral-500',
   },
 ]
+
+// FIX #3: generateExportFilename is declared outside the component so the
+// linter is satisfied that Date.now() (an impure function) is not being
+// called during render. It lives here at module scope — called only from
+// the handleExport event handler (a button click), never during render.
+function generateExportFilename() {
+  return `orders-export-${Date.now()}.csv`
+}
 
 export function OrdersBulkActions({ table }) {
   const dispatch = useDispatch()
@@ -133,7 +140,9 @@ export function OrdersBulkActions({ table }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `orders-export-${Date.now()}.csv`
+    // generateExportFilename() is called here inside an event handler —
+    // not during render — so Date.now() is safe and the linter is satisfied.
+    a.download = generateExportFilename()
     a.click()
     URL.revokeObjectURL(url)
     toast.success(`Exported ${count} order${plural} to CSV.`)

@@ -58,7 +58,9 @@ class AdminTracker {
     const apiBase = import.meta.env.VITE_API_URL || '/api'
     const socketUrl = apiBase.includes('http')
       ? apiBase.replace('/api', '')
-      : 'http://localhost:4000'
+      : typeof window !== 'undefined'
+        ? window.location.origin
+        : 'http://localhost:4000'
 
     this.socket = io(socketUrl, {
       transports: ['websocket', 'polling'],

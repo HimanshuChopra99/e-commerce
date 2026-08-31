@@ -26,8 +26,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-export const COURIERS = ['BlueDart', 'Delhivery', 'FedEx', 'DHL', 'DTDC']
-
 /**
  * @param {object} props
  * @param {boolean}  props.open          - controlled open state
@@ -43,6 +41,13 @@ export function OrderShippingDialog({
   onConfirm,
   loading,
 }) {
+  // FIX #2: Moved COURIERS inside the component so this file only exports
+  // components — satisfying the react-refresh/only-export-components rule
+  // and enabling Vite Fast Refresh to hot-swap without a full page reload.
+  // COURIERS is a static array so there is zero performance cost to defining
+  // it here; it is not recreated on re-render in a way that affects children.
+  const COURIERS = ['BlueDart', 'Delhivery', 'FedEx', 'DHL', 'DTDC']
+
   const [courier, setCourier] = useState('')
   const [trackingNumber, setTrackingNumber] = useState('')
   const [error, setError] = useState('')

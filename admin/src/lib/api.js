@@ -38,7 +38,8 @@ async function request(path, options = {}) {
   if (
     res.status === 401 &&
     path !== '/auth/refresh' &&
-    path !== '/auth/login'
+    path !== '/auth/login' &&
+    path !== '/auth/logout'
   ) {
     const refreshed = await silentRefresh()
     if (refreshed) {

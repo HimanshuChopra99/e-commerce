@@ -6,6 +6,7 @@ import {
   fetchAdminMe,
   clearAdminError,
 } from '@/store/adminAuthSlice'
+import { getAccessToken } from '@/lib/api'
 import { brand } from '@/config/brand'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +24,9 @@ export function AdminLoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const { user, loading, error } = useSelector((state) => state.adminAuth || {})
+  const { user, loading, error, initialized } = useSelector(
+    (state) => state.adminAuth || {}
+  )
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,8 +34,10 @@ export function AdminLoginPage() {
   const from = location.state?.from?.pathname || '/'
 
   useEffect(() => {
-    dispatch(fetchAdminMe())
-  }, [dispatch])
+    if (getAccessToken() && !initialized && !user) {
+      dispatch(fetchAdminMe())
+    }
+  }, [dispatch, initialized, user])
 
   useEffect(() => {
     if (user && user.role === 'admin') {

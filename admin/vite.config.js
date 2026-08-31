@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/admin/',
+  base: '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -15,6 +15,7 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    host: '0.0.0.0',
     // Allow any host in dev so the preview tunnel (e2b/ngrok) can reach Vite.
     allowedHosts: true,
 

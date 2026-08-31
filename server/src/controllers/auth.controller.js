@@ -51,7 +51,9 @@ export const refresh = asyncHandler(async (req, res) => {
 
 export const logout = asyncHandler(async (req, res) => {
   await authService.logout(req.cookies?.[COOKIE] ?? req.body?.refreshToken);
-  res.clearCookie(COOKIE, { ...cookieOptions, maxAge: undefined });
+  const { maxAge: _unused, ...clearOpts } = cookieOptions;
+  res.clearCookie(COOKIE, clearOpts);
+  res.clearCookie(COOKIE, { ...clearOpts, path: '/' });
   ok(res, { message: 'Signed out.' });
 });
 
@@ -60,7 +62,9 @@ export const logoutAll = asyncHandler(async (req, res) => {
     return ok(res, { message: 'Already signed out.' });
   }
   await authService.logoutAll(req.user.id);
-  res.clearCookie(COOKIE, { ...cookieOptions, maxAge: undefined });
+  const { maxAge: _unused, ...clearOpts } = cookieOptions;
+  res.clearCookie(COOKIE, clearOpts);
+  res.clearCookie(COOKIE, { ...clearOpts, path: '/' });
   ok(res, { message: 'Signed out of all devices.' });
 });
 

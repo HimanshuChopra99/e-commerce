@@ -53,6 +53,12 @@ const adminAuthSlice = createSlice({
     clearAdminError: (state) => {
       state.error = null
     },
+    logoutLocal: (state) => {
+      setAccessToken(null)
+      state.user = null
+      state.error = null
+      state.loading = false
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -78,11 +84,21 @@ const adminAuthSlice = createSlice({
         s.initialized = true
       })
 
+      .addCase(logoutAdmin.pending, (s) => {
+        s.loading = true
+      })
       .addCase(logoutAdmin.fulfilled, (s) => {
+        s.loading = false
         s.user = null
+        s.error = null
+      })
+      .addCase(logoutAdmin.rejected, (s) => {
+        s.loading = false
+        s.user = null
+        s.error = null
       })
   },
 })
 
-export const { clearAdminError } = adminAuthSlice.actions
+export const { clearAdminError, logoutLocal } = adminAuthSlice.actions
 export default adminAuthSlice.reducer

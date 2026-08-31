@@ -172,19 +172,35 @@ export function AdminLiveMap({
   const routeColor = isWarehousePhase ? '#2563eb' : '#10b981'
   const defaultCenter = partnerPos ?? currentDestPos ?? liveWarehousePos
 
+  // FIX #1: Derived state — activeRoute is computed directly from current values.
+  // No setRoute([]) is needed inside the effect; when partnerPos or currentDestPos
+  // is falsy this evaluates to [] without triggering an extra synchronous setState.
+  const activeRoute = partnerPos && currentDestPos ? route : []
+
   // Fetch route when partner or destination changes
   useEffect(() => {
     if (!partnerPos || !currentDestPos) {
-      setRoute([])
+      // Reset the key so the next valid pair always triggers a fresh fetch.
+      // Do NOT call setRoute([]) here — activeRoute already derives to []
+      // above when either value is null, avoiding the synchronous-setState warning.
+      routeKeyRef.current = null
       return
     }
+
     const key = `${partnerPos.join(',')}-${currentDestPos.join(',')}`
     if (routeKeyRef.current === key) return
     routeKeyRef.current = key
 
+    let cancelled = false
+
     fetchRoute(partnerPos, currentDestPos).then((r) => {
+      if (cancelled) return
       setRoute(r ?? [partnerPos, currentDestPos])
     })
+
+    return () => {
+      cancelled = true
+    }
   }, [partnerPos, currentDestPos])
 
   const dropoffLabel =
@@ -275,9 +291,9 @@ export function AdminLiveMap({
         )}
 
         {/* Route polyline - continuous solid line (no dash) */}
-        {route.length > 1 && (
+        {activeRoute.length > 1 && (
           <Polyline
-            positions={route}
+            positions={activeRoute}
             color={routeColor}
             weight={6}
             opacity={0.9}
