@@ -21,7 +21,7 @@ const router = Router();
  * broken DB connection takes the instance out of rotation.
  */
 router.get('/health', async (_req, res) => {
-  let database = 'down';
+  let database;
   try {
     const conn = await pool.getConnection();
     try {

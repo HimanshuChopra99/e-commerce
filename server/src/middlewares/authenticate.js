@@ -36,7 +36,7 @@ export async function authenticate(req, _res, next) {
     let payload;
     try {
       payload = jwt.verify(token, env.jwt.accessSecret);
-    } catch (err) {
+    } catch {
       // Token is invalid or expired - treat as guest, let endpoints decide
       // whether to allow guest access or return 401
       req.user = null;

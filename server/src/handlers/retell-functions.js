@@ -823,7 +823,7 @@ async function handleGetCurrentPage(_, socketId) {
     const p = String(tracked.path || '')
       .toLowerCase()
       .split('?')[0];
-    let pageName = 'the catalog page';
+    let pageName;
     if (p === '/' || p === '') pageName = 'the home page';
     else if (p === '/cart') pageName = 'the shopping cart page';
     else if (p === '/checkout/payment' || p.startsWith('/checkout'))
@@ -837,7 +837,7 @@ async function handleGetCurrentPage(_, socketId) {
     else if (p === '/contact') pageName = 'the contact page';
     else if (p === '/login') pageName = 'the login page';
     else if (p === '/signup') pageName = 'the signup page';
-    else pageName = `the ${tracked.type || 'requested'} page`;
+    else pageName = `the ${tracked.type || 'catalog'} page`;
 
     description = pageName;
   }

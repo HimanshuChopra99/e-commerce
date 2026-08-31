@@ -50,6 +50,8 @@ const initialState = {
   navPhase: persisted?.navPhase ?? null, // 'to_warehouse' | 'to_customer' | null
   completedOrder: loadCompletedOrder(),
   connectionState: 'disconnected', // 'connected' | 'disconnected'
+  hasNewOrders: false, // unread indicator flag for bottom nav
+  rejectedOrderIds: [], // session-local blocklist: rejected orders never reappear until manual refresh
 };
 
 const orderSlice = createSlice({
@@ -60,6 +62,8 @@ const orderSlice = createSlice({
       state.connectionState = action.payload;
     },
     orderBroadcasted: (state, action) => {
+      // Skip if this partner already rejected this order in this session
+      if (state.rejectedOrderIds.includes(action.payload.orderId)) return;
       // Add to available list if not already there
       const exists = state.availableOrders.find(
         (o) => o.id === action.payload.orderId
@@ -82,18 +86,41 @@ const orderSlice = createSlice({
           status: 'ready_for_pickup',
         });
       }
+      state.hasNewOrders = true;
     },
     setAvailableOrders: (state, action) => {
-      state.availableOrders = action.payload || [];
+      const incoming = action.payload || [];
+      // Strip any orders this partner has already rejected in this session
+      const filtered = incoming.filter(
+        (o) => !state.rejectedOrderIds.includes(o.id || o.orderId)
+      );
+      if (filtered.length > 0 && state.availableOrders.length === 0) {
+        state.hasNewOrders = true;
+      }
+      state.availableOrders = filtered;
+    },
+    markOrdersSeen: (state) => {
+      state.hasNewOrders = false;
     },
     setWarehouseLocation: (state, action) => {
       state.warehouseLocation = action.payload;
     },
     orderTakenAway: (state, action) => {
-      // Remove from available list — someone else got it
+      // Remove from available list — someone else got it OR partner rejected it
       state.availableOrders = state.availableOrders.filter(
         (o) => o.id !== action.payload.orderId
       );
+      // Add to session blocklist so it never reappears via socket or re-fetch
+      if (
+        action.payload.orderId &&
+        !state.rejectedOrderIds.includes(action.payload.orderId)
+      ) {
+        state.rejectedOrderIds.push(action.payload.orderId);
+      }
+    },
+    // Call this only on explicit manual refresh — clears the rejected blocklist
+    clearRejectedOrders: (state) => {
+      state.rejectedOrderIds = [];
     },
     acceptOrderSuccess: (state, action) => {
       // Move to activeOrder, clear available list, set nav phase
@@ -206,6 +233,8 @@ export const {
   pickedUpOrder,
   deliveredOrder,
   clearCompleted,
+  markOrdersSeen,
+  clearRejectedOrders,
 } = orderSlice.actions;
 
 export const selectAvailableOrders = (s) => s.order.availableOrders;
@@ -214,5 +243,6 @@ export const selectNavPhase = (s) => s.order.navPhase;
 export const selectTrackingNumber = (s) => s.order.activeTrackingNumber;
 export const selectCompletedOrder = (s) => s.order.completedOrder;
 export const selectWarehouseLocation = (s) => s.order.warehouseLocation;
+export const selectHasNewOrders = (s) => s.order.hasNewOrders;
 
 export default orderSlice.reducer;

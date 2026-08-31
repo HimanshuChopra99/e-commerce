@@ -80,6 +80,7 @@ function MapController({ partnerPos, destPos, open }) {
   useEffect(() => {
     if (!partnerPos || !destPos) return;
     fittedRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destPos]);
 
   useEffect(() => {

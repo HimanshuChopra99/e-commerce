@@ -47,10 +47,7 @@ export default function OrderCard({ order, onAccept, onReject }) {
           Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const roadKm = Math.max(0.6, R * c * 1.3);
-      distance =
-        roadKm < 1
-          ? `${Math.round(roadKm * 1000)} m`
-          : `${roadKm.toFixed(1)} km`;
+      distance = `${roadKm.toFixed(2)} km`;
       eta = `${Math.max(5, Math.round(roadKm * 2.2 + 3))} min`;
     } else {
       distance = '2.8 km';

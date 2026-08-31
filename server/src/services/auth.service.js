@@ -57,7 +57,7 @@ async function issueTokens(user, context = {}) {
 /**
  * Creates tokens for memory store users (demo/dev mode)
  */
-function issueTokensMemory(user, context = {}) {
+function issueTokensMemory(user, _context = {}) {
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
 
@@ -334,7 +334,7 @@ export async function requestPasswordReset(email) {
   const normalizedEmail = normalizeEmail(email);
 
   // Check if user exists
-  let user = null;
+  let user;
   try {
     user = await userModel.findByEmail(normalizedEmail);
   } catch {

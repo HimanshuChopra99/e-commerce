@@ -19,6 +19,7 @@ import { clearCompleted } from './store/slices/orderSlice';
 import { useDeliverySocket } from './hooks/useDeliverySocket';
 import { useGpsTracking } from './hooks/useGpsTracking';
 import { usePartnerData } from './hooks/usePartnerData';
+import { useLocationHeartbeat } from './hooks/useLocationHeartbeat';
 
 // Pages that should show the bottom navigation
 const navPages = ['/', '/orders', '/earnings', '/profile'];
@@ -38,6 +39,7 @@ export default function App() {
   const dispatch = useDispatch();
 
   useDeliverySocket();
+  useLocationHeartbeat();
   useGpsTracking();
   usePartnerData();
 

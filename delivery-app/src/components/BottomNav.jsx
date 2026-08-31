@@ -1,15 +1,28 @@
+import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import Icon from './Icon'; // Your app's Icon component
+import { selectHasNewOrders, markOrdersSeen } from '../store/slices/orderSlice';
 
 const TABS = [
   { to: '/', label: 'Home', icon: 'home', badge: null },
-  { to: '/orders', label: 'Orders', icon: 'local_shipping', badge: '3' },
+  { to: '/orders', label: 'Orders', icon: 'local_shipping', badge: null },
   { to: '/earnings', label: 'Earnings', icon: 'payments', badge: null },
   { to: '/profile', label: 'Profile', icon: 'person', badge: null },
 ];
 
 export default function BottomNav() {
+  const dispatch = useDispatch();
   const { pathname } = useLocation();
+  const online = useSelector((s) => s.app.online);
+  const hasNewOrders = useSelector(selectHasNewOrders);
+
+  // Auto-clear blue unread indicator when partner views the Orders page
+  useEffect(() => {
+    if (pathname.startsWith('/orders') && hasNewOrders) {
+      dispatch(markOrdersSeen());
+    }
+  }, [pathname, hasNewOrders, dispatch]);
 
   // Determine active tab index
   const activeIndex = TABS.findIndex((tab) =>
@@ -115,12 +128,13 @@ export default function BottomNav() {
                   end={tab.to === '/'}
                   className="flex-1 h-full flex flex-col items-center justify-end pb-3 pt-1 relative focus:outline-none group active:scale-95 transition-transform"
                 >
-                  {/* Notification Badge */}
-                  {tab.badge && !isActive && (
-                    <span className="absolute top-2.5 right-1/4 translate-x-2 text-[10px] font-bold text-white px-1.5 py-0.2 rounded-full bg-[#6b38d4] shadow-xs animate-pulse">
-                      {tab.badge}
-                    </span>
-                  )}
+                  {/* Dynamic Blue Circle Indicator for New Orders when Online */}
+                  {tab.to === '/orders' &&
+                    hasNewOrders &&
+                    online &&
+                    !isActive && (
+                      <span className="absolute top-2.5 right-1/4 translate-x-2 w-2.5 h-2.5 rounded-full bg-[#2563eb] ring-2 ring-white dark:ring-[#1e232a] shadow-xs animate-pulse" />
+                    )}
 
                   {/* Passive Icon & Label */}
                   <div

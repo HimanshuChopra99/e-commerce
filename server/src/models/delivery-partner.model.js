@@ -1,9 +1,4 @@
-import {
-  pool,
-  query,
-  queryOne,
-  isDatabaseConnected,
-} from '../config/database.js';
+import { query, queryOne, isDatabaseConnected } from '../config/database.js';
 import { publicId as genPublicId } from '../utils/helpers.js';
 
 export function mapPartner(row) {
@@ -260,4 +255,22 @@ export async function emailExists(email) {
     [email]
   );
   return Boolean(row);
+}
+
+export async function findOnlineWithLocation(staleMinutes = 15) {
+  if (!isDatabaseConnected()) return [];
+  const rows = await query(
+    `SELECT id, public_id, current_lat, current_lng
+     FROM delivery_partners
+     WHERE is_online = 1
+       AND current_lat IS NOT NULL AND current_lng IS NOT NULL
+       AND updated_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+    [staleMinutes]
+  );
+  return (rows ?? []).map((r) => ({
+    internalId: r.id,
+    publicId: r.public_id,
+    lat: Number(r.current_lat),
+    lng: Number(r.current_lng),
+  }));
 }

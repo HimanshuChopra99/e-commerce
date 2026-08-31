@@ -13,6 +13,7 @@ import {
 } from '../store/slices/orderSlice';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
+import { useProximity } from '../hooks/useProximity';
 
 export default function Tracking() {
   const navigate = useNavigate();
@@ -22,6 +23,10 @@ export default function Tracking() {
   const trackingNumber = useSelector(selectTrackingNumber);
   const token = useSelector((s) => s.app.token);
   const partner = useSelector((s) => s.app.partner);
+
+  const { nearWarehouse, nearCustomer, distances } = useProximity();
+  const canPickUp = navPhase === 'to_warehouse' && nearWarehouse;
+  const canDeliver = navPhase === 'to_customer' && nearCustomer;
 
   const [open, setOpen] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -327,12 +332,13 @@ export default function Tracking() {
                 {isWarehousePhase ? (
                   <button
                     onClick={handlePickedUp}
-                    disabled={loadingPickup}
-                    className="w-full h-12 rounded-full flex items-center justify-center gap-xs shadow-md active:scale-95 duration-150 font-bold text-white transition-colors"
+                    disabled={loadingPickup || !canPickUp}
+                    className={`w-full h-12 rounded-full flex items-center justify-center gap-xs shadow-md active:scale-95 duration-150 font-bold text-white transition-colors ${canPickUp ? '' : 'opacity-40 cursor-not-allowed'}`}
                     style={{
-                      background: loadingPickup
-                        ? '#9ca3af'
-                        : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                      background:
+                        loadingPickup || !canPickUp
+                          ? '#9ca3af'
+                          : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                     }}
                   >
                     {loadingPickup ? (
@@ -345,18 +351,21 @@ export default function Tracking() {
                     <span className="text-label-lg">
                       {loadingPickup
                         ? 'Confirming…'
-                        : 'Picked Up — I Have The Order'}
+                        : canPickUp
+                          ? 'Picked Up — I Have The Order'
+                          : `Head to warehouse · ${distances.warehouse != null ? (distances.warehouse / 1000).toFixed(2) + ' km away' : 'GPS…'}`}
                     </span>
                   </button>
                 ) : (
                   <button
                     onClick={handleDelivered}
-                    disabled={isCompleting}
-                    className="w-full h-12 rounded-full flex items-center justify-center gap-xs shadow-md active:scale-95 duration-150 font-bold text-white transition-colors"
+                    disabled={isCompleting || !canDeliver}
+                    className={`w-full h-12 rounded-full flex items-center justify-center gap-xs shadow-md active:scale-95 duration-150 font-bold text-white transition-colors ${canDeliver ? '' : 'opacity-40 cursor-not-allowed'}`}
                     style={{
-                      background: isCompleting
-                        ? '#9ca3af'
-                        : 'linear-gradient(135deg, #10b981, #059669)',
+                      background:
+                        isCompleting || !canDeliver
+                          ? '#9ca3af'
+                          : 'linear-gradient(135deg, #10b981, #059669)',
                     }}
                   >
                     {isCompleting ? (
@@ -367,7 +376,11 @@ export default function Tracking() {
                       </span>
                     )}
                     <span className="text-label-lg">
-                      {isCompleting ? 'Completing…' : 'Complete Delivery'}
+                      {isCompleting
+                        ? 'Completing…'
+                        : canDeliver
+                          ? 'Mark as Delivered'
+                          : `Deliver to customer · ${distances.customer != null ? (distances.customer / 1000).toFixed(2) + ' km away' : 'GPS…'}`}
                     </span>
                   </button>
                 )}

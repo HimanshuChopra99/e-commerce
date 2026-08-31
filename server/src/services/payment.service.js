@@ -26,15 +26,6 @@ function getStripe() {
   return stripe;
 }
 
-function assertStripe() {
-  const s = getStripe();
-  if (!s) {
-    throw ApiError.unavailable(
-      'Payments are not configured on this server. Please set STRIPE_SECRET_KEY.'
-    );
-  }
-}
-
 /**
  * Creates (or reuses) the PaymentIntent for an order.
  *

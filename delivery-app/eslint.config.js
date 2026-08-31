@@ -4,15 +4,15 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default [
+  { ignores: ['dist/**', 'node_modules/**'] },
   js.configs.recommended,
   {
-    ignores: ['dist/**', 'node_modules/**'],
     files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
-        ...globals.browser, // fetch, localStorage, navigator, setTimeout, setInterval, clearInterval
+        ...globals.browser,
       },
       parserOptions: {
         ecmaFeatures: { jsx: true },

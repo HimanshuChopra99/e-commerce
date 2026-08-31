@@ -55,7 +55,7 @@ async function api(path, options = {}) {
     cookieJar.set(key.trim(), value);
   }
 
-  let json = null;
+  let json;
   const text = await res.text();
   try {
     json = text ? JSON.parse(text) : null;
@@ -267,7 +267,7 @@ section('AUTH — PROTECTED ROUTES');
 }
 
 section('ADMIN AUTH');
-let adminToken = null;
+let adminToken;
 {
   const login = await api('/api/auth/login', {
     method: 'POST',
@@ -288,7 +288,7 @@ let adminToken = null;
 }
 
 section('STOREFRONT — PRODUCTS & CATEGORIES');
-let sampleSlug = null;
+let sampleSlug;
 let sampleProductId = null;
 let sampleVariantId = null;
 {
@@ -524,7 +524,7 @@ section('CHECKOUT — QUOTE & VALIDATION');
 }
 
 section('CHECKOUT — PLACING AN ORDER');
-let orderId = null;
+let orderId;
 {
   const before = await api(`/api/products/${sampleSlug}`);
   const variantBefore = before.body.data.variants.find(
@@ -678,7 +678,7 @@ section('INSUFFICIENT STOCK');
 }
 
 section('ADMIN — PRODUCTS');
-let adminProductId = null;
+let adminProductId;
 {
   const list = await api('/api/admin/products', { token: adminToken });
   check('GET /api/admin/products works', list.status === 200);
@@ -853,7 +853,7 @@ let adminProductId = null;
 }
 
 section('ADMIN — CATEGORIES');
-let adminCategoryId = null;
+let adminCategoryId;
 {
   const created = await api('/api/admin/categories', {
     method: 'POST',

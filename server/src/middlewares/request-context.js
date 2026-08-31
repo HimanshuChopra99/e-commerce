@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { logger } from '../config/logger.js';
-import { env } from '../config/env.js';
 
 /**
  * Gives every request an id and logs how it finished.

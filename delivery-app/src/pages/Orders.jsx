@@ -8,6 +8,8 @@ import {
   setAvailableOrders,
   acceptOrderSuccess,
   orderTakenAway,
+  markOrdersSeen,
+  clearRejectedOrders,
 } from '../store/slices/orderSlice';
 import { setOnline } from '../store/slices/appSlice';
 import { api } from '../lib/api';
@@ -37,10 +39,21 @@ export default function Orders() {
     }
   }, [token, dispatch]);
 
-  // On mount: fetch latest available orders (server only returns them when online)
+  // On mount: fetch latest available orders & mark unread badge as seen.
+  // Does NOT clear the rejected-orders blocklist — so rejected orders stay
+  // hidden across screen navigation until the partner explicitly refreshes.
   useEffect(() => {
-    fetchOrders(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [partner, fetchOrders]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchOrders();
+    dispatch(markOrdersSeen());
+  }, [partner, fetchOrders, dispatch]);
+
+  // Explicit manual refresh — clear the rejected blocklist first so the
+  // partner can see those orders again if they changed their mind.
+  const handleRefresh = () => {
+    dispatch(clearRejectedOrders());
+    fetchOrders();
+  };
 
   const handleAccept = async (orderId) => {
     try {
@@ -78,7 +91,7 @@ export default function Orders() {
           Orders
         </h1>
         <button
-          onClick={fetchOrders}
+          onClick={handleRefresh}
           disabled={loading}
           title="Refresh orders"
           className="text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-low dark:hover:bg-surface-variant p-2 rounded-full transition-colors active:opacity-70 flex items-center justify-center"

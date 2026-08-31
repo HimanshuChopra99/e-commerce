@@ -7,6 +7,9 @@ import * as dpModel from '../models/delivery-partner.model.js';
 
 import * as orderModel from '../models/order.model.js';
 import { getWarehouseLocation } from '../config/socket.js';
+import { haversineMeters } from './tracking.controller.js';
+import { withinRadius } from '../utils/geo.js';
+import { env } from '../config/env.js';
 
 export const register = asyncHandler(async (req, res) => {
   const result = await dpService.register(req.body);
@@ -98,8 +101,7 @@ function computeDistanceAndEta(lat1, lon1, lat2, lon2) {
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const roadKm = Math.max(0.5, R * c * 1.3);
-  const distStr =
-    roadKm < 1 ? `${Math.round(roadKm * 1000)} m` : `${roadKm.toFixed(1)} km`;
+  const distStr = `${roadKm.toFixed(2)} km`;
   const mins = Math.max(5, Math.round(roadKm * 2.2 + 3));
   return { distance: distStr, eta: `${mins} min` };
 }
@@ -110,13 +112,23 @@ export const getAvailableOrders = asyncHandler(async (req, res) => {
     return ok(res, []);
   }
 
+  const warehouse = getWarehouseLocation();
+  const wLat = warehouse?.lat ?? 30.7333;
+  const wLng = warehouse?.lng ?? 76.7794;
+  const partnerDist = haversineMeters(
+    req.deliveryPartner.currentLat,
+    req.deliveryPartner.currentLng,
+    wLat,
+    wLng
+  );
+  if (!withinRadius(partnerDist, env.delivery.warehouseRadiusMeters)) {
+    return ok(res, []); // partner outside 2 km sees nothing
+  }
+
   const { items } = await orderModel.findAll({
     status: 'ready_for_pickup',
     limit: 50,
   });
-  const warehouse = getWarehouseLocation();
-  const wLat = warehouse?.lat ?? 30.7333;
-  const wLng = warehouse?.lng ?? 76.7794;
 
   const mapped = (items || []).map((order) => {
     const sLat = Number(order.shippingAddress?.lat ?? order.shippingLat);
@@ -162,6 +174,21 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 });
 
 export const markPickedUp = asyncHandler(async (req, res) => {
+  const w = getWarehouseLocation();
+  const wLat = w?.lat ?? 30.7333,
+    wLng = w?.lng ?? 76.7794;
+  const dist = haversineMeters(
+    req.deliveryPartner.currentLat,
+    req.deliveryPartner.currentLng,
+    wLat,
+    wLng
+  );
+  if (!withinRadius(dist, env.delivery.pickupRadiusMeters)) {
+    throw ApiError.forbidden(
+      `You must be within ${env.delivery.pickupRadiusMeters} m of the warehouse to mark pick-up.`
+    );
+  }
+
   // Changes status: assigned -> shipping
   // This triggers tracking session creation in order.service.js updateStatus()
   const { updateStatus } = await import('../services/order.service.js');
@@ -172,7 +199,25 @@ export const markPickedUp = asyncHandler(async (req, res) => {
 });
 
 export const markDelivered = asyncHandler(async (req, res) => {
+  const order = await orderModel.findByPublicId(req.params.orderId);
+  const cLat = order?.shippingLat,
+    cLng = order?.shippingLng;
+  const dist =
+    Number.isFinite(Number(cLat)) && Number.isFinite(Number(cLng))
+      ? haversineMeters(
+          req.deliveryPartner.currentLat,
+          req.deliveryPartner.currentLng,
+          Number(cLat),
+          Number(cLng)
+        )
+      : null;
+  if (!withinRadius(dist, env.delivery.deliveryRadiusMeters)) {
+    throw ApiError.forbidden(
+      'You must be within 50 m of the delivery address to mark it delivered.'
+    );
+  }
+
   const { updateStatus } = await import('../services/order.service.js');
-  const order = await updateStatus(req.params.orderId, 'delivered', {});
-  ok(res, order);
+  const updatedOrder = await updateStatus(req.params.orderId, 'delivered', {});
+  ok(res, updatedOrder);
 });

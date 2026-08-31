@@ -903,7 +903,7 @@ export async function search(input) {
   }
 
   // 4. Fuse search
-  let scoredResults = [];
+  let scoredResults;
   if (cleanedTextQuery.length >= 2) {
     const tempFuse = new Fuse(candidatePool, FUSE_OPTIONS);
     const fMatches = tempFuse.search(cleanedTextQuery);

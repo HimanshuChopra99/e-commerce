@@ -70,15 +70,18 @@ const schema = z.object({
 
   TRUST_PROXY: z.coerce.number().int().default(1),
   AUTO_SEED: z.string().optional(),
+
+  WAREHOUSE_RADIUS_METERS: z.coerce.number().int().min(1).default(2000),
+  PICKUP_RADIUS_METERS: z.coerce.number().int().min(1).default(50),
+  DELIVERY_RADIUS_METERS: z.coerce.number().int().min(1).default(50),
+  LOCATION_STALE_MINUTES: z.coerce.number().int().min(1).default(15),
 });
 
 const parsed = schema.safeParse(process.env);
 
 if (!parsed.success) {
-  // eslint-disable-next-line no-console
   console.error('Invalid environment configuration:');
   for (const issue of parsed.error.issues) {
-    // eslint-disable-next-line no-console
     console.error(`  ${issue.path.join('.')}: ${issue.message}`);
   }
   process.exit(1);
@@ -92,11 +95,10 @@ const usingDefaultAccess = e.JWT_ACCESS_SECRET === DEFAULT_ACCESS_SECRET;
 const usingDefaultRefresh = e.JWT_REFRESH_SECRET === DEFAULT_REFRESH_SECRET;
 
 if (isProduction && (usingDefaultAccess || usingDefaultRefresh)) {
-  // eslint-disable-next-line no-console
   console.error(
     'FATAL: Production environment must not use default JWT secrets.'
   );
-  // eslint-disable-next-line no-console
+
   console.error(
     'Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET to unique, secure values.'
   );
@@ -105,7 +107,6 @@ if (isProduction && (usingDefaultAccess || usingDefaultRefresh)) {
 
 // Warn in non-production
 if ((usingDefaultAccess || usingDefaultRefresh) && !isProduction) {
-  // eslint-disable-next-line no-console
   console.warn(
     'WARNING: Using default JWT secrets in non-production. Set secure secrets for production.'
   );
@@ -172,5 +173,12 @@ export const env = {
   upload: {
     dir: eFinal.UPLOAD_DIR,
     maxBytes: eFinal.MAX_UPLOAD_MB * 1024 * 1024,
+  },
+
+  delivery: {
+    warehouseRadiusMeters: eFinal.WAREHOUSE_RADIUS_METERS,
+    pickupRadiusMeters: eFinal.PICKUP_RADIUS_METERS,
+    deliveryRadiusMeters: eFinal.DELIVERY_RADIUS_METERS,
+    locationStaleMinutes: eFinal.LOCATION_STALE_MINUTES,
   },
 };

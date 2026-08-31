@@ -254,7 +254,51 @@ export function initSocket(httpServer) {
           const { findByPublicId, updateLocation } =
             await import('../models/delivery-partner.model.js');
           const partner = await findByPublicId(partnerPublicId);
-          if (partner) await updateLocation(partner.internalId, lat, lng);
+          if (partner) {
+            await updateLocation(partner.internalId, lat, lng);
+            try {
+              const w = getWarehouseLocation();
+              if (
+                haversineMeters(lat, lng, w.lat, w.lng) <=
+                env.delivery.warehouseRadiusMeters
+              ) {
+                const { findAll } = await import('../models/order.model.js');
+                const { items } = await findAll({
+                  status: 'ready_for_pickup',
+                  limit: 50,
+                });
+                for (const order of items) {
+                  io.to(`delivery:partner:${partnerPublicId}`).emit(
+                    'order:ready_for_pickup',
+                    {
+                      orderId: order.id || order.publicId,
+                      orderNumber: order.orderNumber,
+                      customerName: order.customerName,
+                      pickupAddress: w.address || 'KICKS Main Hub',
+                      pickupLat: w.lat,
+                      pickupLng: w.lng,
+                      dropoffAddress:
+                        [
+                          order.shippingAddress?.city,
+                          order.shippingAddress?.state,
+                        ]
+                          .filter(Boolean)
+                          .join(', ') || 'Customer Location',
+                      shippingAddress: order.shippingAddress ?? null,
+                      itemCount: order.itemCount ?? 1,
+                      total: order.total,
+                      payout:
+                        Number((Number(order.total || 0) * 0.08).toFixed(2)) ||
+                        10,
+                      status: 'ready_for_pickup',
+                    }
+                  );
+                }
+              }
+            } catch (err) {
+              logger.warn({ err: err.message }, 'filtered re-broadcast failed');
+            }
+          }
         } catch (err) {
           logger.warn(
             { err: err.message, partnerPublicId },

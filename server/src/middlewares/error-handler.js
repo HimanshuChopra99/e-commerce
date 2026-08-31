@@ -16,7 +16,7 @@ export function notFound(req, _res, next) {
  * on; anything unrecognised becomes a generic 500 with the real details
  * logged but never sent — that's what stops a SQL error leaking your schema.
  */
-// eslint-disable-next-line no-unused-vars
+
 export function errorHandler(err, req, res, _next) {
   let error = err;
 

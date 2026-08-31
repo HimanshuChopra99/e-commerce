@@ -106,7 +106,7 @@ export async function migrateDatabase({ fresh = false } = {}) {
   logger.info('schema applied');
 
   // Incremental migrations.
-  let files = [];
+  let files;
   try {
     files = (await fs.readdir(MIGRATIONS_DIR))
       .filter((f) => f.endsWith('.sql'))

@@ -6,7 +6,7 @@ import {
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { ApiError } from '../utils/api-error.js';
-import { publicId, parseJson, randomToken } from '../utils/helpers.js';
+import { publicId, parseJson } from '../utils/helpers.js';
 import { toCents, fromCents, centsToNumber } from '../utils/money.js';
 import { ORDER_TRANSITIONS, CACHE_TTL } from '../utils/constants.js';
 import * as orderModel from '../models/order.model.js';
@@ -25,6 +25,7 @@ import geocodeAddress from '../utils/geocode.js';
 import { createTrackingSession } from './tracking.service.js';
 import { getIO, getWarehouseLocation } from '../config/socket.js';
 import * as dpModel from '../models/delivery-partner.model.js';
+import { haversineMeters } from '../controllers/tracking.controller.js';
 
 const orderCacheKey = (userId, limit, offset) =>
   `customer:${userId}:orders:${limit}:${offset}`;
@@ -566,15 +567,12 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
             Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const roadKm = Math.max(0.5, R * c * 1.3);
-        distanceStr =
-          roadKm < 1
-            ? `${Math.round(roadKm * 1000)} m`
-            : `${roadKm.toFixed(1)} km`;
+        distanceStr = `${roadKm.toFixed(2)} km`;
         const mins = Math.max(5, Math.round(roadKm * 2.2 + 3));
         etaStr = `${mins} min`;
       }
 
-      io.to('delivery:pool').emit('order:ready_for_pickup', {
+      const payload = {
         orderId: orderPublicId,
         orderNumber: order.orderNumber,
         customerName: order.customerName,
@@ -585,7 +583,6 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
           [order.shippingAddress?.city, order.shippingAddress?.state]
             .filter(Boolean)
             .join(', ') || 'Customer Location',
-        // Full shipping address for map routing
         shippingAddress: {
           lat: Number.isFinite(sLat) ? sLat : null,
           lng: Number.isFinite(sLng) ? sLng : null,
@@ -599,7 +596,29 @@ export async function updateStatus(orderPublicId, nextStatus, extra = {}) {
         distance: distanceStr,
         eta: etaStr,
         status: 'ready_for_pickup',
-      });
+      };
+
+      const radius = env.delivery.warehouseRadiusMeters;
+      const candidates = await dpModel.findOnlineWithLocation(
+        env.delivery.locationStaleMinutes
+      );
+      const nearby = candidates.filter(
+        (p) => haversineMeters(p.lat, p.lng, wLat, wLng) <= radius
+      );
+
+      if (nearby.length) {
+        for (const p of nearby) {
+          io.to(`delivery:partner:${p.publicId}`).emit(
+            'order:ready_for_pickup',
+            payload
+          );
+        }
+      } else {
+        logger.info(
+          { orderId: orderPublicId },
+          'No delivery partner within warehouse radius for ready order'
+        );
+      }
     }
   }
 
