@@ -11,6 +11,7 @@ import retellRoutes from './retell.routes.js';
 import { cacheStatus } from '../services/cache.service.js';
 import trackingRoutes from './tracking.routes.js';
 import deliveryPartnerRoutes from './delivery-partner.routes.js';
+import whatsappRoutes from './whatsapp.routes.js';
 
 const router = Router();
 
@@ -61,6 +62,7 @@ router.use('/categories', categoryRoutes);
 router.use('/orders', orderRoutes);
 router.use('/retell', retellRoutes);
 router.use('/tracking', trackingRoutes);
+router.use('/whatsapp', whatsappRoutes);
 
 // ── Admin (guarded inside admin/index.js) ─────────────────────────────
 router.use('/admin', adminRoutes);

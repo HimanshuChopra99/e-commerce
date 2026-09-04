@@ -1,0 +1,320 @@
+{
+  "name": "KICKS WhatsApp Agent — Unified Product Search",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kick-whatsapp-agent",
+        "options": {}
+      },
+      "id": "1c0042a8-1888-461c-94a2-f9d8fa7d4503",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1840,
+        2736
+      ],
+      "webhookId": "12fdd38c-47bb-4960-9c60-98f0d5916a5c"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ad6fb71a-bbb9-48b7-9092-81ac8eab3d54",
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ffece071-a6d4-45f9-b046-8c2c3abf1264",
+      "name": "Filter — Ignore Own Messages",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2064,
+        2736
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b9c0706b-8264-4922-a344-0039d41a3d9a",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        2640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst data = body?.data || {};\nconst msg  = data?.message || {};\n\nlet text = '';\nif      (msg.conversation)                                               text = msg.conversation;\nelse if (msg.extendedTextMessage?.text)                                  text = msg.extendedTextMessage.text;\nelse if (msg.buttonsResponseMessage?.selectedButtonId)                   text = msg.buttonsResponseMessage.selectedButtonId;\nelse if (msg.listResponseMessage?.singleSelectReply?.selectedRowId)      text = msg.listResponseMessage.singleSelectReply.selectedRowId;\nelse if (msg.imageMessage?.caption)                                      text = msg.imageMessage.caption || '[image sent]';\nelse                                                                     text = '[unsupported message type]';\n\nconst remoteJid = data.key?.remoteJid || '';\nconst phone     = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');\n\nreturn [{\n  json: {\n    remoteJid,\n    phone,\n    pushName:    data.pushName || 'Customer',\n    messageType: data.messageType || 'conversation',\n    instance:    body.instance || '',\n    text:        text.trim()\n  }\n}];"
+      },
+      "id": "34d06c35-6734-4ab3-9527-9966270e2a68",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        2832
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "=You are *Kick* 👟 — the friendly, expert WhatsApp AI shopping assistant for *KICKS*, a premium sneaker & shoe store.\n\nCustomer name : {{ $json.pushName }}\nCustomer phone: {{ $json.phone }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n## YOUR ONLY TOOL — search_products\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYou have access to the tool: `search_products`. It searches the live product catalogue from the database & cache using smart fuzzy search and variant stock checking.\n\n### ALWAYS call `search_products` when:\n- Customer is looking for shoes, browsing, asking for recommendations.\n- Customer mentions a brand (Nike, Adidas, Puma, etc.), category (running, sneakers, casual, formal, boots), color, gender (men, women, unisex, kids), size, or budget.\n- Customer mentions a specific shoe model (e.g. \"Air Force 1\", \"Stan Smith\", \"Puma Foreverrun Nitro\").\n\nExtract all mentioned parameters into the tool:\n- `query`: full user question or search phrase\n- `name`: specific shoe name or model\n- `brand`: brand name\n- `category`: running, sneakers, casual, formal, boots, basketball\n- `gender`: men, women, unisex, kids\n- `color`: shoe color\n- `size`: shoe size\n- `price_range`: budget or price phrase (e.g. \"under 100\", \"between 50 and 150\")\n\n### NEVER call `search_products` when:\n- Simple greetings (\"hi\", \"hello\", \"hey\") → warmly welcome them and ask what kicks they're looking for!\n- General store info questions (\"where are you located\", \"shipping policy\") → reply directly.\n- \"Thank you\", \"ok\", \"bye\" → polite sign-off.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n## HOW TO HANDLE TOOL RESPONSES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThe tool returns a structured JSON result:\n\n1. When `mode` is \"exact\" (Exact or 80-90%+ match found for a specific shoe):\n   - Full product details are provided: name, brand, price, currency, rating, availableSizes (in-stock sizes), colours, description.\n   - You can send the tool's formatted `message` or present the shoe enthusiastically with its price, in-stock sizes, and colors.\n   - Ask if they'd like to check a specific size or know more!\n\n2. When `mode` is \"list\" (Top 2-3 recommended products):\n   - Up to 3 best in-stock matching shoes are returned with formatted details, prices, and sizes.\n   - You can send the tool's formatted `message` or list them nicely (1️⃣, 2️⃣, 3️⃣) with prices and in-stock sizes.\n   - Ask which one they prefer or which number they want to explore!\n\n3. When `mode` is \"none\":\n   - Inform the customer politely and suggest popular alternatives (Nike, Adidas, Puma) or categories (running, sneakers).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n## RULES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n- Keep replies concise, punchy, and easy to read on WhatsApp (max 6-8 lines).\n- Use *asterisks* for product names and prices (WhatsApp bold).\n- Never invent products, prices, or sizes. Always rely on the data returned by `search_products`."
+        }
+      },
+      "id": "eb2e6a9f-5018-4890-b531-3bbc3af50e94",
+      "name": "KICK AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2768,
+        2832
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3.8-27b",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "13706296-ecae-4884-8342-57c557c3729b",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        2528,
+        3072
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "8ztrQymFhQw2MZzj",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Extract Message').item.json.remoteJid }}",
+        "contextWindowLength": 20
+      },
+      "id": "8a230c33-4c58-4365-8f93-0d790d4f8b38",
+      "name": "Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        2656,
+        3072
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search for shoes in the KICKS store catalogue. Call this tool whenever the customer asks to browse, search, or recommend shoes, mentions a brand, color, category, gender, size, price, or specific shoe model.",
+        "method": "POST",
+        "url": "https://filtrate-chemicals-spiritual.ngrok-free.dev/api/whatsapp/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $fromAI('query', 'The user question or search query', 'string') }}\",\n  \"name\": \"{{ $fromAI('name', 'Shoe model or product name if mentioned', 'string') }}\",\n  \"brand\": \"{{ $fromAI('brand', 'Brand name e.g. Nike, Adidas, Puma', 'string') }}\",\n  \"category\": \"{{ $fromAI('category', 'Category e.g. running, sneakers, casual, formal, boots', 'string') }}\",\n  \"gender\": \"{{ $fromAI('gender', 'Gender e.g. men, women, unisex, kids', 'string') }}\",\n  \"color\": \"{{ $fromAI('color', 'Color e.g. black, white, red', 'string') }}\",\n  \"size\": \"{{ $fromAI('size', 'Shoe size e.g. 9, 42', 'string') }}\",\n  \"price_range\": \"{{ $fromAI('price_range', 'Budget or price phrase e.g. under 100', 'string') }}\"\n}",
+        "options": {}
+      },
+      "id": "019f62f8-ca4b-4172-80e8-ce280164447f",
+      "name": "search_products",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        2784,
+        3072
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json.output || '';\n\nconst cleaned = output\n  .replace(/^#+\\s/gm, '')\n  .replace(/^---+$/gm, '')\n  .replace(/\\*\\*(.*?)\\*\\*/g, '*$1*')\n  .replace(/__(.*?)__/g, '_$1_')\n  .trim();\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    formattedOutput: cleaned\n  }\n}];"
+      },
+      "id": "1c6cce63-bed1-4a88-8dec-312ab56a80ca",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3072,
+        2832
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://your-cst-evolution-api-here.app/message/sendText/{{ $('Extract Message').item.json.instance }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { number: $('Extract Message').item.json.remoteJid, text: String($json.formattedOutput || $json.output || '') } }}",
+        "options": {}
+      },
+      "id": "c4fbb954-d760-4808-95f0-ab85d381b231",
+      "name": "Send WhatsApp Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3296,
+        2832
+      ],
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "9sdLoyOOpucrS4G4",
+          "name": "Evolution API apikey (Himanshu C)"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter — Ignore Own Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter — Ignore Own Messages": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [
+          {
+            "node": "KICK AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KICK AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "KICK AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "KICK AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_products": {
+      "ai_tool": [
+        [
+          {
+            "node": "KICK AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "366c321f-2f72-4ac9-91c0-71c56eac5367",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fd716b4aaed18fd10f3914f57353f56982d702b9bb802fd5efe534fb4905580d"
+  },
+  "nodeGroups": [],
+  "id": "O17abGRsiXRm0QgN",
+  "tags": []
+}
