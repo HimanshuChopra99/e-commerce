@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY delivery-app/package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY delivery-app/ .
 RUN npm run build
